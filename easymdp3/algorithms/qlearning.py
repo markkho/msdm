@@ -1,6 +1,6 @@
 from __future__ import division
 
-from ..util import calc_softmax_policy, calc_stochastic_policy
+from easymdp3.core.util import calc_softmax_policy, calc_stochastic_policy
 
 import numpy as np
 

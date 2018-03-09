@@ -4,7 +4,7 @@ import random
 
 import numpy as np
 
-from mdp_lib.value_iteration import VI
+from ..value_iteration import VI
 from util import sample_prob_dict
 
 
