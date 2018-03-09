@@ -2,7 +2,7 @@ from __future__ import division
 
 import numpy as np
 
-def toStateActionRF(rf, tf):
+def toStateActionRFdict(rf, tf):
 	if type(rf.values()[0]) == dict:
 		if type(rf.values()[0].values()[0]) == dict:
 			is_state_action_nextstateRF = True
@@ -21,7 +21,8 @@ def toStateActionRF(rf, tf):
 			if type(ns) == dict:
 				ns = ns.keys()[0]
 			else:
-				raise "Error: multiple next states - cannot assign reward"
+				raise Exception("Error: multiple next states "
+								"- cannot assign reward")
 
 			if is_stateRF:
 				temp_rf[s][a] = rf[ns]
@@ -31,7 +32,7 @@ def toStateActionRF(rf, tf):
 				temp_rf[s][a] = rf[s][a]
 	return temp_rf
 
-def toStateActionNextstateRF(rf, tf):
+def toStateActionNextstateRFdict(rf, tf):
 	if type(rf.values()[0]) == dict:
 		is_stateRF = False
 	else:

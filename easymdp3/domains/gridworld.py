@@ -6,11 +6,10 @@ logger = logging.getLogger(__name__)
 
 import numpy as np
 
-from mdp_lib.mdp import MDP
-from mdp_lib.reward_function import RewardFunction
-from mdp_lib.value_iteration import VI
-
-from ..util import calc_softmax_policy
+from easymdp3.core.mdp import MDP
+from easymdp3.core.reward_function import RewardFunction
+from easymdp3.algorithms.value_iteration import VI
+from easymdp3.core.util import calc_softmax_policy
 
 class GridWorld(MDP):
     def __init__(self, width=None, height=None,

@@ -4,9 +4,8 @@ import random
 
 import numpy as np
 
-from ..value_iteration import VI
-from util import sample_prob_dict
-
+from easymdp3.algorithms.value_iteration import VI
+from .util import sample_prob_dict
 
 class MDP(object):
     def __init__(self):
