@@ -12,65 +12,67 @@ logger = logging.getLogger(__name__)
 #================================#
 np.seterr(all='raise')
 
+def calc_softmax_dist(action_vals, temp=1.0):
+    #normalization trick
+    mval = max(action_vals.values())
+    action_vals = {a: v - mval for a, v in action_vals.iteritems()}
+
+    aprobs = {}
+    norm = 0
+    for a, q in action_vals.items():
+        try:
+            p = np.exp(q/temp)
+        except FloatingPointError:
+            p = 0
+            warnings.warn(("Softmax underflow (q = %g, temp = %g); " +
+                          "setting prob to 0.") % (q, temp))
+        norm += p
+        aprobs[a] = p
+    aprobs = {a: p/norm for a, p in aprobs.items()}
+    return aprobs
+
 def calc_softmax_policy(stateaction_vals, temp=1):
     soft_max_policy = {}
     for s, a_q in stateaction_vals.iteritems():
-        a_q = a_q.items()
-        try:
-            sm = np.exp([(q/temp) for a, q in a_q])
-            sm = list(sm/np.sum(sm))
-        except FloatingPointError:
-            sm = np.empty((len(a_q),))
-            sm[:] = np.nan
-            warnings.warn("Error computing softmax values")
-        soft_max_policy[s] = dict(zip([a for a, q in a_q], sm))
+        soft_max_policy[s] = calc_softmax_dist(a_q, temp=temp)
     return soft_max_policy
 
-def calc_softmax_dist(action_vals, temp=1):
-    actions, qs = zip(*action_vals.items())
-    try:
-        sm = np.exp([q/temp for q in qs])
-        sm = sm/np.sum(sm)
-    except FloatingPointError:
-        sm = np.empty((len(actions),))
-        sm[:] = np.nan
-        warnings.warn("Error computing softmax values")
-    return dict(zip(actions, sm))
+def calc_esoftmax_dist(a_vals, temp=0.0, randchoose=0.0):
+    """
+    See work by Nassar & Frank (2016) and Collins and Frank (2018)
 
-def calc_stochastic_policy(action_vals, rand_choose=0.0):
-    s_policy = {}
-    if rand_choose == 0.0:
-        for s, a_q in action_vals.iteritems():
-            acts, qs = zip(*a_q.items())
-            max_q = max(qs)
-            max_acts = [acts[i] for i, qv in enumerate(qs) if qv == max_q]
-            probs = [1/len(max_acts) for _ in max_acts]
-            s_policy[s] = dict(zip(max_acts, probs))
+    http://ski.clps.brown.edu/papers/NassarFrank_curopin.pdf and
+    http://ski.clps.brown.edu/papers/CollinsFrank_PNAS_supp.pdf
+    """
+    if temp == 0.0:
+        maxval = max(a_vals.values())
+        maxacts = [a for a, v in a_vals.items() if v == maxval]
+        act_randchoose = randchoose/len(a_vals)
+        act_maxchoose = (1-randchoose)/len(maxacts)
+        a_p = {}
+        for a in a_vals.keys():
+            a_p[a] = act_randchoose
+            if a in maxacts:
+                a_p[a] += act_maxchoose
     else:
-        for s, a_q in action_vals.iteritems():
-            acts, qs = zip(*a_q.items())
-            max_q = max(qs)
-            max_acts = [acts[i] for i, qv in enumerate(qs) if qv == max_q]
-            nonmax_prob = rand_choose/len(acts)
-            max_prob = (1-rand_choose)/len(max_acts) + nonmax_prob
-            probs = [max_prob if a in max_acts else nonmax_prob for a in acts]
-            s_policy[s] = dict(zip(acts, probs))
-    return s_policy
+        sm = calc_softmax_dist(a_vals, temp)
+        act_randchoose = randchoose/len(a_vals)
+        a_p = {}
+        for a, smp in sm.items():
+            a_p[a] = act_randchoose + (1 - randchoose)*smp
+    return a_p
+
+def calc_esoftmax_policy(sa_vals, temp=0.0, randchoose=0.0):
+    policy = {}
+    for s, a_q in sa_vals.iteritems():
+        policy[s] = calc_esoftmax_dist(a_q, temp=temp, randchoose=randchoose)
+    return policy
+
+def calc_stochastic_policy(sa_vals, rand_choose=0.0):
+    return calc_esoftmax_policy(sa_vals, temp=0.0, randchoose=rand_choose)
 
 def calc_egreedy_dist(action_vals, rand_choose=0.0):
-    actions, qs = zip(*action_vals.items())
-    max_q = max(qs)
-    max_as = [a for a in actions if action_vals[a] == max_q]
-    rand_p = rand_choose/len(actions)
-    max_p = (1-rand_choose)/len(max_as)
-    dist = {}
-    for a in actions:
-        if action_vals[a] == max_q:
-            dist[a] = rand_p + max_p
-        else:
-            dist[a] = rand_p
-    return dist
-
+    return calc_esoftmax_dist(action_vals, randchoose=rand_choose, temp=0.0)
 
 def sample_prob_dict(pdict):
     outs, p_s = zip(*pdict.items())
@@ -89,7 +91,6 @@ def calc_traj_probability(policy, traj, get_log=False):
         for s, a in traj:
             prob *= policy[s][a]
         return prob
-
 
 def argmax_dict(mydict, return_all_maxes=False, return_as_list=False):
     max_v = -np.inf
