@@ -40,20 +40,20 @@ def plot_rectangle(state, ax=None, width=.8, height=.8, orientation=None,
     return rect
 
 
-def plot_marker(state, ax, mark='x', sub_state=(1, 1),
-                sub_rows=3, sub_cols=3, color='k',
-                outline_color=None, outline_linewidth=2):
+def plot_text(state, ax, text='x', sub_state=(1, 1),
+              sub_rows=3, sub_cols=3, color='k',
+              outline_color=None, outline_linewidth=2, zorder=10):
     x_offset = (sub_state[0] + .5) / sub_cols
     y_offset = (sub_state[1] + .5) / sub_rows
 
-    mymarker = ax.text(state[0] + x_offset, state[1] + y_offset,
-                       mark, color=color, fontsize='xx-large')
+    mytext = ax.text(state[0] + x_offset, state[1] + y_offset,
+                       text, color=color, fontsize='xx-large', zorder=zorder)
 
     if outline_color:
-        mymarker.set_path_effects([path_effects.Stroke(
+        mytext.set_path_effects([path_effects.Stroke(
             linewidth=outline_linewidth, foreground=outline_color),
             path_effects.Normal()])
-    return mymarker
+    return mytext
 
 
 def visualize_taxicab_transition(ax=None,
@@ -63,6 +63,7 @@ def visualize_taxicab_transition(ax=None,
                                  taxi=None,
                                  passengers=None,
                                  action=None,
+                                 reward=None,
                                  passenger_colors=None,
                                  taxi_color=None):
     # draw tiles
@@ -76,9 +77,6 @@ def visualize_taxicab_transition(ax=None,
     # draw walls
     if walls is None:
         walls = []
-    recode_walls = lambda w: {'north': '^', 'south': 'v',
-                              'east': '>', 'west': '<'}[w]
-    walls = [(s, recode_walls(w)) for s, w in walls]
     visualize_walls(ax=ax, walls=walls)
 
     # draw taxi
@@ -90,15 +88,23 @@ def visualize_taxicab_transition(ax=None,
         edgecolor = 'pink'
     elif action == 'pickup':
         edgecolor = 'lightblue'
-    elif action in ['north', 'south', 'east', 'west']:
-        arrowx = {'east': 1, 'west': -1}.get(action, 0)
-        arrowy = {'north': 1, 'south': -1}.get(action, 0)
+    elif action in ['^', 'v', '>', '<']:
+        arrowx = {'>': 1, '<': -1}.get(action, 0)
+        arrowy = {'^': 1, 'v': -1}.get(action, 0)
         ax.add_patch(plt.Arrow(tx + .5, ty + .5,
                                arrowx * arrow_len, arrowy * arrow_len,
                                width=arrow_width,
                                color='black', zorder=11))
     plot_rectangle(taxi.location, ax=ax, width=.5, height=.5,
                    edgecolor=edgecolor)
+
+    # draw reward
+    if reward is not None and reward != 0:
+        rtext = str(reward) if reward < 0 else "+" + str(reward)
+        rcolor = 'red' if reward < 0 else 'green'
+        plot_text(taxi.location, ax=ax, text=rtext,
+                  sub_state=(1, 1), color=rcolor, outline_color='black',
+                  outline_linewidth=2, zorder=12)
 
     # draw passengers and their destinations
     if passenger_colors is None:
@@ -140,10 +146,12 @@ def visualize_taxicab_transition(ax=None,
             dest_sstates.append(xy)
     for dest, plist in dests.items():
         for sstate, (p, pcolor) in zip(dest_sstates, plist):
-            plot_marker(dest, ax=ax, mark="x",
-                        sub_state=sstate,
-                        color=pcolor, outline_color='white',
-                        outline_linewidth=2)
+            plot_text(dest, ax=ax, text="x",
+                      sub_state=sstate,
+                      color=pcolor, outline_color='white',
+                      outline_linewidth=2)
+
+
 
 
 def animate_transitions(taximdp, traj, filename,
@@ -158,16 +166,20 @@ def animate_transitions(taximdp, traj, filename,
     def animate(frame):
         step, s_ns = frame
         ax.clear()
+        r = None
         if s_ns == 's':  # plot the state
             s_to_plot = traj[step][0]
             a = traj[step][1]
         elif s_ns == 'ns':
             s_to_plot = traj[step][2]
+            if len(traj[step]) == 4:
+                r = traj[step][3]
             a = None
 
         visualize_taxicab_transition(
             ax=ax,
             action=a,
+            reward=r,
             width=taximdp.width,
             height=taximdp.height,
             locations=taximdp.locs,

@@ -5,7 +5,10 @@ import numpy as np
 
 from easymdp3.core.mdp import MDP
 from easymdp3.core.util import sample_prob_dict
+from easymdp3.domains.gridworld import GridWorld
 
+TERMINAL_ACTION = 'end'
+TERMINAL_STATE = 'terminal'
 
 class TaxiCabMDP(MDP):
     # objects for hashable state
@@ -35,7 +38,7 @@ class TaxiCabMDP(MDP):
             self.i = i
 
         def at_destination(self):
-            return self.location == self.destination
+            return not self.in_car and (self.location == self.destination)
 
         def as_tuple(self):
             return TaxiCabMDP.PassengerTuple(
@@ -98,20 +101,21 @@ class TaxiCabMDP(MDP):
                  walls: "1D walls" =None,
                  locations: "pick up and drop off locations" = None,
                  init_location=(0, 3),
+                 init_passengers=None,
                  step_cost=-1
                  ):
         self.width = width
         self.height = height
         if walls is None:
-            walls = [((0, 0), 'east'), ((1, 0), 'west'),
-                      ((0, 1), 'east'), ((1, 1), 'west'),
-                      ((0, 2), 'east'), ((1, 2), 'west'),
-                      ((4, 0), 'east'), ((5, 0), 'west'),
-                      ((4, 1), 'east'), ((5, 1), 'west'),
-                      ((4, 2), 'east'), ((5, 2), 'west'),
-                      ((2, 3), 'east'), ((3, 3), 'west'),
-                      ((2, 4), 'east'), ((3, 4), 'west'),
-                      ((2, 5), 'east'), ((3, 5), 'west')]
+            walls = [((0, 0), '>'), ((1, 0), '<'),
+                      ((0, 1), '>'), ((1, 1), '<'),
+                      ((0, 2), '>'), ((1, 2), '<'),
+                      ((4, 0), '>'), ((5, 0), '<'),
+                      ((4, 1), '>'), ((5, 1), '<'),
+                      ((4, 2), '>'), ((5, 2), '<'),
+                      ((2, 3), '>'), ((3, 3), '<'),
+                      ((2, 4), '>'), ((3, 4), '<'),
+                      ((2, 5), '>'), ((3, 5), '<')]
         self.walls = walls
         if locations is None:
             locations = [(0, 0), (2, 5), (4, 0)]
@@ -119,15 +123,23 @@ class TaxiCabMDP(MDP):
         self.init_location = init_location
 
         self.step_cost = step_cost
+        if init_passengers is None:
+            init_passengers = [
+                {'location': self.locs[0], 'destination': self.locs[2], 'i': 0},
+                {'location': self.locs[1], 'destination': self.locs[0], 'i': 1},
+                {'location': self.locs[2], 'destination': self.locs[1], 'i': 2},
+            ]
+        self.init_passengers = init_passengers
 
     def get_init_state(self):
-        passengers = []
-        for i, loc in enumerate(self.locs):
-            dest = loc
-            while dest == loc:
-                dest = self.locs[np.random.randint(len(self.locs))]
-            p = TaxiCabMDP.Passenger(loc, dest, i=i)
-            passengers.append(p)
+        passengers = [TaxiCabMDP.Passenger(**p) for p in self.init_passengers]
+        #
+        # for i, loc in enumerate(self.locs):
+        #     dest = loc
+        #     while dest == loc:
+        #         dest = self.locs[np.random.randint(len(self.locs))]
+        #     p = TaxiCabMDP.Passenger(loc, dest, i=i)
+        #     passengers.append(p)
 
         taxi = TaxiCabMDP.Taxi(self.init_location, gas=100)
 
@@ -136,36 +148,39 @@ class TaxiCabMDP(MDP):
         return self.last_state.as_tuple()
 
     def available_actions(self, s=None):
-        return ['north', 'south', 'east', 'west', 'noop',
+        if self.is_terminal(s) or self.is_absorbing(s):
+            return [TERMINAL_ACTION, ]
+        return ['^', 'v', '<', '>', 'noop',
                 'pickup', 'dropoff']
 
     def transition_reward_dist(self, s=None, a=None):
+        if a == TERMINAL_ACTION:
+            return {(TERMINAL_STATE, 0): 1}
+
         if s is None:
             s = self.last_state
         else:
             s = TaxiCabMDP.State(state_tuple=s)
 
-        r = 0
+        r = self.step_cost
 
         # taxi-transitions
-        if a in ['north', 'south', 'east', 'west', 'noop'] and \
+        if a in ['^', 'v', '<', '>', 'noop'] and \
                 (s.taxi.location, a) not in self.walls:
             max_x = self.width - 1
             max_y = self.height - 1
-            if a == 'north' and s.taxi.location[1] < max_y:
+            if a == '^' and s.taxi.location[1] < max_y:
                 s.taxi.north()
-            elif a == 'south' and s.taxi.location[1] > 0:
+            elif a == 'v' and s.taxi.location[1] > 0:
                 s.taxi.south()
-            elif a == 'east' and s.taxi.location[0] < max_x:
+            elif a == '>' and s.taxi.location[0] < max_x:
                 s.taxi.east()
-            elif a == 'west' and s.taxi.location[0] > 0:
+            elif a == '<' and s.taxi.location[0] > 0:
                 s.taxi.west()
-            r += self.step_cost
 
         elif a == 'pickup' and s.taxi.passenger_i == -1:
-            p_to_pickup = None
             for i, p in enumerate(s.passengers):
-                if p.location == s.taxi.location:
+                if p.location == s.taxi.location and not p.at_destination():
                     p.in_car = True
                     s.taxi.pickup(i)
                     break
@@ -199,3 +214,31 @@ class TaxiCabMDP(MDP):
             if ns_ == ns:
                 r_dist[r] = r_dist.get(r, 0) + p
         return sample_prob_dict(r_dist)
+
+    def is_absorbing(self, s=None):
+        if s is None:
+            s = self.last_state
+        else:
+            s = TaxiCabMDP.State(state_tuple=s)
+
+        for p in s.passengers:
+            if not p.at_destination():
+                return False
+        return True
+
+    def is_terminal(self, s):
+        if s == TERMINAL_STATE:
+            return True
+        return False
+
+    def is_terminal_action(self, a):
+        if a == TERMINAL_ACTION:
+            return True
+        return False
+
+    def get_gridworld(self, absorbing_states):
+        return GridWorld(
+            width=self.width,
+            height=self.height,
+            walls=self.walls
+        )
