@@ -1,4 +1,4 @@
-from __future__ import division
+
 from itertools import product
 
 import numpy as np
@@ -77,7 +77,7 @@ def visualize_states(ax=None, states=None,
 
 
 def visualize_deterministic_policy(ax, policy, absorbing_action='%', **kwargs):
-    policy = dict([(s, {a: 1.0}) for s, a in policy.iteritems() if
+    policy = dict([(s, {a: 1.0}) for s, a in policy.items() if
                    a != absorbing_action])
     return visualize_action_values(ax, policy, **kwargs)
 
@@ -96,18 +96,18 @@ def visualize_action_values(ax=None, state_action_values=None,
     # plot arrows
     if global_maxval is None:
         global_maxval = -np.inf
-        for s, a_v in state_action_values.iteritems():
-            for v in a_v.values():
+        for s, a_v in state_action_values.items():
+            for v in list(a_v.values()):
                 if global_maxval < np.absolute(v):
                     global_maxval = np.absolute(v)
 
-    for s, a_v in state_action_values.iteritems():
+    for s, a_v in state_action_values.items():
         if s == (-1, -1):
             continue
         x, y = s
-        normalization = np.sum(np.absolute(a_v.values()))
-        maxval = max(np.absolute(a_v.values()))
-        for a, v in a_v.iteritems():
+        normalization = np.sum(np.absolute(list(a_v.values())))
+        maxval = max(np.absolute(list(a_v.values())))
+        for a, v in a_v.items():
             if a == '%' or v == 0:
                 continue
 
@@ -313,12 +313,12 @@ def visualize_intervention_trajectory(axis, traj, absorbing_states,
         intervention_kwargs = {}
 
     agent_move_defaults = {'linewidth': 2}
-    for k, v in agent_move_defaults.iteritems():
+    for k, v in agent_move_defaults.items():
         if k not in agent_move_kwargs:
             agent_move_kwargs[k] = v
 
     intervention_kwargs_defaults = {'color': 'red', 'linewidth': 1}
-    for k, v in intervention_kwargs_defaults.iteritems():
+    for k, v in intervention_kwargs_defaults.items():
         if k not in intervention_kwargs:
             intervention_kwargs[k] = v
 
@@ -374,7 +374,7 @@ def visualize_intervention_trajectory(axis, traj, absorbing_states,
         last_segment = traj_segment
 
     if show_intervention_counts:
-        for s, labels in intervention_labels.iteritems():
+        for s, labels in intervention_labels.items():
             plot_text(axis, s, ', '.join(labels), color='yellow', ha='center',
                       va='top',
                       size=25, outline=True, x_offset=-.1, y_offset=-.1)
@@ -508,7 +508,7 @@ def animate_trajectory(gw, traj, filename,
     interval = move_interval/interval_frames
 
     frames = []
-    for step_i, frame_i in product(range(len(traj)), range(interval_frames)):
+    for step_i, frame_i in product(list(range(len(traj))), list(range(interval_frames))):
         frames.append((step_i, frame_i))
         if frame_i == 0:
             n_wait_frames = int(traj_responsetimes[step_i]/interval)

@@ -1,5 +1,4 @@
 import unittest
-import pandas as pd
 import numpy as np
 
 from easymdp3.domains.gridworld import GridWorld

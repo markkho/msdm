@@ -27,11 +27,12 @@ class GridWorldTestCase(unittest.TestCase):
             'state_features': state_features,
             'feature_rewards': feature_rewards,
             'absorbing_states': absorbing_states,
-            'init_state': (0, 3)
+            'init_state': (0, 3),
+            'include_intermediate_terminal': True
         }
 
         gw = GridWorld(**params)
-        gw.solve(gw.get_init_state(), gamma=.99)
+        planner = gw.solve(discount_rate=.99)
 
         true_policy = {(-2, -2): '%',
                        (-1, -1): '%', (0, 0): '^', (0, 1): '>', (0, 2): 'v',
@@ -45,12 +46,12 @@ class GridWorldTestCase(unittest.TestCase):
                        (5, 1): '^', (5, 2): '^', (5, 3): '%', (5, 4): 'v',
                        (5, 5): 'v'}
 
-        self.assertEqual(gw.optimal_policy, true_policy)
+        self.assertEqual(planner.optimal_policy, true_policy)
 
         traj = []
         s = gw.get_init_state()
         while s not in gw.absorbing_states:
-            a = gw.optimal_policy[s]
+            a = planner.optimal_policy[s]
             ns = gw.transition(s, a)
             r = gw.reward(s, a, ns)
             traj.append((s, a, ns, r))
@@ -94,11 +95,12 @@ class GridWorldTestCase(unittest.TestCase):
             'feature_rewards': feature_rewards,
             'absorbing_states': absorbing_states,
             'slip_features': slip_features,
-            'init_state': (0, 1)
+            'init_state': (0, 1),
+            'include_intermediate_terminal': True
         }
 
         gw = GridWorld(**params)
-        gw.solve(gw.get_init_state(), gamma=.99)
+        planner = gw.solve(discount_rate=.99)
 
 
 
@@ -108,13 +110,13 @@ class GridWorldTestCase(unittest.TestCase):
                        (3, 1): '>', (3, 2): '>', (4, 0): '>', (4, 1): '>',
                        (4, 2): '>', (5, 0): '^', (5, 1): '%', (5, 2): 'v'}
 
-        self.assertEqual(gw.optimal_policy, true_policy)
+        self.assertEqual(planner.optimal_policy, true_policy)
 
         np.random.seed(2223124)
         traj = []
         s = gw.get_init_state()
         for _ in range(20):
-            a = gw.optimal_policy[s]
+            a = planner.optimal_policy[s]
             ns = gw.transition(s, a)
             r = gw.reward(s, a, ns)
             traj.append((s, a, ns, r))
@@ -122,14 +124,14 @@ class GridWorldTestCase(unittest.TestCase):
             if s in gw.absorbing_states:
                 break
         true_traj = [((0, 1), '>', (1, 1), 0),
+                     ((1, 1), '>', (1, 2), -1),
+                     ((1, 2), 'v', (1, 1), 0),
                      ((1, 1), '>', (2, 1), 0),
-                     ((2, 1), '>', (2, 2), -1),
-                     ((2, 2), 'v', (2, 1), 0),
                      ((2, 1), '>', (3, 1), 0),
-                     ((3, 1), '>', (3, 2), -1),
-                     ((3, 2), '>', (4, 2), -1),
-                     ((4, 2), '>', (5, 2), 0),
-                     ((5, 2), 'v', (5, 1), 5)]
+                     ((3, 1), '>', (4, 1), 0),
+                     ((4, 1), '>', (4, 0), -1),
+                     ((4, 0), '>', (5, 0), 0),
+                     ((5, 0), '^', (5, 1), 5)]
         self.assertEqual(traj, true_traj)
 
 if __name__ == '__main__':

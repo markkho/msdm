@@ -1,8 +1,4 @@
-
-
-from easymdp3.core.util import calc_softmax_policy, \
-    calc_stochastic_policy, calc_esoftmax_dist, sample_prob_dict
-
+from easymdp3.core.util import calc_esoftmax_dist
 from easymdp3.core.agent import Learner
 
 class Qlearning(Learner):
@@ -111,9 +107,3 @@ class Qlearning(Learner):
 
     def change_learning_rate(self, new):
         self.learning_rate = new
-
-    def get_softmax_policy(self, temp=1):
-        return calc_softmax_policy(self.qvalues, temp)
-
-    def get_egreedy_policy(self, rand_choose=.2):
-        return calc_stochastic_policy(self.qvalues, rand_choose)

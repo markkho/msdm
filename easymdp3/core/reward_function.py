@@ -45,8 +45,8 @@ class RewardFunction(object):
             self.type = 'state_feature_based'
         elif reward_dict is not None:
             self.reward_dict = copy.deepcopy(reward_dict)
-            if type(reward_dict.values()[0]) is dict:
-                if type(reward_dict.values()[0].values()[0]) is dict:
+            if type(list(reward_dict.values())[0]) is dict:
+                if type(list(reward_dict.values())[0].values()[0]) is dict:
                     self.type = 'state_action_nextstate_dict'
                 else:
                     self.type = 'state_action_dict'
@@ -65,15 +65,15 @@ class RewardFunction(object):
         #set rmax
         if rmax is None:
             if self.type == 'state_dict':
-                rs = list(self.reward_dict.itervalues()) + [default_reward,]
+                rs = list(self.reward_dict.values()) + [default_reward,]
                 rmax = max(rs)
             elif self.type == 'state_action_dict':
                 rmax = -np.inf
-                for s, ar in self.reward_dict.iteritems():
-                    for a, r in ar.iteritems():
+                for s, ar in self.reward_dict.items():
+                    for a, r in ar.items():
                         rmax = max(rmax, r)
             elif self.type == 'state_feature_based':
-                fr = np.array(self.feature_rewards.values())
+                fr = np.array(list(self.feature_rewards.values()))
                 pos_fr = fr[fr > 0]
                 if (len(pos_fr) == 0):
                     pos_fr = [max(fr),]
@@ -142,9 +142,9 @@ class RewardFunction(object):
                 or self.type in ['state_action_nextstate_dict',
                                  'state_action_nextstate_feature_based']:
             rf = {}
-            for s, a_ns in state_action_nextstates.iteritems():
+            for s, a_ns in state_action_nextstates.items():
                 rf[s] = {}
-                for a, nstates in a_ns.iteritems():
+                for a, nstates in a_ns.items():
                     rf[s][a] = {}
                     for ns in nstates:
 
@@ -175,16 +175,16 @@ class RewardFunction(object):
             #      Handle the different rf types       #
             # ======================================== #
             if self.type in ['state_dict', 'state_feature_based']:
-                for s, a_ns in state_action_nextstates.iteritems():
+                for s, a_ns in state_action_nextstates.items():
                     rf[s] = {}
-                    for a, nstates in a_ns.iteritems():
+                    for a, nstates in a_ns.items():
                         if len(nstates) > 1:
                             raise ValueError("Undefinable reward function dictionary!")
                         rf[s][a] = self.reward(ns=nstates[0])
 
             elif self.type in ['state_action_dict',
                                'state_action_feature_based']:
-                for s, actions in state_actions.iteritems():
+                for s, actions in state_actions.items():
                     rf[s] = {}
                     for a in actions:
                         rf[s][a] = self.reward(s=s, a=a)
@@ -218,7 +218,7 @@ class RewardFunction(object):
 
         if self.type == 'state_dict':
             myhash.extend([
-                tuple(sorted(self.reward_dict.iteritems())),
+                tuple(sorted(self.reward_dict.items())),
             ])
         else:
             myhash.extend([
@@ -227,8 +227,8 @@ class RewardFunction(object):
 
         if self.type == 'state_action_dict':
             sar = []
-            for s, ar in self.reward_dict.iteritems():
-                ar = tuple(sorted(ar.iteritems()))
+            for s, ar in self.reward_dict.items():
+                ar = tuple(sorted(ar.items()))
                 sar.append((s, ar))
             sar = tuple(sorted(sar))
             myhash.extend([sar,])
@@ -237,10 +237,10 @@ class RewardFunction(object):
 
         if self.type == 'state_action_nextstate_dict':
             sansr = []
-            for s, ansr in self.reward_dict.iteritems():
+            for s, ansr in self.reward_dict.items():
                 ansr_ = []
-                for a, nsr in ansr.iteritems():
-                    nsr = tuple(sorted(nsr.iteritems()))
+                for a, nsr in ansr.items():
+                    nsr = tuple(sorted(nsr.items()))
                     ansr_.append((a, nsr))
                 ansr_ = tuple(sorted(ansr_))
                 sansr.append(ansr_)
@@ -251,8 +251,8 @@ class RewardFunction(object):
 
         if self.type == 'state_feature_based':
             myhash.extend([
-                tuple(sorted(self.state_features.iteritems())),
-                tuple(sorted(self.feature_rewards.iteritems()))
+                tuple(sorted(self.state_features.items())),
+                tuple(sorted(self.feature_rewards.items()))
             ])
         else:
             myhash.extend([False,

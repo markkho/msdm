@@ -8,8 +8,6 @@ import numpy as np
 
 from easymdp3.core.mdp import MDP
 from easymdp3.core.reward_function import RewardFunction
-from easymdp3.algorithms.value_iteration import VI
-from easymdp3.core.util import calc_softmax_policy
 from easymdp3.algorithms.valueiteration import ValueIteration
 
 class GridWorld(MDP):
