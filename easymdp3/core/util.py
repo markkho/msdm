@@ -15,7 +15,7 @@ np.seterr(all='raise')
 def calc_softmax_dist(action_vals, temp=1.0):
     #normalization trick
     mval = max(action_vals.values())
-    action_vals = {a: v - mval for a, v in action_vals.iteritems()}
+    action_vals = {a: v - mval for a, v in action_vals.items()}
 
     aprobs = {}
     norm = 0
@@ -33,7 +33,7 @@ def calc_softmax_dist(action_vals, temp=1.0):
 
 def calc_softmax_policy(stateaction_vals, temp=1):
     soft_max_policy = {}
-    for s, a_q in stateaction_vals.iteritems():
+    for s, a_q in stateaction_vals.items():
         soft_max_policy[s] = calc_softmax_dist(a_q, temp=temp)
     return soft_max_policy
 
@@ -44,6 +44,9 @@ def calc_esoftmax_dist(a_vals, temp=0.0, randchoose=0.0):
     http://ski.clps.brown.edu/papers/NassarFrank_curopin.pdf and
     http://ski.clps.brown.edu/papers/CollinsFrank_PNAS_supp.pdf
     """
+    if len(a_vals) == 1:
+        return {list(a_vals.keys())[0]: 1}
+
     if temp == 0.0:
         maxval = max(a_vals.values())
         maxacts = [a for a, v in a_vals.items() if v == maxval]
@@ -64,7 +67,7 @@ def calc_esoftmax_dist(a_vals, temp=0.0, randchoose=0.0):
 
 def calc_esoftmax_policy(sa_vals, temp=0.0, randchoose=0.0):
     policy = {}
-    for s, a_q in sa_vals.iteritems():
+    for s, a_q in sa_vals.items():
         policy[s] = calc_esoftmax_dist(a_q, temp=temp, randchoose=randchoose)
     return policy
 
@@ -92,10 +95,12 @@ def calc_traj_probability(policy, traj, get_log=False):
             prob *= policy[s][a]
         return prob
 
-def argmax_dict(mydict, return_all_maxes=False, return_as_list=False):
+def argmax_dict(mydict,
+                return_all_maxes=False,
+                return_as_list=False):
     max_v = -np.inf
     max_k = []
-    for k, v in mydict.iteritems():
+    for k, v in mydict.items():
         if v > max_v:
             max_v = v
             max_k = [k, ]
