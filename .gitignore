@@ -155,3 +155,6 @@ crashlytics-build.properties
 fabric.properties
 
 .idea/*
+
+# unique to this
+dev_notes.md
