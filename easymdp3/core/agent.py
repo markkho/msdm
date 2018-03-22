@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 
-from easymdp3.core.util import sample_prob_dict, \
-    calc_egreedy_dist
+from easymdp3.core.util import sample_prob_dict
 
 class Agent(object):
     def __init__(self, mdp):
         self.mdp = mdp
+
+    def __getitem__(self, s):
+        return self.act(s)
 
     def act_dist(self, s, softmax_temp=None, randchoose=None):
         raise NotImplementedError

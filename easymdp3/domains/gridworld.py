@@ -10,6 +10,7 @@ from easymdp3.core.mdp import MDP
 from easymdp3.core.reward_function import RewardFunction
 from easymdp3.algorithms.value_iteration import VI
 from easymdp3.core.util import calc_softmax_policy
+from easymdp3.algorithms.valueiteration import ValueIteration
 
 class GridWorld(MDP):
     def __init__(self, width=None, height=None,
@@ -46,13 +47,13 @@ class GridWorld(MDP):
             w = len(gridworld_array[0])
             h = len(gridworld_array)
             state_features = {(x, y): gridworld_array[h - 1 - y][x] for x, y in
-                              product(range(w), range(h))}
+                              product(list(range(w)), list(range(h)))}
             width = w
             height = h
 
         self.width = width
         self.height = height
-        self.states = list(product(range(width), range(height))) + [(-1, -1),
+        self.states = list(product(list(range(width)), list(range(height)))) + [(-1, -1),
                                                                     (-2, -2)]
         self.wait_action = wait_action
         self.wall_action = wall_action
@@ -104,7 +105,7 @@ class GridWorld(MDP):
                 state_types[s] = state_types.get(s, [])
                 state_types[s].append(feature_types[f])
 
-        for s, non_std_t in non_std_t_states.iteritems():
+        for s, non_std_t in non_std_t_states.items():
             if 'side' in non_std_t:
                 non_std_t['left'] = non_std_t['side'] / 2
                 non_std_t['right'] = non_std_t['side'] / 2
@@ -175,7 +176,7 @@ class GridWorld(MDP):
             self.wall_action,
             self.reward_function,
             self.absorbing_states,
-            frozenset([(s, nst) for s, nst in self.non_std_t_states.iteritems()]),
+            frozenset([(s, nst) for s, nst in self.non_std_t_states.items()]),
             self.starting_states,
             self.include_intermediate_terminal,
             self.intermediate_terminal,
@@ -198,6 +199,9 @@ class GridWorld(MDP):
 
     def is_terminal(self, s):
         return s == self.terminal_state
+
+    def is_terminal_action(self, a):
+        return a == '%'
 
     def is_any_terminal(self, s):
         return s in [self.terminal_state, self.intermediate_terminal]
@@ -426,8 +430,14 @@ class GridWorld(MDP):
 
     def transition(self, s, a):
         dist = self.transition_dist(s, a)
-        ns, p = zip(*list(dist.iteritems()))
+        ns, p = list(zip(*list(dist.items())))
         return ns[np.random.choice(len(ns), p=p)]
+
+    def transition_reward_dist(self, s, a):
+        tdist = self.transition_dist(s, a)
+        r = lambda ns : self.reward(s, a, ns)
+        trdist = {(ns, r(ns)): p for ns, p in tdist.items()}
+        return trdist
 
     def gen_transition_dict(self, start_state=None):
         tf = {}
@@ -467,25 +477,25 @@ class GridWorld(MDP):
         self.reward_cache[(s, a, ns)] = res
         return res
 
-    def gen_state_actions(self):
+    def get_state_actions(self):
         state_actions = {s: self.available_actions(s) for s in self.states}
         return state_actions
 
-    def gen_state_action_nextstates(self):
+    def get_state_action_nextstates(self):
         state_action_nextstates = {}
         for s in self.states:
             state_action_nextstates[s] = {}
             for a in self.available_actions(s):
                 state_action_nextstates[s][a] = \
-                    copy.deepcopy(self.transition_dist(s, a).keys())
+                    copy.deepcopy(list(self.transition_dist(s, a).keys()))
         return state_action_nextstates
 
-    def gen_reward_dict(self,
+    def get_reward_dict(self,
                         include_actions=False,
                         include_nextstates=False):
 
-        state_actions = self.gen_state_actions()
-        state_action_nextstates = self.gen_state_action_nextstates()
+        state_actions = self.get_state_actions()
+        state_action_nextstates = self.get_state_action_nextstates()
 
         rf = self.reward_function.gen_reward_dict(
             states=self.states,
@@ -505,38 +515,10 @@ class GridWorld(MDP):
     #                                                #
     # ============================================== #
 
-    def solve(self, start_state=None, rf=None, **kwargs):
-        if 'discount_rate' in kwargs:
-            kwargs['gamma'] = kwargs['discount_rate']
-            del kwargs['discount_rate']
-
-        if 'gamma' not in kwargs and self.discount_rate is not None:
-            kwargs['gamma'] = self.discount_rate
-        if rf is None:
-            rf = self.gen_reward_dict()
-        else:
-            state_actions = self.gen_state_actions()
-            state_action_nextstates = self.gen_state_action_nextstates()
-            rf = rf.gen_reward_dict(
-                states=self.states,
-                state_actions=state_actions,
-                state_action_nextstates=state_action_nextstates
-            )
-        tf = self.gen_transition_dict()
-        op, vf, av = VI(rf, tf, init_state=start_state, **kwargs)
-        self.optimal_policy = op
-        self.value_function = vf
-        self.action_value_function = av
-
-        self.solved = True
-
-    def get_optimal_policy(self):
-        if not self.solved:
-            raise ValueError("No optimal policy computed")
-        return self.optimal_policy
-
-    def get_softmax_function(self, temp=1):
-        return calc_softmax_policy(self.action_value_function, temp)
+    def solve(self, **kwargs):
+        planner = ValueIteration(mdp=self, **kwargs)
+        planner.solve()
+        return planner
 
     # ============================================== #
     #                                                #
@@ -605,7 +587,5 @@ class GridWorld(MDP):
 
         if plot_agent:
             agent = plot_agent_location(self.get_init_state(), ax=ax)
-
-
 
         return ax
