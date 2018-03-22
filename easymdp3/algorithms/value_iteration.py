@@ -1,4 +1,4 @@
-from __future__ import division
+
 import logging
 import warnings
 
@@ -15,37 +15,42 @@ def VI(rf, tf, init_state=None, max_iterations=100, delta=.001,
             reward function: {s: {a: {ns : r } }, and 
             transition function: {s : {a : {ns : prob}}}
     """
-    if type(rf.values()[0]) != dict:
-        rf = rf_utils.toStateActionNextstateRF(rf, tf)
-    elif type(rf.values()[0].values()[0]) != dict:
-        rf = rf_utils.toStateActionNextstateRF(rf, tf)
 
-    states = [s for s in tf.keys()]
+    # vi will use a state -> action -> next_state rf
+    if not isinstance(iter(rf.values()).__next__(), dict):
+        # this indicates its a state -> reward function
+        rf = rf_utils.toStateActionNextstateRFdict(rf, tf)
+    elif not isinstance(
+            iter(iter(rf.values()).__next__().values()).__next__(), dict):
+        # this indicates its a state -> action -> reward
+        rf = rf_utils.toStateActionNextstateRFdict(rf, tf)
+
+    states = [s for s in list(tf.keys())]
     if fixed_action_order:
         #always consistent ordering of actions
-        state_actions = dict([(s, sorted(a.keys())) for s, a in tf.items()])
+        state_actions = dict([(s, sorted(a.keys())) for s, a in list(tf.items())])
     else:
         #random but consistent ordering of actions
         state_actions = {}
-        for s, a in tf.iteritems():
-            state_actions[s] = sorted(a.keys(), key=lambda _ : random())
+        for s, a in tf.items():
+            state_actions[s] = sorted(list(a.keys()), key=lambda _ : random())
     vf = dict([(s, 0.0) for s in states])
     op = {}
     action_vals = {}
-    for s, actions in state_actions.iteritems():
+    for s, actions in state_actions.items():
         op[s] = actions[randint(0, len(actions)-1)]
-        action_vals[s] = dict(zip(actions, [0.0]*len(actions)))
+        action_vals[s] = dict(list(zip(actions, [0.0]*len(actions))))
 
     for i in range(max_iterations):
         change = 0
         vf_temp = {}
-        for state, actions in state_actions.iteritems():
+        for state, actions in state_actions.items():
             max_action = actions[0]
             max_action_val = -np.inf
             for action in actions:
                 #calculate expected utility of each action
                 action_vals[state][action] = 0
-                for ns, prob in tf[state][action].iteritems():
+                for ns, prob in tf[state][action].items():
                     update = prob*(rf[state][action][ns] + gamma*vf[ns])
                     action_vals[state][action] += update
                 if max_action_val < action_vals[state][action]:
