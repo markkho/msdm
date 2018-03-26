@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from easymdp3.core.util import sample_prob_dict
+from easymdp3.core.util import sample_prob_dict, calc_esoftmax_dist
 
 class Agent(object):
     def __init__(self, mdp):
@@ -43,6 +43,27 @@ class Agent(object):
 class Planner(Agent):
     def solve(self):
         raise NotImplementedError
+
+class ActionValueFunctionAgent(Agent):
+    def __init__(self,
+                 mdp,
+                 action_value_function,
+                 softmax_temp=0.0,
+                 randchoose=0.0):
+        Agent.__init__(self, mdp)
+        self.action_value_function = action_value_function
+        self.softmax_temp = softmax_temp
+        self.randchoose = randchoose
+
+    def act_dist(self, s, softmax_temp=None, randchoose=None):
+        if softmax_temp is None:
+            softmax_temp = self.softmax_temp
+        if randchoose is None:
+            randchoose = self.randchoose
+
+        return calc_esoftmax_dist(self.action_value_function[s],
+                                  temp=softmax_temp,
+                                  randchoose=randchoose)
 
 class Learner(Agent):
     def process(self, s, a, ns, r):

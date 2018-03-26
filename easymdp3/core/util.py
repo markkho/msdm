@@ -96,27 +96,25 @@ def calc_traj_probability(policy, traj, get_log=False):
         return prob
 
 def argmax_dict(mydict,
-                return_all_maxes=False,
-                return_as_list=False):
-    max_v = -np.inf
-    max_k = []
-    for k, v in mydict.items():
-        if v > max_v:
-            max_v = v
-            max_k = [k, ]
-        elif v == max_v:
-            max_k.append(k)
+                return_one=True):
+    max_v = max(mydict.values())
+    max_k = [k for k, v in mydict.items() if v == max_v]
 
-    if len(max_k) > 1:
-        if return_all_maxes:
-            return max_k
-        else:
-            if return_as_list:
-                return [np.random.choice(max_k), ]
-            else:
-                return np.random.choice(max_k)
-    else:
-        if return_as_list:
-            return max_k
-        else:
+    if return_one:
+        if len(max_k) == 0:
             return max_k[0]
+        else:
+            return np.random.choice(max_k)
+    else:
+        return max_k
+
+def max_index(mylist, return_one=True):
+    max_val = max(mylist)
+    max_i = [i for i, v in enumerate(mylist) if v == max_val]
+    if return_one:
+        if len(max_i) == 0:
+            return max_i[0]
+        else:
+            return np.random.choice(max_i)
+    else:
+        return max_i

@@ -12,8 +12,7 @@ class QLearningTests(unittest.TestCase):
                              '.xxxxxxxxxx'],
             absorbing_states=[(10, 1), ],
             init_state=(0, 1),
-            feature_rewards={'.': -1, 'x': -10, 'y': 100},
-            discount_rate=.99)
+            feature_rewards={'.': -1, 'x': -10, 'y': 100})
 
         np.random.seed(123)
         params = {'learning_rate': 1,

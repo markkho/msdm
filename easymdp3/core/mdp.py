@@ -31,6 +31,9 @@ class MDP(object):
     def reward(self, s=None, a=None, ns=None):
         return sample_prob_dict(self.transition_reward_dist(s, a))[1]
 
+    def reward_dist(self, s=None, a=None, ns=None):
+        raise NotImplementedError
+
     def available_actions(self, s):
         raise NotImplementedError
 
@@ -44,9 +47,7 @@ class MDP(object):
 
     def get_reachable_transition_reward_functions(self,
                                                   max_states=np.inf,
-                                                  init_state=None,
-                                                  get_rf=True,
-                                                  get_tf=True):
+                                                  init_state=None):
         if init_state is None:
             init_state = self.get_init_state()
         frontier = {init_state}
@@ -95,7 +96,7 @@ class MDP(object):
 
     # =============================================#
 
-    def solve(self):
+    def solve(self, discount_rate):
         raise NotImplementedError
 
     def calc_trajectory_return(self, traj, init_state=None, discount=1):
@@ -119,3 +120,16 @@ class MDP(object):
 
     def gen_transition_dict(self, start_state=None):
         raise NotImplementedError
+
+    def run_policy(self, policy, init_state=None):
+        if init_state is None:
+            init_state = self.get_init_state()
+        traj = []
+        s = init_state
+        while not self.is_terminal(s):
+            a = policy(s)
+            ns = self.transition(s, a)
+            r = self.reward(s, a, ns)
+            traj.append((s, a, ns, r))
+            s = ns
+        return traj
