@@ -3,12 +3,14 @@ import warnings
 import time
 
 from easymdp3.core.agent import Planner
-from easymdp3.core.util import argmax_dict, calc_esoftmax_dist
+from easymdp3.core.util import argmax_dict, calc_esoftmax_dist, \
+    calc_esoftmax_policy
 
 logger = logging.getLogger(__name__)
 
 class ValueIteration(Planner):
     def __init__(self, mdp,
+                 transition_function=None,
                  discount_rate=.99,
                  converge_delta=.001,
                  max_iterations=100,
@@ -22,17 +24,19 @@ class ValueIteration(Planner):
         self.softmax_temp = softmax_temp
         self.randchoose = randchoose
         self.init_val = init_val
+        self.tf = transition_function
 
     def build_model(self):
         logger.debug('Building transition and reward model')
         start = time.time()
         tf, rf = self.mdp.get_reachable_transition_reward_functions()
         self.tf = tf
-        self.rf = rf
+        # self.rf = rf
         logger.debug('Model built: %.2fs' % (time.time() - start))
 
     def solve(self):
-        self.build_model()
+        if self.tf is None:
+            self.build_model()
         vf = {s : self.init_val for s in self.tf.keys()}
         optimal_pol = {}
         action_vals = {}
@@ -49,11 +53,10 @@ class ValueIteration(Planner):
                     # calculate expected value of each action
                     action_vals[s][a] = 0
                     for ns, p in ns_p.items():
-                        ev = p*(self.rf[s][a][ns] + self.discount_rate*vf[ns])
+                        r = self.mdp.reward(s, a, ns)
+                        ev = p*(r + self.discount_rate*vf[ns])
                         action_vals[s][a] += ev
-                max_actions = argmax_dict(action_vals[s],
-                                          return_all_maxes=True,
-                                          return_as_list=True)
+                max_actions = argmax_dict(action_vals[s], return_one=False)
                 max_actions.sort()
                 optimal_pol[s] = max_actions[0]
                 vf_temp[s] = action_vals[s][optimal_pol[s]]
@@ -79,5 +82,15 @@ class ValueIteration(Planner):
         return calc_esoftmax_dist(self.action_value_function[s],
                                   temp=softmax_temp,
                                   randchoose=randchoose)
+
+    def to_dict(self, softmax_temp=None, randchoose=None):
+        if softmax_temp is None:
+            softmax_temp = self.softmax_temp
+        if randchoose is None:
+            randchoose = self.randchoose
+
+        return calc_esoftmax_policy(self.action_value_function,
+                                    temp=softmax_temp,
+                                    randchoose=randchoose)
 
 
