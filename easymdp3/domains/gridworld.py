@@ -38,8 +38,7 @@ class GridWorld(MDP):
                  init_state=None,
 
                  state_types=None,
-                 feature_types=None,
-                 discount_rate=None):
+                 feature_types=None):
 
         if gridworld_array is not None:
             w = len(gridworld_array[0])
@@ -158,7 +157,6 @@ class GridWorld(MDP):
         self.reward_cache = {}
         self.transition_cache = {}
         self.available_action_cache = {}
-        self.discount_rate = discount_rate
         self.solved = False
 
     def __hash__(self):
@@ -475,6 +473,9 @@ class GridWorld(MDP):
         self.reward_cache[(s, a, ns)] = res
         return res
 
+    def reward_dist(self, s=None, a=None, ns=None):
+        return {self.reward(s, a, ns) : 1}
+
     def get_state_actions(self):
         state_actions = {s: self.available_actions(s) for s in self.states}
         return state_actions
@@ -513,8 +514,16 @@ class GridWorld(MDP):
     #                                                #
     # ============================================== #
 
-    def solve(self, **kwargs):
-        planner = ValueIteration(mdp=self, **kwargs)
+    def solve(self,
+              discount_rate,
+              softmax_temp=0.0,
+              randchoose=0.0,
+              **kwargs):
+        planner = ValueIteration(mdp=self,
+                                 discount_rate=discount_rate,
+                                 softmax_temp=softmax_temp,
+                                 randchoose=randchoose,
+                                 **kwargs)
         planner.solve()
         return planner
 
@@ -529,12 +538,14 @@ class GridWorld(MDP):
     def plot(self, ax=None,
              tile_colors=None,
              feature_colors=None,
-             plot_softmax_policy=False,
+             plot_policy=False,
              plot_agent=False,
              annotations=None,
-             softmax_temp=1):
+             softmax_temp=0.0,
+             discount_rate=.99,
+             randchoose=0.0):
         #depends on matplotlib, which not every dist will have
-        from mdp_lib.domains.gridworldvis import visualize_states, \
+        from easymdp3.domains.gridworldvis import visualize_states, \
             visualize_action_values, plot_agent_location, plot_text
 
         default_feature_colors = {
@@ -576,12 +587,12 @@ class GridWorld(MDP):
             for annotation_dict in annotations:
                 plot_text(axis=ax, **annotation_dict)
 
-        if plot_softmax_policy:
-            if not self.solved:
-                self.solve()
-            softmax_policy = self.get_softmax_function(temp=softmax_temp)
+        if plot_policy:
+            policy = self.solve(discount_rate=discount_rate,
+                                softmax_temp=softmax_temp,
+                                randchoose=randchoose)
             visualize_action_values(ax=ax,
-                                    state_action_values=softmax_policy)
+                                    state_action_values=policy.to_dict())
 
         if plot_agent:
             agent = plot_agent_location(self.get_init_state(), ax=ax)
