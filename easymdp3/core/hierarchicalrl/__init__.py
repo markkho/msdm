@@ -1,2 +1,1 @@
-from .haminterpreter import HAMInterpreter
-from .ham import HierarchyOfAbstractMachines, SubPolicy
+from .ham import HierarchyOfAbstractMachines, AbstractMachine, HAMState
