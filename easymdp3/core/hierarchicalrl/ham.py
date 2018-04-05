@@ -22,7 +22,6 @@ class HierarchyOfAbstractMachines(object):
         while True:
             next_stacks = self._next_stacks(state, stack)
             choices = [nst[-1] for nst in next_stacks]
-            # choices = self._next_stacks(state, stack)
 
             #environment needs to make a choice
             if len(choices) == 1:
@@ -61,6 +60,12 @@ class HierarchyOfAbstractMachines(object):
         return stack
 
     # SMDP functions
+    def _next_choices(self, s):
+        pname, pparams = s.stack[-1]
+        policy = self.abstract_machines[pname]
+        choices = policy(s.groundstate, list(s.stack), **dict(pparams))
+        return choices
+
     def get_init_state(self, root_name='root', root_params=(),
                        init_ground_state=None):
         stack = [(root_name, root_params), ]
@@ -85,6 +90,7 @@ class HierarchyOfAbstractMachines(object):
         gs = state.groundstate
         stack = list(state.stack)
         _, choices = self._next_choice_or_action(gs, stack)
+        # choices = self._next_choices(state)
         return choices
 
     def is_ground_action(self, a):
@@ -146,17 +152,19 @@ class HierarchyOfAbstractMachines(object):
             if action[0] in g_acts:
                 ga = action[0]
                 ns, r = self.mdp.transition_reward(gs, ga)
+                stack.pop()
                 stack = self._validate_stack(ns, stack)
 
                 reward += r * discount_rate ** ts
                 ts += 1
                 gs = ns
-                stack.pop()
+
             stack, choices = self._next_choice_or_action(gs, stack)
             if len(choices) > 1:
                 break
             else:
-                action = choices[0][0]
+                action = choices[0]
+                stack.append(action)
         ns = HAMState(groundstate=gs, stack=tuple(stack))
         return ns, ts, reward
 
