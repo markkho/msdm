@@ -1,8 +1,9 @@
-from easymdp3.core.hierarchicalrl import SubPolicy, \
+from easymdp3.core.hierarchicalrl import AbstractMachine, \
     HierarchyOfAbstractMachines
+from easymdp3.domains.taxicab import TaxiCabMDP
 
 
-class Root(SubPolicy):
+class Root(AbstractMachine):
     def state_abstraction(self, s, stack, *args, **kwargs):
         ps = s.passengers
         passenger_status = tuple([p.location == p.destination for p in ps])
@@ -21,7 +22,7 @@ class Root(SubPolicy):
         ]
 
 
-class Get(SubPolicy):
+class Get(AbstractMachine):
     def state_abstraction(self, s, stack, passenger_i, *args, **kwargs):
         target_p = s.passengers[passenger_i]
         at_passenger = target_p.location == s.taxi.location
@@ -43,7 +44,7 @@ class Get(SubPolicy):
             ('pickup', ())
         ]
 
-class Put(SubPolicy):
+class Put(AbstractMachine):
     def state_abstraction(self, s, stack, *args, **kwargs):
         passenger = s.passengers[s.taxi.passenger_i]
         p_at_dest = passenger.destination == passenger.location
@@ -63,7 +64,7 @@ class Put(SubPolicy):
             ('dropoff', ())
         ]
 
-class Navigate(SubPolicy):
+class Navigate(AbstractMachine):
     def state_abstraction(self, s, stack, dest, *args, **kwargs):
         return ('nav',
                 ('dest', dest),
@@ -82,9 +83,14 @@ class Navigate(SubPolicy):
             ('>', ())
         ]
 
-getput_hierarchy = HierarchyOfAbstractMachines({
-    'root': Root,
-    'get': Get,
-    'put': Put,
-    'navigate': Navigate
-})
+taxicab = TaxiCabMDP()
+
+getput_hierarchy = HierarchyOfAbstractMachines(
+    mdp=taxicab,
+    abstract_machines={
+        'root': Root,
+        'get': Get,
+        'put': Put,
+        'navigate': Navigate
+    }
+)
