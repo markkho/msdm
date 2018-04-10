@@ -1,81 +1,85 @@
 import unittest
 import numpy as np
 
-from easymdp3.domains.taxicab import TaxiCabMDP, getput_hierarchy
+from easymdp3.domains.taxicab import TaxiCabMDP, getput_hierarchy, \
+    restricted_getput, simple_getput
 from easymdp3.algorithms.hierarchicalqlearning import HierarchicalQLearner
+from easymdp3.core.hierarchicalrl import HAMState
 
 class HAMTests(unittest.TestCase):
     def setUp(self):
         self.taxicab = TaxiCabMDP()
-        self.ham = getput_hierarchy
+        self.full_getput = getput_hierarchy
+        self.rest_getput = restricted_getput
+        self.simp_getput = simple_getput
 
     def test_initstate(self):
-        init_state = self.ham.get_init_state('root', ())
+        init_state = self.full_getput.get_init_state('root', ())
         self.assertTrue(hasattr(init_state, 'stack'))
 
     def test_available_actions(self):
-        init_state = self.ham.get_init_state('root', ())
-        choices = self.ham.available_actions(init_state)
+        init_state = self.full_getput.get_init_state('root', ())
+        choices = self.full_getput.available_actions(init_state)
         self.assertTrue(isinstance(choices, list))
 
     def test_transition(self):
-        s = self.ham.get_init_state('root', ())
+        s = self.full_getput.get_init_state('root', ())
         traj = []
         for _ in range(5):
-            choices = self.ham.available_actions(s)
+            choices = self.full_getput.available_actions(s)
             choice = choices[np.random.randint(len(choices))]
-            ns, ts, r = self.ham.transition_timestep_reward(
+            ns, ts, r = self.full_getput.transition_timestep_reward(
                 state=s, action=choice)
             traj.append((s, choice, ns, ts, r))
             s = ns
         self.assertTrue(len(traj) == 5)
 
     def test_abstract_state(self):
-        s = self.ham.get_init_state('root', ())
+        s = self.full_getput.get_init_state('root', ())
         traj = []
         for t in range(20):
-            choices = self.ham.available_actions(s)
+            choices = self.full_getput.available_actions(s)
             choice = choices[np.random.randint(len(choices))]
-            ns, ts, r = self.ham.transition_timestep_reward(
+            ns, ts, r = self.full_getput.transition_timestep_reward(
                 state=s, action=choice)
-            astate = self.ham.get_abstract_state(s)
+            astate = self.full_getput.get_abstract_state(s)
             traj.append((s, astate, choice, ns, ts, r))
             s = ns
         self.assertTrue(len(traj) == 20)
 
     def test_alipqlearner_act(self):
-        learner = HierarchicalQLearner(self.ham)
-        s = self.ham.get_init_state('root', ())
+        learner = HierarchicalQLearner(self.full_getput)
+        s = self.full_getput.get_init_state('root', ())
         traj = []
         for _ in range(100):
             a = learner.act(s)
-            ns, ts, r = self.ham.transition_timestep_reward(
+            ns, ts, r = self.full_getput.transition_timestep_reward(
                 s, a, learner.discount_rate)
-            abs_s = self.ham.get_abstract_state(s)
+            abs_s = self.full_getput.get_abstract_state(s)
             traj.append((abs_s, a))
             s = ns
         self.assertTrue(len(traj) == 100)
 
     def test_alispqlearner_process_childcalls(self):
-        learner = HierarchicalQLearner(self.ham)
-        s = self.ham.get_init_state('root', ())
+        learner = HierarchicalQLearner(self.full_getput)
+        s = self.full_getput.get_init_state('root', ())
         a_seq = [
             ('get', (('passenger_i', 1),)),
             ('navigate', (('dest', (2, 5)),))
         ]
         a = a_seq[0]
-        ns, ts, r = self.ham.transition_timestep_reward(
+        ns, ts, r = self.full_getput.transition_timestep_reward(
             s, a, learner.discount_rate)
         learner.process(s, a, ns, ts, r)
         s = ns
 
         a = a_seq[1]
-        ns, ts, r = self.ham.transition_timestep_reward(
+        ns, ts, r = self.full_getput.transition_timestep_reward(
             s, a, learner.discount_rate)
         learner.process(s, a, ns, ts, r)
 
     def test_hierarchicalqlearner_learned_values(self):
-        learner = HierarchicalQLearner(self.ham,
+        learner = HierarchicalQLearner(self.full_getput,
                                        learning_rate=1.0,
                                        discount_rate=.95,
                                        initial_qvalue=0)
@@ -94,24 +98,24 @@ class HAMTests(unittest.TestCase):
             ('>', ()),
             ('v', ()),
             ('v', ()),
-            ('v', ()), #correct
+            ('v', ()),
             ('>', ()),
             ('>', ()),
             ('>', ()),
             ('dropoff', ())
         ]
         for _ in range(50):
-            s = self.ham.get_init_state('root', ())
+            s = self.full_getput.get_init_state('root', ())
             traj = []
             for a in a_seq:
-                ns, ts, r = self.ham.transition_timestep_reward(
+                ns, ts, r = self.full_getput.transition_timestep_reward(
                     s, a, learner.discount_rate)
                 if a[0] == 'pickup':
                     r += 50
                 learner.process(s, a, ns, ts, r)
                 traj.append((s, a, ns, ts, r))
 
-                for a_ in self.ham.available_actions(s):
+                for a_ in self.full_getput.available_actions(s):
                     if a_ == a:
                         continue
                     learner._update_val(learner._comp_qvals, s, a_, -1000)
@@ -185,7 +189,69 @@ class HAMTests(unittest.TestCase):
             self.assertTrue(abs(action_q - learned_aval) < epsilon)
             self.assertTrue(abs(val - learned_val) < epsilon)
 
+    def test_qlearner_learning_fullgetput(self):
+        learner = HierarchicalQLearner(self.full_getput,
+                                       learning_rate=.95,
+                                       discount_rate=.99,
+                                       initial_qvalue=0)
+        traj = []
+        for run in range(10):
+            s = self.full_getput.get_init_state('root', ())
+            for c in range(10):
+                a = learner.act(s, softmax_temp=.5, randchoose=.1)
+                ns, ts, r = self.full_getput.transition_timestep_reward(
+                    s, a, learner.discount_rate)
+                learner.process(s, a, ns, ts, r)
+                step = dict(
+                    zip(('s', 'a', 'ns', 'ts', 'r'), (s, a, ns, ts, r)))
+                step['run'] = run
+                step['c'] = c
+                traj.append(step)
+                s = ns
+                if self.full_getput.is_terminal(s):
+                    break
+            learner.episode_reset()
 
+    def test_qlearner_restgetput(self):
+        learner = HierarchicalQLearner(self.rest_getput,
+                                       learning_rate=.95,
+                                       discount_rate=.99,
+                                       initial_qvalue=0)
+        np.random.seed(0)
+        traj = []
+        for run in range(10):
+            s = self.rest_getput.get_init_state('root', ())
+            for c in range(100):
+                a = learner.act(s, softmax_temp=.5, randchoose=.1)
+                ns, ts, r = self.rest_getput.transition_timestep_reward(
+                    s, a, learner.discount_rate)
+                learner.process(s, a, ns, ts, r)
+                step = dict(
+                    zip(('s', 'a', 'ns', 'ts', 'r'), (s, a, ns, ts, r)))
+                step['run'] = run
+                step['c'] = c
+                traj.append(step)
+                s = ns
+
+                if self.rest_getput.is_terminal(s):
+                    break
+            learner.episode_reset()
+
+    def test_qlearner_simplegetgput(self):
+        np.random.seed(0)
+        learner = HierarchicalQLearner(self.simp_getput,
+                                       learning_rate=.9,
+                                       discount_rate=.99,
+                                       initial_qvalue=0)
+        learner.train(episodes=200, max_choice_steps=100,
+                      return_run_data=False)
+        init_s = learner.ham.get_init_state()
+        self.assertTrue(learner._maxqa(init_s)[0] < 180)
+        traj = learner.run()
+        atraj = [a[0] for s, a, ns, r in traj]
+        rtraj = [r for s, a, ns, r in traj]
+        self.assertTrue(len(atraj) == 12)
+        self.assertTrue(sum(rtraj) == 188)
 
 if __name__ == '__main__':
     unittest.main()
