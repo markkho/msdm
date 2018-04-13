@@ -17,9 +17,10 @@ def calc_softmax_dist(action_vals, temp=1.0):
     mval = max(action_vals.values())
     action_vals = {a: v - mval for a, v in action_vals.items()}
 
-    aprobs = {}
+    aweights = {}
     norm = 0
     for a, q in action_vals.items():
+        # handle underflow
         try:
             p = np.exp(q/temp)
         except FloatingPointError:
@@ -27,8 +28,18 @@ def calc_softmax_dist(action_vals, temp=1.0):
             warnings.warn(("Softmax underflow (q = %g, temp = %g); " +
                           "setting prob to 0.") % (q, temp))
         norm += p
+        aweights[a] = p
+
+    aprobs = {}
+    for a, p in aweights.items():
+        #handle underflow
+        try:
+            p = p/norm
+        except FloatingPointError:
+            p = 0
+            warnings.warn(("Softmax underflow (q = %g, temp = %g); " +
+                           "setting prob to 0.") % (p, temp))
         aprobs[a] = p
-    aprobs = {a: p/norm for a, p in aprobs.items()}
     return aprobs
 
 def calc_softmax_policy(stateaction_vals, temp=1):
@@ -62,7 +73,12 @@ def calc_esoftmax_dist(a_vals, temp=0.0, randchoose=0.0):
         act_randchoose = randchoose/len(a_vals)
         a_p = {}
         for a, smp in sm.items():
-            a_p[a] = act_randchoose + (1 - randchoose)*smp
+            #handles underflow
+            try:
+                rand_smp = (1 - randchoose)*smp
+            except FloatingPointError:
+                rand_smp = 0
+            a_p[a] = act_randchoose + rand_smp
     return a_p
 
 def calc_esoftmax_policy(sa_vals, temp=0.0, randchoose=0.0):
