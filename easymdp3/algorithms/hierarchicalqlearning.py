@@ -28,39 +28,32 @@ class HierarchicalQLearner(object):
         self.stack_to_timesteps = {}
         self.stack_to_last_stateaction = {}
 
-    def _update_val(self, dictionary, s, a, update_val,
-                    learning_rate=None,
-                    timesteps=0):
-        if learning_rate is None:
-            learning_rate = self.learning_rate
-        dictionary[s] = dictionary.get(s, {})
-        old_val = dictionary[s].get(a, self.init_q)
-        new_val = (1 - learning_rate)*old_val \
-                  + learning_rate*(self.discount_rate**timesteps)*update_val
-        dictionary[s][a] = new_val
-
+    # =========================================== #
+    #      Methods for inspecting Q-values        #
+    # =========================================== #
     def _action_q(self, s, a):
-        ttype = self.ham.transition_type(s, a)
-        if ttype == 'ground':
+        if self.ham.is_ground_action(a):
             a_qs = self._ground_q.get(s, {})
             q = a_qs.get(a, self.init_q)
             return q
-        elif ttype == 'selfloop':
-            # taking action a immediately returns to calling context
-            #this is bad since it leads to a costless loop - never do this!
-            return -np.inf
-        elif ttype == 'termination':
+
+        if self.ham.is_termination_action(a):
             return 0
-        else:
-            s_, _, _ = self.ham.transition_timestep_reward(s, a)
-            max_q = -np.inf
-            for a_ in self.ham.available_actions(s_):
-                child_act_q = self._action_q(s_, a_)
-                child_comp_q = self._completion_q(s_, a_)
-                child_q = child_act_q + child_comp_q
-                if child_q > max_q:
-                    max_q = child_q
-            return max_q
+
+        ns, _, _ = self.ham.transition_timestep_reward(s, a)
+
+        #self-loop - we generally don't want this
+        if ns == s:
+            return -np.inf
+
+        max_q = -np.inf
+        for a_ in self.ham.available_actions(ns):
+            child_act_q = self._action_q(ns, a_)
+            child_comp_q = self._completion_q(ns, a_)
+            child_q = child_act_q + child_comp_q
+            if child_q > max_q:
+                max_q = child_q
+        return max_q
 
     def _completion_q(self, s, a):
         a_qs = self._comp_qvals.get(s, {})
@@ -104,9 +97,49 @@ class HierarchicalQLearner(object):
         max_q = max(qs)
         return (max_q, actions[qs.index(max_q)])
 
+    def _q_decomposition(self, s, a=None):
+        actions = self.ham.available_actions(s)
+        a_qs = {}
+        a_aqs = self._action_qs(s)
+        a_cqs = self._completion_qs(s)
+        a_eqs = self._external_qs(s)
+        for a_ in actions:
+            a_qs[a_] = {
+                'action': a_aqs[a_],
+                'completion': a_cqs[a_],
+                'external': a_eqs[a_]
+            }
+        if a is not None:
+            return a_qs[a]
+        return a_qs
 
+    # =========================================== #
+    #      Methods for updating Q-values          #
+    # =========================================== #
+    def _update_ground_q(self, s, a, v, ts=0):
+        self._update_val(self._ground_q, s, a, v, timesteps=ts)
+
+    def _update_comp_q(self, s, a, v, ts=0):
+        self._update_val(self._comp_qvals, s, a, v, timesteps=ts)
+
+    def _update_ext_q(self, s, a, v, ts=0):
+        self._update_val(self._ex_qvals, s, a, v, timesteps=ts)
+
+    def _update_val(self, dictionary, s, a, update_val,
+                    learning_rate=None,
+                    timesteps=0):
+        if learning_rate is None:
+            learning_rate = self.learning_rate
+        dictionary[s] = dictionary.get(s, {})
+        old_val = dictionary[s].get(a, self.init_q)
+        new_val = (1 - learning_rate)*old_val \
+                  + learning_rate*(self.discount_rate**timesteps)*update_val
+        dictionary[s][a] = new_val
+
+    # =========================================== #
+    #          Learning Agent Interface           #
+    # =========================================== #
     def act(self, s, softmax_temp=None, randchoose=None):
-        # abs_s = self.ham.get_abstract_state(s)
         actions = self.ham.available_actions(s)
         a_q = {}
         for a in actions:
@@ -125,96 +158,69 @@ class HierarchicalQLearner(object):
                                    randchoose = randchoose)
         return sample_prob_dict(adist)
 
-    def _update_non_terminated_completion_exit_qs(self, update_stack, ns):
-        # Get the next state's value
-        max_nq, max_na = self._maxqa(ns)
-
-        # Get the state, action, and timesteps associated with the updating
-        # context/stack
-        last_s, last_a = self.stack_to_last_stateaction[update_stack]
-        del self.stack_to_last_stateaction[update_stack]
-        last_sa_ts = self.stack_to_timesteps[update_stack]
-        del self.stack_to_timesteps[update_stack]
-
-        if last_s is None:
-            return
-
-        # Update the last state/action completion q-value using the next state
-        next_act_val = self._action_q(ns, max_na)
-        next_comp_val = self._completion_q(ns, max_na)
-        next_actcomp_val = next_act_val + next_comp_val
-        self._update_val(
-            self._comp_qvals, last_s, last_a, next_actcomp_val,
-            timesteps=last_sa_ts)
-
-        # Update the next context's last state-action's exit q-value
-        next_ex_val = self._external_q(ns, max_na)
-        self._update_val(
-            self._ex_qvals, last_s, last_a, next_ex_val,
-            timesteps=last_sa_ts)
-
-    def _update_terminated_exit_qs(self, exiting_stack, ns):
-        # Get the next context's next state's value
-        max_nq, max_na = self._maxqa(ns)
-
-        # Next context's last state, last action, and timesteps since then
-        last_s, last_a = self.stack_to_last_stateaction[exiting_stack]
-        del self.stack_to_last_stateaction[exiting_stack]
-        last_sa_ts = self.stack_to_timesteps[exiting_stack]
-        del self.stack_to_timesteps[exiting_stack]
-
-        if last_s is None:
-            return
-
-        # In MAXQ, this doesn't get updated and is fixed as a pseudoreward
-
-        # note: this averages over all exit states in the abstracted
-        # case see Andre and Russell 2002
-        self._update_val(self._ex_qvals, last_s, last_a, max_nq,
-            timesteps=last_sa_ts)
-
     def process(self, s, a, ns, ts, r):
         # update ground state action value
         if self.ham.is_ground_action(a):
             self._update_val(self._ground_q, s, a, r)
 
-        #update timesteps
+        # update timesteps at each level of current stack
         for stack_i in range(len(s.stack)):
             substack = s.stack[:stack_i + 1]
-            #initialize timestep count and record entrance sa for immediate
-            # context
-            if (stack_i + 1) == len(s.stack) or \
-                    substack not in self.stack_to_timesteps:
+            if (stack_i + 1) == len(s.stack):
                 self.stack_to_timesteps[substack] = 0
                 self.stack_to_last_stateaction[substack] = (s, a)
             self.stack_to_timesteps[substack] += ts
 
-        #if the non-max action was taken, we need to reset the trace
-        # since it "doesn't count"
+        # if the non-max action was taken, we need to reset the trace
+        # (similar to Q(lambda))
         max_q, max_a = self._maxqa(s)
         if self._qval(s, a) < max_q:
             for substack in self.stack_to_last_stateaction:
                 self.stack_to_last_stateaction[substack] = (None, None)
 
-        # Called a ground action or returning from child processes
-        if len(s.stack) >= len(ns.stack):
-            # for the next subroutine context, update the completion and exit
-            # q-values of its last visited state/action
-            self._update_non_terminated_completion_exit_qs(ns.stack, ns)
+        # ========================== #
+        #  Update Q-value estimates  #
+        # ========================== #
+        max_nq, max_na = self._maxqa(ns)
 
-        # Check exit conditions and update exit states
-        if len(s.stack) > len(ns.stack):
-            # for the contexts we exited, check if they validly terminated
-            # if so, update their exit values
-            for stack_i in range(len(ns.stack) + 1, len(s.stack) + 1):
-                exiting_stack = s.stack[:stack_i]
-                test_s = HAMState(groundstate=ns.groundstate,
-                                  stack=exiting_stack)
-                if self.ham.subtask_terminates(test_s):
-                    self._update_terminated_exit_qs(exiting_stack, ns)
-                else:
-                    del self.stack_to_last_stateaction[exiting_stack]
-                    del self.stack_to_timesteps[exiting_stack]
+        # Update state, actions associated with returned substacks
+        # Note: this won't update anything if the stack was extended
+        for stack_i in range(len(ns.stack), len(s.stack) + 1):
+            update_stack = s.stack[:stack_i]
+
+            last_s, last_a = self.stack_to_last_stateaction[update_stack]
+            last_sa_ts = self.stack_to_timesteps[update_stack]
+            del self.stack_to_last_stateaction[update_stack]
+            del self.stack_to_timesteps[update_stack]
+
+            if last_s is None:
+                continue
+
+            # Current calling context update
+            if stack_i == len(ns.stack):
+                next_act_val = self._action_q(ns, max_na)
+                next_comp_val = self._completion_q(ns, max_na)
+                next_actcomp_val = next_act_val + next_comp_val
+                self._update_comp_q(last_s, last_a,
+                                    next_actcomp_val, last_sa_ts)
+
+                # Update the next context's last state-action's exit q-value
+                next_ex_val = self._external_q(ns, max_na)
+                self._update_ext_q(last_s, last_a, next_ex_val, last_sa_ts)
+                continue
+
+            # Terminated calling context update
+            test_s = HAMState(groundstate=ns.groundstate,
+                              stack=update_stack)
+            if self.ham.subtask_validly_terminates(test_s):
+                # In MAXQ, this doesn't get updated and is fixed as a pseudoreward
+                # Note: this averages over all exit states in the abstracted
+                # case see Andre and Russell 2002
+                self._update_ext_q(last_s, last_a, max_nq, last_sa_ts)
+
+    # ============================ #
+    #     Training Interface       #
+    # ============================ #
 
     def episode_reset(self):
         self.stack_to_timesteps = {}
@@ -223,25 +229,24 @@ class HierarchicalQLearner(object):
     def train(self, episodes=100, max_choice_steps=100,
               softmax_temp=0.0, randchoose=0.05, return_run_data=True):
         run_data = []
-        for run in range(episodes):
+        for episode in range(episodes):
             s = self.ham.get_init_state('root', ())
             for c in range(max_choice_steps):
                 a = self.act(s, softmax_temp=softmax_temp,
                              randchoose=randchoose)
-                ns, ts, r = self.ham.transition_timestep_reward(
-                    s, a, self.discount_rate)
+                ns, ts, r = self.ham.transition_timestep_reward(s, a)
                 self.process(s, a, ns, ts, r)
                 if return_run_data:
                     step = dict(
                         zip(('s', 'a', 'ns', 'ts', 'r'), (s, a, ns, ts, r)))
-                    step['run'] = run
+                    step['episode'] = episode
                     step['c'] = c
                     run_data.append(step)
                 s = ns
                 if self.ham.is_terminal(s):
                     break
-            if run % 100 == 0:
-                logger.debug('run: %d ; steps: %d' % (run, c))
+            if episode % 100 == 0:
+                logger.debug('run: %d ; steps: %d' % (episode, c))
             self.episode_reset()
 
         if return_run_data:
