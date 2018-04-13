@@ -545,7 +545,7 @@ class GridWorld(MDP):
              discount_rate=.99,
              randchoose=0.0):
         #depends on matplotlib, which not every dist will have
-        from easymdp3.domains.gridworldvis import visualize_states, \
+        from easymdp3.domains.gridworld.gridworldvis import visualize_states, \
             visualize_action_values, plot_agent_location, plot_text
 
         default_feature_colors = {

@@ -1,2 +1,2 @@
 from .taxicab import *
-from .getput import getput_hierarchy
+from easymdp3.domains.taxicab.taskhierarchies.getput import getput_hierarchy

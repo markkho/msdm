@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patheffects as path_effects
 import matplotlib.animation as animation
 
-from easymdp3.domains.gridworldvis \
+from easymdp3.domains.gridworld.gridworldvis \
     import visualize_states as visualize_locs, \
     visualize_walls
 
@@ -42,12 +42,13 @@ def plot_rectangle(state, ax=None, width=.8, height=.8, orientation=None,
 
 def plot_text(state, ax, text='x', sub_state=(1, 1),
               sub_rows=3, sub_cols=3, color='k',
-              outline_color=None, outline_linewidth=2, zorder=10):
+              outline_color=None, outline_linewidth=2, zorder=10,
+              fontsize='xx-large'):
     x_offset = (sub_state[0] + .5) / sub_cols
     y_offset = (sub_state[1] + .5) / sub_rows
 
     mytext = ax.text(state[0] + x_offset, state[1] + y_offset,
-                       text, color=color, fontsize='xx-large', zorder=zorder)
+                       text, color=color, fontsize=fontsize, zorder=zorder)
 
     if outline_color:
         mytext.set_path_effects([path_effects.Stroke(
@@ -57,6 +58,8 @@ def plot_text(state, ax, text='x', sub_state=(1, 1),
 
 
 def visualize_taxicab_transition(ax=None,
+                                 mdp=None,
+                                 state=None,
                                  width=6, height=6,
                                  locations=None,
                                  walls=None,
@@ -66,6 +69,14 @@ def visualize_taxicab_transition(ax=None,
                                  reward=None,
                                  passenger_colors=None,
                                  taxi_color=None):
+    if mdp is not None and state is not None:
+        width = mdp.width
+        height = mdp.height
+        locations = mdp.locs
+        walls = mdp.walls
+        taxi = state.taxi
+        passengers = state.passengers
+
     # draw tiles
     tiles = list(product(range(width), range(height)))
     if locations is None:
@@ -149,7 +160,8 @@ def visualize_taxicab_transition(ax=None,
             plot_text(dest, ax=ax, text="x",
                       sub_state=sstate,
                       color=pcolor, outline_color='white',
-                      outline_linewidth=2)
+                      outline_linewidth=2,
+                      fontsize=50)
 
 
 

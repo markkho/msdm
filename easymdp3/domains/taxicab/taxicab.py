@@ -1,15 +1,19 @@
 from collections import namedtuple
 
-import numpy as np
-
-
 from easymdp3.core.mdp import MDP
 from easymdp3.core.util import sample_prob_dict
 from easymdp3.domains.gridworld import GridWorld
 
-TERMINAL_ACTION = 'end'
-TERMINAL_STATE = 'terminal'
 
+default_walls = [((0, 0), '>'), ((1, 0), '<'),
+                  ((0, 1), '>'), ((1, 1), '<'),
+                  ((0, 2), '>'), ((1, 2), '<'),
+                  ((4, 0), '>'), ((5, 0), '<'),
+                  ((4, 1), '>'), ((5, 1), '<'),
+                  ((4, 2), '>'), ((5, 2), '<'),
+                  ((2, 3), '>'), ((3, 3), '<'),
+                  ((2, 4), '>'), ((3, 4), '<'),
+                  ((2, 5), '>'), ((3, 5), '<')]
 class TaxiCabMDP(MDP):
     # objects for hashable state
     PassengerTuple = namedtuple(
@@ -75,11 +79,19 @@ class TaxiCabMDP(MDP):
                 self.passenger_i = -1
 
     class State(object):
+        entity_list = ['passengers', 'taxi']
+
+        def entities_specified(self, state_tuple):
+            for entity in TaxiCabMDP.State.entity_list:
+                if not hasattr(state_tuple, entity):
+                    return False
+            return True
+
         def __init__(self,
                      passengers=None,
                      taxi=None,
                      state_tuple=None):
-            if state_tuple is not None:
+            if state_tuple is not None and self.entities_specified(state_tuple):
                 passengers = []
                 for ptup in state_tuple.passengers:
                     p = TaxiCabMDP.Passenger(**ptup._asdict())
@@ -106,16 +118,9 @@ class TaxiCabMDP(MDP):
                  ):
         self.width = width
         self.height = height
+
         if walls is None:
-            walls = [((0, 0), '>'), ((1, 0), '<'),
-                      ((0, 1), '>'), ((1, 1), '<'),
-                      ((0, 2), '>'), ((1, 2), '<'),
-                      ((4, 0), '>'), ((5, 0), '<'),
-                      ((4, 1), '>'), ((5, 1), '<'),
-                      ((4, 2), '>'), ((5, 2), '<'),
-                      ((2, 3), '>'), ((3, 3), '<'),
-                      ((2, 4), '>'), ((3, 4), '<'),
-                      ((2, 5), '>'), ((3, 5), '<')]
+            walls = default_walls
         self.walls = walls
         if locations is None:
             locations = [(0, 0), (2, 5), (4, 0)]
@@ -131,37 +136,26 @@ class TaxiCabMDP(MDP):
             ]
         self.init_passengers = init_passengers
 
+        self.TERMINAL_ACTION = 'end'
+        self.TERMINAL_STATE = TaxiCabMDP.StateTuple(None, None)
+
     def get_init_state(self):
         passengers = [TaxiCabMDP.Passenger(**p) for p in self.init_passengers]
-        #
-        # for i, loc in enumerate(self.locs):
-        #     dest = loc
-        #     while dest == loc:
-        #         dest = self.locs[np.random.randint(len(self.locs))]
-        #     p = TaxiCabMDP.Passenger(loc, dest, i=i)
-        #     passengers.append(p)
-
         taxi = TaxiCabMDP.Taxi(self.init_location, gas=100)
-
         self.last_state = TaxiCabMDP.State(passengers, taxi)
-
         return self.last_state.as_tuple()
 
     def available_actions(self, s=None):
-        if self.is_terminal(s) or self.is_absorbing(s):
-            return [TERMINAL_ACTION, ]
-        return ['^', 'v', '<', '>', 'noop',
-                'pickup', 'dropoff']
-
-    def transition_reward_dist(self, s=None, a=None):
-        if a == TERMINAL_ACTION:
-            return {(TERMINAL_STATE, 0): 1}
-
         if s is None:
-            s = self.last_state
+            return ['^', 'v', '<', '>', 'noop',
+                    'pickup', 'dropoff', self.TERMINAL_ACTION]
+        elif self.is_terminal(s) or self.is_absorbing(s):
+            return [self.TERMINAL_ACTION, ]
         else:
-            s = TaxiCabMDP.State(state_tuple=s)
+            return ['^', 'v', '<', '>', 'noop',
+                    'pickup', 'dropoff']
 
+    def _update_state_get_reward(self, s, a):
         r = self.step_cost
 
         # taxi-transitions
@@ -197,6 +191,19 @@ class TaxiCabMDP(MDP):
             if p.in_car:
                 p.location = s.taxi.location
 
+        return s, r
+
+    def transition_reward_dist(self, s=None, a=None):
+        if a == self.TERMINAL_ACTION:
+            return {(self.TERMINAL_STATE, 0): 1}
+
+        if s is None:
+            s = self.last_state
+        else:
+            s = TaxiCabMDP.State(state_tuple=s)
+
+        s, r = self._update_state_get_reward(s, a)
+
         self.last_state = s
         return {(s.as_tuple(), r): 1}
 
@@ -216,6 +223,9 @@ class TaxiCabMDP(MDP):
         return sample_prob_dict(r_dist)
 
     def is_absorbing(self, s=None):
+        if self.is_terminal(s):
+            return False
+
         if s is None:
             s = self.last_state
         else:
@@ -227,12 +237,12 @@ class TaxiCabMDP(MDP):
         return True
 
     def is_terminal(self, s):
-        if s == TERMINAL_STATE:
+        if s == self.TERMINAL_STATE:
             return True
         return False
 
     def is_terminal_action(self, a):
-        if a == TERMINAL_ACTION:
+        if a == self.TERMINAL_ACTION:
             return True
         return False
 
