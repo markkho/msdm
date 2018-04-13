@@ -1,10 +1,10 @@
 import unittest
 import numpy as np
 
-from easymdp3.domains.taxicab import TaxiCabMDP, getput_hierarchy, \
-    restricted_getput, simple_getput
+from easymdp3.domains.taxicab import TaxiCabMDP
+from easymdp3.domains.taxicab.taskhierarchies import \
+    getput_hierarchy, restricted_getput, simple_getput
 from easymdp3.algorithms.hierarchicalqlearning import HierarchicalQLearner
-from easymdp3.core.hierarchicalrl import HAMState
 
 class HAMTests(unittest.TestCase):
     def setUp(self):
@@ -27,10 +27,9 @@ class HAMTests(unittest.TestCase):
         traj = []
         for _ in range(5):
             choices = self.full_getput.available_actions(s)
-            choice = choices[np.random.randint(len(choices))]
-            ns, ts, r = self.full_getput.transition_timestep_reward(
-                state=s, action=choice)
-            traj.append((s, choice, ns, ts, r))
+            a = choices[np.random.randint(len(choices))]
+            ns, ts, r = self.full_getput.transition_timestep_reward(s, a)
+            traj.append((s, a, ns, ts, r))
             s = ns
         self.assertTrue(len(traj) == 5)
 
@@ -53,8 +52,7 @@ class HAMTests(unittest.TestCase):
         traj = []
         for _ in range(100):
             a = learner.act(s)
-            ns, ts, r = self.full_getput.transition_timestep_reward(
-                s, a, learner.discount_rate)
+            ns, ts, r = self.full_getput.transition_timestep_reward(s, a)
             abs_s = self.full_getput.get_abstract_state(s)
             traj.append((abs_s, a))
             s = ns
@@ -68,14 +66,12 @@ class HAMTests(unittest.TestCase):
             ('navigate', (('dest', (2, 5)),))
         ]
         a = a_seq[0]
-        ns, ts, r = self.full_getput.transition_timestep_reward(
-            s, a, learner.discount_rate)
+        ns, ts, r = self.full_getput.transition_timestep_reward(s, a)
         learner.process(s, a, ns, ts, r)
         s = ns
 
         a = a_seq[1]
-        ns, ts, r = self.full_getput.transition_timestep_reward(
-            s, a, learner.discount_rate)
+        ns, ts, r = self.full_getput.transition_timestep_reward(s, a)
         learner.process(s, a, ns, ts, r)
 
     def test_hierarchicalqlearner_learned_values(self):
@@ -108,8 +104,7 @@ class HAMTests(unittest.TestCase):
             s = self.full_getput.get_init_state('root', ())
             traj = []
             for a in a_seq:
-                ns, ts, r = self.full_getput.transition_timestep_reward(
-                    s, a, learner.discount_rate)
+                ns, ts, r = self.full_getput.transition_timestep_reward(s, a)
                 if a[0] == 'pickup':
                     r += 50
                 learner.process(s, a, ns, ts, r)
@@ -199,8 +194,7 @@ class HAMTests(unittest.TestCase):
             s = self.full_getput.get_init_state('root', ())
             for c in range(10):
                 a = learner.act(s, softmax_temp=.5, randchoose=.1)
-                ns, ts, r = self.full_getput.transition_timestep_reward(
-                    s, a, learner.discount_rate)
+                ns, ts, r = self.full_getput.transition_timestep_reward(s, a)
                 learner.process(s, a, ns, ts, r)
                 step = dict(
                     zip(('s', 'a', 'ns', 'ts', 'r'), (s, a, ns, ts, r)))
@@ -223,8 +217,7 @@ class HAMTests(unittest.TestCase):
             s = self.rest_getput.get_init_state('root', ())
             for c in range(100):
                 a = learner.act(s, softmax_temp=.5, randchoose=.1)
-                ns, ts, r = self.rest_getput.transition_timestep_reward(
-                    s, a, learner.discount_rate)
+                ns, ts, r = self.rest_getput.transition_timestep_reward(s, a)
                 learner.process(s, a, ns, ts, r)
                 step = dict(
                     zip(('s', 'a', 'ns', 'ts', 'r'), (s, a, ns, ts, r)))
