@@ -10,7 +10,14 @@ class HierarchyOfAbstractMachines(object):
         self.abstract_machines = \
             {pn: P() for pn, P in abstract_machines.items()}
 
+    # ============================================ #
+    #   Methods for handling machine transitions   #
+    # ============================================ #
     def _validate_stack(self, state, stack):
+        """
+        Checks that every child process can be validly called by their
+        parent process.
+        """
         for pi, (pname, pparams) in enumerate(stack):
             policy = self.abstract_machines[pname]
             valid_children = policy(state,
@@ -33,6 +40,9 @@ class HierarchyOfAbstractMachines(object):
         return stack
 
     def _next_choices(self, s):
+        """
+        Returns the choices available at the current choice state s
+        """
         if self.mdp.is_absorbing(s.groundstate) and len(s.stack) == 1:
             return [(self.mdp.TERMINAL_ACTION, ()), ]
         if self.mdp.is_terminal(s.groundstate):
@@ -42,7 +52,9 @@ class HierarchyOfAbstractMachines(object):
         choices = policy(s.groundstate, list(s.stack), **dict(pparams))
         return choices
 
-    # SMDP functions
+    # ======================= #
+    #    MDP-like Interface   #
+    # ======================= #
     def get_init_state(self, root_name='root', root_params=(),
                        init_ground_state=None):
         if init_ground_state is None:
@@ -54,25 +66,6 @@ class HierarchyOfAbstractMachines(object):
         choices = self._next_choices(state)
         return choices
 
-    def is_ground_action(self, a):
-        aname, aparams = a
-        if aname in self.mdp.available_actions():
-            return True
-        return False
-
-    def is_termination(self, a):
-        if a[0] == TERMINATION_ACTION:
-            return True
-        return False
-
-    def subtask_terminates(self, s):
-        pname, pparams = s.stack[-1]
-        policy = self.abstract_machines[pname]
-        choices = policy(s.groundstate, s.stack, **dict(pparams))
-        if len(choices) == 1 and choices[0][0] == TERMINATION_ACTION:
-            return True
-        return False
-
     def is_terminal(self, s):
         if self.mdp.is_terminal(s.groundstate) and len(s.stack) <= 1:
             return True
@@ -83,66 +76,75 @@ class HierarchyOfAbstractMachines(object):
             return True
         return False
 
-    def transition_type(self, s, a, ns=None):
+    # =========================== #
+    #                             #
+    #    HAM-specific Interface   #
+    #                             #
+    # =========================== #
+
+    # ======================= #
+    #       Test Methods      #
+    # ======================= #
+    def is_ground_action(self, a):
+        aname, aparams = a
+        if aname in self.mdp.available_actions():
+            return True
+        return False
+
+    def is_termination_action(self, a):
         if a[0] == TERMINATION_ACTION:
-            return "termination"
-        if self.is_ground_action(a):
-            return "ground"
+            return True
+        return False
 
-        if ns is None:
-            ns, _, _ = self.transition_timestep_reward(s, a)
+    def subtask_validly_terminates(self, s):
+        """
+        Determines whether s.stack validly terminates in s
+        """
+        pname, pparams = s.stack[-1]
+        policy = self.abstract_machines[pname]
+        choices = policy(s.groundstate, s.stack, **dict(pparams))
+        if (TERMINATION_ACTION, ()) in choices:
+            return True
+        return False
 
-        if ns == s:
-            return "selfloop"
+    # ======================= #
+    #    Transition Methods   #
+    # ======================= #
+    def transition_timestep_reward(self, state, action):
+        if action not in self.available_actions(state):
+            raise TypeError("Action is not available at choice point")
 
-        if len(ns.stack) < len(s.stack):
-            return "exit"
-
-        if len(ns.stack) > len(s.stack):
-            return "call"
-
-        return "machine"
-
-    def transition_timestep_reward(self, state, action, discount_rate=.99):
         gs = state.groundstate
         stack = list(state.stack)
 
         ts = 0
-        reward = 0
-
-        if action[0] == TERMINATION_ACTION:
-            stack = stack[:-1]
-            ns = HAMState(groundstate=gs, stack=tuple(stack))
-            return ns, ts, reward
-
-        if action not in self.available_actions(state):
-            raise TypeError("Action is not available at choice point")
-
-        g_acts = self.mdp.available_actions(gs)
-        if action[0] in g_acts:
+        if self.is_ground_action(action):
             ga = action[0]
-            ns, r = self.mdp.transition_reward(gs, ga)
-            reward += r
+            ngs, r = self.mdp.transition_reward(gs, ga)
             ts += 1
-            gs = ns
-        else:
+        elif self.is_termination_action(action):
+            ngs = gs
+            r = 0
+            stack = stack[:-1]
+        else: #calling a child process
+            ngs = gs
+            r = 0
             stack.append(action)
 
-        #check if in terminal state of MDP and at root
-        if self.mdp.is_terminal(gs) and len(stack) == 1:
-            pass
-        else:
-            stack = self._validate_stack(gs, stack)
-        ns = HAMState(groundstate=gs, stack=tuple(stack))
-        return ns, ts, reward
+        #validate if not at the terminal root state
+        if not (self.mdp.is_terminal(ngs) and len(stack) == 1):
+            stack = self._validate_stack(ngs, stack)
 
-    def transition_timestep_reward_dist(
-            self, state, action, discount_rate=.99
-    ):
-        ns, ts, r = \
-            self.transition_timestep_reward(state, action, discount_rate)
+        ns = HAMState(groundstate=ngs, stack=tuple(stack))
+        return ns, ts, r
+
+    def transition_timestep_reward_dist(self, state, action):
+        ns, ts, r = self.transition_timestep_reward(state, action)
         return {(ns, ts, r): 1}
 
+    # ======================= #
+    #    State Abstraction    #
+    # ======================= #
     def get_abstract_state(self, state):
         gs = state.groundstate
         stack = list(state.stack)
