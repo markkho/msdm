@@ -5,10 +5,12 @@ TERMINATION_ACTION = "terminate"
 HAMState = namedtuple('HAMState', ['groundstate', 'stack'])
 
 class HierarchyOfAbstractMachines(object):
-    def __init__(self, mdp, abstract_machines):
+    def __init__(self, mdp, abstract_machines,
+                 use_pseudo_rewards=False):
         self.mdp = mdp
         self.abstract_machines = \
             {pn: P() for pn, P in abstract_machines.items()}
+        self.use_pseudo_rewards = use_pseudo_rewards
 
     # ============================================ #
     #   Methods for handling machine transitions   #
@@ -26,8 +28,12 @@ class HierarchyOfAbstractMachines(object):
 
             #check non-top policies
             if pi < (len(stack) - 1):
-                child = stack[pi + 1]
-                if child not in valid_children:
+                # child = stack[pi + 1]
+                # if child not in valid_children:
+                #     stack = stack[:pi + 1]
+                #     break
+                if len(valid_children) == 1 and \
+                        valid_children[0][0] == TERMINATION_ACTION:
                     stack = stack[:pi + 1]
                     break
 
@@ -106,6 +112,14 @@ class HierarchyOfAbstractMachines(object):
         if (TERMINATION_ACTION, ()) in choices:
             return True
         return False
+    
+    def get_pseudo_reward(self, s):
+        gs = s.groundstate
+        stack = s.stack
+        pname, pparams = stack[-1]
+        policy = self.abstract_machines[pname]
+        return policy.pseudo_reward(gs, stack, **dict(pparams))
+        
 
     # ======================= #
     #    Transition Methods   #
@@ -160,11 +174,14 @@ class AbstractMachine(object):
     def __init__(self):
         pass
 
+    def pseudo_reward(self, s, stack):
+        return 0
+
     def is_terminal(self, s, stack, *args, **kwargs):
         return False
 
     def state_abstraction(self, s, stack, *args, **kwargs):
-        pass
+        return HAMState(groundstate=s, stack=tuple(stack))
 
     def call(self):
         raise NotImplementedError

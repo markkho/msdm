@@ -6,19 +6,41 @@ from easymdp3.core.hierarchicalrl import HAMState
 
 logger = logging.getLogger(__name__)
 
+# =========================================== #
+#     State Abstraction Function Wrapper      #
+# =========================================== #
+def state_abstraction_wrapper(func):
+    def abstract_and_call(self, s, *args, **kwargs):
+
+        if not self.use_state_abstraction:
+            return func(self, s, *args, **kwargs)
+
+        pname, pparams = s.stack[-1]
+        process = self.ham.abstract_machines[pname]
+        abs_s = process.state_abstraction(s.groundstate, s.stack,
+                                          **dict(pparams))
+        return func(self, abs_s, *args, **kwargs)
+    return abstract_and_call
+
 class HierarchicalQLearner(object):
     def __init__(self, ham,
                  randchoose=.2,
                  softmax_temp=1,
                  discount_rate=.99,
                  learning_rate=.9,
-                 initial_qvalue=0):
+                 initial_qvalue=0,
+                 use_state_abstraction=False,
+                 use_pseudo_rewards=None):
         self.ham = ham
         self.softmax_temp = softmax_temp
         self.randchoose = randchoose
         self.discount_rate = discount_rate
         self.learning_rate = learning_rate
         self.init_q = initial_qvalue
+        if use_pseudo_rewards is None:
+            use_pseudo_rewards = ham.use_pseudo_rewards
+        self.use_pseudo_rewards = use_pseudo_rewards
+        self.use_state_abstraction = use_state_abstraction
 
         self._ground_q = {}
         self._comp_qvals = {}
@@ -28,10 +50,17 @@ class HierarchicalQLearner(object):
         self.stack_to_timesteps = {}
         self.stack_to_last_stateaction = {}
 
+        self._vmin = -1000000000
+
+
+
+
+
     # =========================================== #
     #      Methods for inspecting Q-values        #
     # =========================================== #
-    def _action_q(self, s, a):
+    @state_abstraction_wrapper
+    def _action_q(self, s, a, ns_available_actions=None):
         if self.ham.is_ground_action(a):
             a_qs = self._ground_q.get(s, {})
             q = a_qs.get(a, self.init_q)
@@ -40,14 +69,17 @@ class HierarchicalQLearner(object):
         if self.ham.is_termination_action(a):
             return 0
 
-        ns, _, _ = self.ham.transition_timestep_reward(s, a)
+        ns_ts_r_dist = self.ham.transition_timestep_reward_dist(s, a)
+        ns, _, _ = sample_prob_dict(ns_ts_r_dist)
+        if ns_available_actions is None:
+            ns_available_actions = self.ham.available_actions(ns)
 
         #self-loop - we generally don't want this
         if ns == s:
-            return -np.inf
+            return self._vmin
 
         max_q = -np.inf
-        for a_ in self.ham.available_actions(ns):
+        for a_ in ns_available_actions:
             child_act_q = self._action_q(ns, a_)
             child_comp_q = self._completion_q(ns, a_)
             child_q = child_act_q + child_comp_q
@@ -144,8 +176,8 @@ class HierarchicalQLearner(object):
         a_q = {}
         for a in actions:
             q = self._qval(s, a)
-            if q == -np.inf: #never take actions that machine loop
-                continue
+            # if q == -np.inf: #never take actions that machine loop
+            #     continue
             a_q[a] = q
 
         if softmax_temp is None:
@@ -176,6 +208,9 @@ class HierarchicalQLearner(object):
         max_q, max_a = self._maxqa(s)
         if self._qval(s, a) < max_q:
             for substack in self.stack_to_last_stateaction:
+                if self.stack_to_last_stateaction[substack] == (s, a):
+                    #we don't need to reset things for the current step
+                    continue
                 self.stack_to_last_stateaction[substack] = (None, None)
 
         # ========================== #
@@ -213,10 +248,16 @@ class HierarchicalQLearner(object):
             test_s = HAMState(groundstate=ns.groundstate,
                               stack=update_stack)
             if self.ham.subtask_validly_terminates(test_s):
-                # In MAXQ, this doesn't get updated and is fixed as a pseudoreward
-                # Note: this averages over all exit states in the abstracted
-                # case see Andre and Russell 2002
-                self._update_ext_q(last_s, last_a, max_nq, last_sa_ts)
+                #Using pseudo-rewards implements MAXQ, whereby the exit-value
+                # for a terminal state is set to a particular pseudo-reward
+                # rather than the true value of the resulting state
+                if self.use_pseudo_rewards:
+                    pseudo_r = self.ham.get_pseudo_reward(test_s)
+                    self._update_ext_q(last_s, last_a, pseudo_r, last_sa_ts)
+                else:
+                    # Note: this averages over all exit states in the
+                    # abstracted case see Andre and Russell 2002
+                    self._update_ext_q(last_s, last_a, max_nq, last_sa_ts)
 
     # ============================ #
     #     Training Interface       #
@@ -252,7 +293,8 @@ class HierarchicalQLearner(object):
         if return_run_data:
             return run_data
 
-    def run(self, softmax_temp=0, randchoose=0, max_steps=1000):
+    def run(self, softmax_temp=0, randchoose=0, max_steps=1000,
+            return_only_ground_traj=True):
         traj = []
         s = self.ham.get_init_state()
         for _ in range(max_steps):
@@ -260,7 +302,10 @@ class HierarchicalQLearner(object):
             ns, ts, r = self.ham.transition_timestep_reward(s, a)
             if self.ham.is_terminal(ns):
                 break
-            if self.ham.is_ground_action(a):
-                traj.append((s.groundstate, a, ns.groundstate, r))
+            if return_only_ground_traj:
+                if self.ham.is_ground_action(a):
+                    traj.append((s.groundstate, a[0], ns.groundstate, r))
+            else:
+                traj.append((s, a, ns, r))
             s = ns
         return traj
