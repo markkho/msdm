@@ -118,7 +118,7 @@ class HierarchyOfAbstractMachines(object):
         stack = s.stack
         pname, pparams = stack[-1]
         policy = self.abstract_machines[pname]
-        return policy.pseudo_reward(gs, stack, **dict(pparams))
+        return policy._pseudo_reward(gs, stack, **dict(pparams))
         
 
     # ======================= #
@@ -165,7 +165,7 @@ class HierarchyOfAbstractMachines(object):
 
         pname, pparams = stack[-1]
         policy = self.abstract_machines[pname]
-        astate = policy.state_abstraction(gs, stack, **dict(pparams))
+        astate = policy._state_abstraction(gs, stack, **dict(pparams))
         return astate
 
 
@@ -174,19 +174,34 @@ class AbstractMachine(object):
     def __init__(self):
         pass
 
-    def pseudo_reward(self, s, stack):
-        return 0
+    def _pseudo_reward(self, *args, **kwargs):
+        try:
+            return self.pseudo_reward(*args, **kwargs)
+        except AttributeError:
+            return 0
 
-    def is_terminal(self, s, stack, *args, **kwargs):
-        return False
+    def _is_terminal(self, *args, **kwargs):
+        try:
+            return self.is_terminal(*args, **kwargs)
+        except AttributeError:
+            return False
+
+    def _state_abstraction(self, *args, **kwargs):
+        try:
+            return self.state_abstraction(*args, **kwargs)
+        except AttributeError:
+            raise NotImplementedError
 
     def state_abstraction(self, s, stack, *args, **kwargs):
-        return HAMState(groundstate=s, stack=tuple(stack))
+        return (s, tuple(stack))
 
-    def call(self):
-        raise NotImplementedError
+    def _call(self, *args, **kwargs):
+        try:
+            return self.call(*args, **kwargs)
+        except AttributeError:
+            raise NotImplementedError
 
     def __call__(self, s, stack, *args, **kwargs):
-        if self.is_terminal(s, stack, *args, **kwargs):
+        if self._is_terminal(s, stack, *args, **kwargs):
             return [(TERMINATION_ACTION, ()), ]
-        return self.call(s, stack, *args, **kwargs)
+        return self._call(s, stack, *args, **kwargs)
