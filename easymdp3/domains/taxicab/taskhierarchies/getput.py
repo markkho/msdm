@@ -4,15 +4,6 @@ from easymdp3.domains.taxicab import TaxiCabMDP
 
 
 class Root(AbstractMachine):
-    # def state_abstraction(self, s, stack, *args, **kwargs):
-    #     ps = s.passengers
-    #     passenger_status = tuple([p.location == p.destination for p in ps])
-    #     has_passenger = s.taxi.passenger_i >= 0
-    #     return ('root',
-    #             ('passenger_status', passenger_status),
-    #             ('has_passenger', has_passenger))
-
-
     def call(self, s, stack):
         return [
             ('get', (('passenger_i', 0),)),
@@ -23,17 +14,8 @@ class Root(AbstractMachine):
 
 
 class Get(AbstractMachine):
-    # def state_abstraction(self, s, stack, passenger_i, *args, **kwargs):
-    #     target_p = s.passengers[passenger_i]
-    #     at_passenger = target_p.location == s.taxi.location
-    #     has_passenger = s.taxi.passenger_i >= 0
-    #     return ('get',
-    #             ('passenger_i', passenger_i),
-    #             ('at_passenger', at_passenger),
-    #             ('has_passenger', has_passenger))
-
-    def is_terminal(self, s, stack, passenger_i, *args, **kwargs):
-        if s.taxi.passenger_i == passenger_i:
+    def is_terminal(self, s, stack, passenger_i):
+        if passenger_i in s.taxi.passengers :
             return True
         return False
 
@@ -45,19 +27,13 @@ class Get(AbstractMachine):
         ]
 
 class Put(AbstractMachine):
-    # def state_abstraction(self, s, stack, *args, **kwargs):
-    #     passenger = s.passengers[s.taxi.passenger_i]
-    #     p_at_dest = passenger.destination == passenger.location
-    #     return ('put',
-    #             ('p_at_dest', p_at_dest))
-
-    def is_terminal(self, s, stack, *args, **kwargs):
-        if s.taxi.passenger_i == -1:
+    def is_terminal(self, s, stack):
+        if len(s.taxi.passengers) == 0:
             return True
         return False
 
     def call(self, s, stack):
-        passenger_i = s.taxi.passenger_i
+        passenger_i = s.taxi.passengers[0]
         p = s.passengers[passenger_i]
         return [
             ('navigate', (('dest', p.destination),)),
@@ -65,12 +41,7 @@ class Put(AbstractMachine):
         ]
 
 class Navigate(AbstractMachine):
-    # def state_abstraction(self, s, stack, dest, *args, **kwargs):
-    #     return ('nav',
-    #             ('dest', dest),
-    #             ('s.taxi.location',s.taxi.location))
-
-    def is_terminal(self, s, stack, dest, *args, **kwargs):
+    def is_terminal(self, s, stack, dest):
         if s.taxi.location == dest:
             return True
         return False

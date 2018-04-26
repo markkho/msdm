@@ -19,9 +19,9 @@ class Get(AbstractMachine):
         return hash((s, tuple(stack)))
 
     def is_terminal(self, s, stack, passenger_i):
-        if s.taxi.passenger_i == passenger_i:
+        if passenger_i in s.taxi.passengers:
             return True
-        if s.taxi.passenger_i != -1:
+        if len(s.taxi.passengers) > 0:
             return True
         return False
 
@@ -37,12 +37,12 @@ class Put(AbstractMachine):
         return hash((s, tuple(stack)))
 
     def is_terminal(self, s, stack):
-        if s.taxi.passenger_i == -1:
+        if len(s.taxi.passengers) == 0:
             return True
         return False
 
     def call(self, s, stack):
-        passenger_i = s.taxi.passenger_i
+        passenger_i = s.taxi.passengers[0]
         p = s.passengers[passenger_i]
         return [
             ('dropoff', ()),
@@ -53,7 +53,7 @@ class Navigate(AbstractMachine):
     def state_abstraction(self, s, stack, dest):
         return hash((s, tuple(stack)))
 
-    def is_terminal(self, s, stack, dest, *args, **kwargs):
+    def is_terminal(self, s, stack, dest):
         if s.taxi.location == dest:
             return True
         return False

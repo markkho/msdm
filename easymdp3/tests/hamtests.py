@@ -213,7 +213,7 @@ class HAMTests(unittest.TestCase):
                     break
             learner.episode_reset()
 
-    def test_qlearner_simplegetgput(self):
+    def test_qlearner_simplegetput(self):
         np.random.seed(0)
         learner = HierarchicalQLearner(simple_getput,
                                        learning_rate=.9,

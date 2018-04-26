@@ -23,7 +23,7 @@ class TaxiCabMDP(MDP):
         ['location', 'destination', 'generosity', 'in_car',
          'dest_switch_prob', 'i'])
     TaxiTuple = namedtuple(
-        'Taxi', ['location', 'passenger_i', 'gas'])
+        'Taxi', ['location', 'passengers', 'gas', 'max_passengers'])
     StateTuple = namedtuple(
         'State', ['passengers', 'taxi'])
 
@@ -57,14 +57,22 @@ class TaxiCabMDP(MDP):
                 self.i)
 
     class Taxi(object):
-        def __init__(self, location, passenger_i=-1, gas=100):
+        def __init__(self, location, passengers=None,
+                     gas=100, max_passengers=1):
+            self.max_passengers = max_passengers
+
             self.location = location
             self.gas = gas
-            self.passenger_i = passenger_i
+            if passengers is None:
+                passengers = []
+            self.passengers = list(passengers)
 
         def as_tuple(self):
+            self.passengers.sort()
             return TaxiCabMDP.TaxiTuple(
-                self.location, self.passenger_i, self.gas)
+                self.location, tuple(self.passengers), self.gas,
+                self.max_passengers
+            )
 
         def north(self):
             self.location = (self.location[0], self.location[1] + 1)
@@ -79,11 +87,17 @@ class TaxiCabMDP(MDP):
             self.location = (self.location[0] - 1, self.location[1])
 
         def pickup(self, passenger_i):
-            self.passenger_i = passenger_i
+            self.passengers.append(passenger_i)
 
         def dropoff(self, pi=None):
-            if self.passenger_i >= 0:
-                self.passenger_i = -1
+            if pi is None:
+                index = 0
+            else:
+                index = self.passengers.index(pi)
+            self.passengers.pop(index)
+
+        def has_space(self):
+            return len(self.passengers) < self.max_passengers
 
     class State(object):
         entity_list = ['passengers', 'taxi']
@@ -122,10 +136,12 @@ class TaxiCabMDP(MDP):
                  init_location=(0, 3),
                  init_passengers=None,
                  step_cost=-1,
-                 unique_dropoff_pickup=False
+                 unique_dropoff_pickup=False,
+                 max_passengers=1
                  ):
         self.width = width
         self.height = height
+        self.max_passengers = max_passengers
 
         if walls is None:
             walls = default_walls
@@ -162,7 +178,8 @@ class TaxiCabMDP(MDP):
         passengers = [TaxiCabMDP.Passenger(**p) for p in self.init_passengers]
         if taxi_location is None:
             taxi_location = self.init_location
-        taxi = TaxiCabMDP.Taxi(taxi_location, gas=100)
+        taxi = TaxiCabMDP.Taxi(taxi_location, gas=100,
+                               max_passengers=self.max_passengers)
         self.last_state = TaxiCabMDP.State(passengers, taxi)
         return self.last_state.as_tuple()
 
@@ -191,7 +208,7 @@ class TaxiCabMDP(MDP):
             elif a == '<' and s.taxi.location[0] > 0:
                 s.taxi.west()
 
-        elif 'pickup' in a and s.taxi.passenger_i == -1:
+        elif 'pickup' in a and s.taxi.has_space():
             if self.unique_dropoff_pickup:
                 pi = int(a.split('-')[1])
                 p = s.passengers[pi]
@@ -205,7 +222,7 @@ class TaxiCabMDP(MDP):
                         s.taxi.pickup(i)
                         break
 
-        elif 'dropoff' in a and s.taxi.passenger_i >= 0:
+        elif 'dropoff' in a and len(s.taxi.passengers) >= 0:
             if self.unique_dropoff_pickup:
                 pi = int(a.split('-')[1])
                 p = s.passengers[pi]
@@ -215,7 +232,7 @@ class TaxiCabMDP(MDP):
                         r += p.generosity
                     s.taxi.dropoff(pi)
             else:
-                p = s.passengers[s.taxi.passenger_i]
+                p = s.passengers[s.taxi.passengers[0]]
                 p.in_car = False
                 if p.at_destination():
                     r += p.generosity
