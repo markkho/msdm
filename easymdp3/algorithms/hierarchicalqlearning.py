@@ -11,14 +11,9 @@ logger = logging.getLogger(__name__)
 # =========================================== #
 def state_abstraction_wrapper(func):
     def abstract_and_call(self, s, *args, **kwargs):
-
         if not self.use_state_abstraction:
             return func(self, s, *args, **kwargs)
-
-        pname, pparams = s.stack[-1]
-        process = self.ham.abstract_machines[pname]
-        abs_s = process.state_abstraction(s.groundstate, s.stack,
-                                          **dict(pparams))
+        abs_s = self.ham.get_abstract_state(s)
         return func(self, abs_s, *args, **kwargs)
     return abstract_and_call
 
@@ -59,27 +54,29 @@ class HierarchicalQLearner(object):
     # =========================================== #
     #      Methods for inspecting Q-values        #
     # =========================================== #
-    @state_abstraction_wrapper
-    def _action_q(self, s, a, ns_available_actions=None):
+    def _action_q(self, s, a):
         if self.ham.is_ground_action(a):
-            a_qs = self._ground_q.get(s, {})
+            if self.use_state_abstraction:
+                abs_s = self.ham.get_abstract_state(s)
+                a_qs = self._ground_q.get(abs_s, {})
+            else:
+                a_qs = self._ground_q.get(s, {})
             q = a_qs.get(a, self.init_q)
             return q
 
         if self.ham.is_termination_action(a):
             return 0
 
-        ns_ts_r_dist = self.ham.transition_timestep_reward_dist(s, a)
-        ns, _, _ = sample_prob_dict(ns_ts_r_dist)
-        if ns_available_actions is None:
-            ns_available_actions = self.ham.available_actions(ns)
+        # ns_ts_r_dist = self.ham.transition_timestep_reward_dist(s, a)
+        # ns, _, _ = sample_prob_dict(ns_ts_r_dist)
+        ns, _, _ = self.ham.transition_timestep_reward(s, a)
 
         #self-loop - we generally don't want this
         if ns == s:
             return self._vmin
 
         max_q = -np.inf
-        for a_ in ns_available_actions:
+        for a_ in self.ham.available_actions(ns):
             child_act_q = self._action_q(ns, a_)
             child_comp_q = self._completion_q(ns, a_)
             child_q = child_act_q + child_comp_q
@@ -87,11 +84,13 @@ class HierarchicalQLearner(object):
                 max_q = child_q
         return max_q
 
+    @state_abstraction_wrapper
     def _completion_q(self, s, a):
         a_qs = self._comp_qvals.get(s, {})
         q = a_qs.get(a, self.init_q)
         return q
 
+    @state_abstraction_wrapper
     def _external_q(self, s, a):
         a_qs = self._ex_qvals.get(s, {})
         q = a_qs.get(a, self.init_q)
@@ -148,12 +147,15 @@ class HierarchicalQLearner(object):
     # =========================================== #
     #      Methods for updating Q-values          #
     # =========================================== #
+    @state_abstraction_wrapper
     def _update_ground_q(self, s, a, v, ts=0):
         self._update_val(self._ground_q, s, a, v, timesteps=ts)
 
+    @state_abstraction_wrapper
     def _update_comp_q(self, s, a, v, ts=0):
         self._update_val(self._comp_qvals, s, a, v, timesteps=ts)
 
+    @state_abstraction_wrapper
     def _update_ext_q(self, s, a, v, ts=0):
         self._update_val(self._ex_qvals, s, a, v, timesteps=ts)
 
@@ -193,7 +195,7 @@ class HierarchicalQLearner(object):
     def process(self, s, a, ns, ts, r):
         # update ground state action value
         if self.ham.is_ground_action(a):
-            self._update_val(self._ground_q, s, a, r)
+            self._update_ground_q(s, a, r)
 
         # update timesteps at each level of current stack
         for stack_i in range(len(s.stack)):
@@ -268,9 +270,18 @@ class HierarchicalQLearner(object):
         self.stack_to_last_stateaction = {}
 
     def train(self, episodes=100, max_choice_steps=100,
-              softmax_temp=0.0, randchoose=0.05, return_run_data=True):
-        run_data = []
-        for episode in range(episodes):
+              softmax_temp=0.0, randchoose=0.05,
+              run_data=None,
+              return_run_data=True):
+
+        start_ep = 0
+        if run_data is None:
+            run_data = []
+
+        if len(run_data) > 0:
+            start_ep = run_data[-1]['episode'] + 1
+
+        for episode in range(start_ep, episodes + start_ep):
             s = self.ham.get_init_state('root', ())
             for c in range(max_choice_steps):
                 a = self.act(s, softmax_temp=softmax_temp,
