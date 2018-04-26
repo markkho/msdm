@@ -1,6 +1,11 @@
 #!/usr/bin/env python
 
+import logging
+
 from easymdp3.core.util import sample_prob_dict, calc_esoftmax_dist
+
+logger = logging.getLogger(__name__)
+
 
 class Agent(object):
     def __init__(self, mdp):
@@ -76,13 +81,19 @@ class Learner(Agent):
               episodes=20, max_steps=100,
               init_state=None, run_id=None,
               softmax_temp=None, randchoose=None,
+              run_data=None,
               return_run_data=False):
         if init_state is None:
             init_state = self.mdp.get_init_state()
 
-        run_data = []
+        start_ep = 0
+        if run_data is None:
+            run_data = []
 
-        for e in range(episodes):
+        if len(run_data) > 0:
+            start_ep = run_data[-1]['episode'] + 1
+
+        for e in range(start_ep, episodes + start_ep):
             s = init_state
             for t in range(max_steps):
                 a = self.act(s,
@@ -105,6 +116,9 @@ class Learner(Agent):
                 s = ns
                 if self.mdp.is_terminal(ns):
                     break
+            if e % 100 == 0:
+                logger.debug('run: %d ; steps: %d' % (e, t))
+
             self.episode_reset()
 
         if return_run_data:
