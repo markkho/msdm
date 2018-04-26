@@ -58,6 +58,7 @@ def plot_text(state, ax, text='x', sub_state=(1, 1),
 
 
 def visualize_taxicab_transition(ax=None,
+                                 figsize=(10, 10),
                                  mdp=None,
                                  state=None,
                                  width=6, height=6,
@@ -69,6 +70,9 @@ def visualize_taxicab_transition(ax=None,
                                  reward=None,
                                  passenger_colors=None,
                                  taxi_color=None):
+    if ax is None:
+        fig, ax = plt.subplots(figsize=figsize)
+
     if mdp is not None and state is not None:
         width = mdp.width
         height = mdp.height
@@ -91,23 +95,24 @@ def visualize_taxicab_transition(ax=None,
     visualize_walls(ax=ax, walls=walls)
 
     # draw taxi
-    edgecolor = 'black'
-    arrow_width = .25
-    arrow_len = .4
-    tx, ty = taxi.location
-    if action == 'dropoff':
-        edgecolor = 'pink'
-    elif action == 'pickup':
-        edgecolor = 'lightblue'
-    elif action in ['^', 'v', '>', '<']:
-        arrowx = {'>': 1, '<': -1}.get(action, 0)
-        arrowy = {'^': 1, 'v': -1}.get(action, 0)
-        ax.add_patch(plt.Arrow(tx + .5, ty + .5,
-                               arrowx * arrow_len, arrowy * arrow_len,
-                               width=arrow_width,
-                               color='black', zorder=11))
-    plot_rectangle(taxi.location, ax=ax, width=.5, height=.5,
-                   edgecolor=edgecolor)
+    if taxi is not None:
+        edgecolor = 'black'
+        arrow_width = .25
+        arrow_len = .4
+        tx, ty = taxi.location
+        if action == 'dropoff':
+            edgecolor = 'pink'
+        elif action == 'pickup':
+            edgecolor = 'lightblue'
+        elif action in ['^', 'v', '>', '<']:
+            arrowx = {'>': 1, '<': -1}.get(action, 0)
+            arrowy = {'^': 1, 'v': -1}.get(action, 0)
+            ax.add_patch(plt.Arrow(tx + .5, ty + .5,
+                                   arrowx * arrow_len, arrowy * arrow_len,
+                                   width=arrow_width,
+                                   color='black', zorder=11))
+        plot_rectangle(taxi.location, ax=ax, width=.5, height=.5,
+                       edgecolor=edgecolor)
 
     # draw reward
     if reward is not None and reward != 0:
@@ -167,7 +172,8 @@ def visualize_taxicab_transition(ax=None,
 
 
 def animate_transitions(taximdp, traj, filename,
-                        move_interval=1000, fig=None):
+                        move_interval=1000, fig=None,
+                        only_ground_traj=True):
     '''
     traj is a list of (state, action, next_state) tuples
     '''
@@ -188,6 +194,14 @@ def animate_transitions(taximdp, traj, filename,
                 r = traj[step][3]
             a = None
 
+        if not only_ground_traj:
+            ax.text(-.5, -.5, str(s_to_plot.stack),
+                    horizontalalignment='left',
+                    fontsize=25)
+            if a is not None:
+                a = a[0]
+            s_to_plot = s_to_plot.groundstate
+
         visualize_taxicab_transition(
             ax=ax,
             action=a,
@@ -198,6 +212,7 @@ def animate_transitions(taximdp, traj, filename,
             walls=taximdp.walls,
             taxi=s_to_plot.taxi,
             passengers=s_to_plot.passengers)
+
 
     frames = list(product(range(len(traj)), ('s', 'ns')))
 
