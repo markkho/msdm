@@ -4,6 +4,9 @@ from easymdp3.domains.taxicab import TaxiCabMDP
 
 
 class Root(AbstractMachine):
+    def state_abstraction(self, s, stack):
+        return hash((s, tuple(stack)))
+
     def call(self, s, stack):
         return [
             ('get', (('passenger_i', 0),)),
@@ -12,7 +15,10 @@ class Root(AbstractMachine):
         ]
 
 class Get(AbstractMachine):
-    def is_terminal(self, s, stack, passenger_i, *args, **kwargs):
+    def state_abstraction(self, s, stack, passenger_i):
+        return hash((s, tuple(stack)))
+
+    def is_terminal(self, s, stack, passenger_i):
         if s.taxi.passenger_i == passenger_i:
             return True
         if s.taxi.passenger_i != -1:
@@ -27,7 +33,10 @@ class Get(AbstractMachine):
         ]
 
 class Put(AbstractMachine):
-    def is_terminal(self, s, stack, *args, **kwargs):
+    def state_abstraction(self, s, stack):
+        return hash((s, tuple(stack)))
+
+    def is_terminal(self, s, stack):
         if s.taxi.passenger_i == -1:
             return True
         return False
@@ -41,6 +50,9 @@ class Put(AbstractMachine):
         ]
 
 class Navigate(AbstractMachine):
+    def state_abstraction(self, s, stack, dest):
+        return hash((s, tuple(stack)))
+
     def is_terminal(self, s, stack, dest, *args, **kwargs):
         if s.taxi.location == dest:
             return True
