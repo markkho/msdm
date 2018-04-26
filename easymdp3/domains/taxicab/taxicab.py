@@ -1,9 +1,11 @@
 from collections import namedtuple
 
+import numpy as np
+
 from easymdp3.core.mdp import MDP
 from easymdp3.core.util import sample_prob_dict
 from easymdp3.domains.gridworld import GridWorld
-
+from .vis import visualize_taxicab_transition
 
 default_walls = [((0, 0), '>'), ((1, 0), '<'),
                   ((0, 1), '>'), ((1, 1), '<'),
@@ -18,7 +20,8 @@ class TaxiCabMDP(MDP):
     # objects for hashable state
     PassengerTuple = namedtuple(
         'Passenger',
-        ['location', 'destination', 'generosity', 'in_car', 'i'])
+        ['location', 'destination', 'generosity', 'in_car',
+         'dest_switch_prob', 'i'])
     TaxiTuple = namedtuple(
         'Taxi', ['location', 'passenger_i', 'gas'])
     StateTuple = namedtuple(
@@ -30,11 +33,13 @@ class TaxiCabMDP(MDP):
 
         def __init__(self, location, destination,
                      generosity=100, in_car=False,
+                     dest_switch_prob=0,
                      i=None):
             self.location = location
             self.destination = destination
             self.generosity = generosity
             self.in_car = in_car
+            self.dest_switch_prob = dest_switch_prob
 
             if i is None:
                 i = self.__class__.n
@@ -47,7 +52,9 @@ class TaxiCabMDP(MDP):
         def as_tuple(self):
             return TaxiCabMDP.PassengerTuple(
                 self.location, self.destination,
-                self.generosity, self.in_car, self.i)
+                self.generosity, self.in_car,
+                self.dest_switch_prob,
+                self.i)
 
     class Taxi(object):
         def __init__(self, location, passenger_i=-1, gas=100):
@@ -74,7 +81,7 @@ class TaxiCabMDP(MDP):
         def pickup(self, passenger_i):
             self.passenger_i = passenger_i
 
-        def dropoff(self):
+        def dropoff(self, pi=None):
             if self.passenger_i >= 0:
                 self.passenger_i = -1
 
@@ -114,7 +121,8 @@ class TaxiCabMDP(MDP):
                  locations: "pick up and drop off locations" = None,
                  init_location=(0, 3),
                  init_passengers=None,
-                 step_cost=-1
+                 step_cost=-1,
+                 unique_dropoff_pickup=False
                  ):
         self.width = width
         self.height = height
@@ -135,25 +143,36 @@ class TaxiCabMDP(MDP):
                 {'location': self.locs[2], 'destination': self.locs[1], 'i': 2},
             ]
         self.init_passengers = init_passengers
+        self.n_passengers = len(init_passengers)
+
+        self.unique_dropoff_pickup = unique_dropoff_pickup
+        if unique_dropoff_pickup:
+            self.NON_TERMINAL_ACTIONS =\
+                 ['^', 'v', '<', '>', 'noop'] \
+               + ['pickup-%d' % pi for pi in range(self.n_passengers)] \
+               + ['dropoff-%d' % pi for pi in range(self.n_passengers)]
+        else:
+            self.NON_TERMINAL_ACTIONS = \
+                ['^', 'v', '<', '>', 'noop', 'pickup', 'dropoff']
 
         self.TERMINAL_ACTION = 'end'
         self.TERMINAL_STATE = TaxiCabMDP.StateTuple(None, None)
 
-    def get_init_state(self):
+    def get_init_state(self, taxi_location=None):
         passengers = [TaxiCabMDP.Passenger(**p) for p in self.init_passengers]
-        taxi = TaxiCabMDP.Taxi(self.init_location, gas=100)
+        if taxi_location is None:
+            taxi_location = self.init_location
+        taxi = TaxiCabMDP.Taxi(taxi_location, gas=100)
         self.last_state = TaxiCabMDP.State(passengers, taxi)
         return self.last_state.as_tuple()
 
     def available_actions(self, s=None):
         if s is None:
-            return ['^', 'v', '<', '>', 'noop',
-                    'pickup', 'dropoff', self.TERMINAL_ACTION]
+            return self.NON_TERMINAL_ACTIONS + [self.TERMINAL_ACTION, ]
         elif self.is_terminal(s) or self.is_absorbing(s):
             return [self.TERMINAL_ACTION, ]
         else:
-            return ['^', 'v', '<', '>', 'noop',
-                    'pickup', 'dropoff']
+            return self.NON_TERMINAL_ACTIONS
 
     def _update_state_get_reward(self, s, a):
         r = self.step_cost
@@ -172,24 +191,48 @@ class TaxiCabMDP(MDP):
             elif a == '<' and s.taxi.location[0] > 0:
                 s.taxi.west()
 
-        elif a == 'pickup' and s.taxi.passenger_i == -1:
-            for i, p in enumerate(s.passengers):
-                if p.location == s.taxi.location and not p.at_destination():
+        elif 'pickup' in a and s.taxi.passenger_i == -1:
+            if self.unique_dropoff_pickup:
+                pi = int(a.split('-')[1])
+                p = s.passengers[pi]
+                if not p.at_destination() and p.location == s.taxi.location:
                     p.in_car = True
-                    s.taxi.pickup(i)
-                    break
+                    s.taxi.pickup(pi)
+            else:
+                for i, p in enumerate(s.passengers):
+                    if p.location == s.taxi.location and not p.at_destination():
+                        p.in_car = True
+                        s.taxi.pickup(i)
+                        break
 
-        elif a == 'dropoff' and s.taxi.passenger_i >= 0:
-            taxi_passenger = s.passengers[s.taxi.passenger_i]
-            taxi_passenger.in_car = False
-            if taxi_passenger.at_destination():
-                r += taxi_passenger.generosity
-            s.taxi.dropoff()
+        elif 'dropoff' in a and s.taxi.passenger_i >= 0:
+            if self.unique_dropoff_pickup:
+                pi = int(a.split('-')[1])
+                p = s.passengers[pi]
+                if p.in_car:
+                    p.in_car = False
+                    if p.at_destination():
+                        r += p.generosity
+                    s.taxi.dropoff(pi)
+            else:
+                p = s.passengers[s.taxi.passenger_i]
+                p.in_car = False
+                if p.at_destination():
+                    r += p.generosity
+                s.taxi.dropoff()
 
         # passenger transitions
         for p in s.passengers:
             if p.in_car:
                 p.location = s.taxi.location
+
+            #randomly switch destination if in car
+            if p.in_car and p.dest_switch_prob > 0:
+                if np.random.random() < p.dest_switch_prob:
+                    new_dest = p.location
+                    while new_dest == p.location:
+                        new_dest = self.locs[np.random.randint(len(self.locs))]
+                    p.destination = new_dest
 
         return s, r
 
@@ -251,4 +294,13 @@ class TaxiCabMDP(MDP):
             width=self.width,
             height=self.height,
             walls=self.walls
+        )
+
+    def plot(self, ax=None, figsize=(10, 10)):
+        return visualize_taxicab_transition(
+            ax=ax, figsize=figsize,
+            width=self.width, height=self.height,
+            locations=self.locs,
+            walls=self.walls,
+            passengers=[TaxiCabMDP.Passenger(**p) for p in self.init_passengers]
         )
