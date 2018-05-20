@@ -9,7 +9,7 @@ import numpy as np
 from easymdp3.core.mdp import MDP
 from easymdp3.core.reward_function import RewardFunction
 from easymdp3.algorithms.valueiteration import ValueIteration
-
+from easymdp3.core.util import sample_prob_dict
 class GridWorld(MDP):
     def __init__(self, width=None, height=None,
                  gridworld_array=None,
@@ -149,10 +149,10 @@ class GridWorld(MDP):
         self.rmax = self.reward_function.rmax
         self.terminal_state_reward = self.reward_function.terminal_state_reward
 
-        n_actions = 4
+        self.TERMINAL_ACTION = '%'
+        self.ACTION_LIST = [self.TERMINAL_ACTION, '>', '<', 'v', '^']
         if self.wait_action:
-            n_actions += 1
-        self.n_actions = n_actions
+            self.ACTION_LIST.append('x')
 
         self.reward_cache = {}
         self.transition_cache = {}
@@ -197,7 +197,7 @@ class GridWorld(MDP):
         return s == self.terminal_state
 
     def is_terminal_action(self, a):
-        return a == '%'
+        return a == self.TERMINAL_ACTION
 
     def is_any_terminal(self, s):
         return s in [self.terminal_state, self.intermediate_terminal]
@@ -218,7 +218,9 @@ class GridWorld(MDP):
         i = np.random.choice(len(starting_states))
         return starting_states[i]
 
-    def available_actions(self, s):
+    def available_actions(self, s=None):
+        if s is None:
+            return self.ACTION_LIST
         try:
             return self.available_action_cache[s]
         except KeyError:
@@ -227,11 +229,11 @@ class GridWorld(MDP):
 
         # handle absorbing, terminal, and intermediate terminal states
         if s in self.absorbing_states:
-            actions.append('%')
+            actions.append(self.TERMINAL_ACTION)
         elif s == self.terminal_state:
-            actions.append('%')
+            actions.append(self.TERMINAL_ACTION)
         elif s == self.intermediate_terminal:
-            actions.append('%')
+            actions.append(self.TERMINAL_ACTION)
 
         # handle 'normal' transitions with no wall actions
         elif not self.wall_action:
@@ -429,6 +431,9 @@ class GridWorld(MDP):
         ns, p = list(zip(*list(dist.items())))
         return ns[np.random.choice(len(ns), p=p)]
 
+    def transition_reward(self, s, a):
+        return sample_prob_dict(self.transition_reward_dist(s, a))
+
     def transition_reward_dist(self, s, a):
         tdist = self.transition_dist(s, a)
         r = lambda ns : self.reward(s, a, ns)
@@ -546,7 +551,8 @@ class GridWorld(MDP):
              randchoose=0.0):
         #depends on matplotlib, which not every dist will have
         from easymdp3.domains.gridworld.gridworldvis import visualize_states, \
-            visualize_action_values, plot_agent_location, plot_text
+            visualize_action_values, plot_agent_location, plot_text, \
+            visualize_walls
 
         default_feature_colors = {
             'a': 'orange',
@@ -582,6 +588,8 @@ class GridWorld(MDP):
         ax = visualize_states(ax=ax,
                               states=plot_states,
                               tile_color=tile_colors)
+
+        ax = visualize_walls(ax=ax, walls=self.walls)
 
         if annotations is not None:
             for annotation_dict in annotations:

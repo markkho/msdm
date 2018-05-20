@@ -32,7 +32,7 @@ def visualize_states(ax=None, states=None,
     if tile_color is None:
         tile_color = {}
 
-    if ax == None:
+    if ax is None:
         fig = plt.figure()
         ax = fig.add_subplot(111)
 
@@ -521,3 +521,25 @@ def animate_trajectory(gw, traj, filename,
                                  )
     ani.save(filename)
     return ani
+
+def plot_stateaction_values_over_grid(
+        ax=None, s=None, mdp=None, location_update=None, state_to_avals=None):
+    stack = s.stack
+    groundstate = s.groundstate
+    if location_update is None:
+        location_update = lambda xy, gs : xy
+    if state_to_avals is None:
+        state_to_avals = lambda s: {}
+    a_val_func = {}
+    for xy in product(range(mdp.width), range(mdp.height)):
+        temp_gs = location_update(xy)
+        temp_s = s._replace(groundstate=temp_gs)
+        qvals = state_to_avals(temp_s)
+        a_val_func[xy] = qvals
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(6, 6))
+    ax = mdp.plot(ax=ax)
+    visualize_action_values(ax=ax,
+                            state_action_values=a_val_func,
+                            color_valence=True)
+    return ax
