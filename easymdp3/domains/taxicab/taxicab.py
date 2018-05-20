@@ -212,7 +212,9 @@ class TaxiCabMDP(MDP):
             if self.unique_dropoff_pickup:
                 pi = int(a.split('-')[1])
                 p = s.passengers[pi]
-                if not p.at_destination() and p.location == s.taxi.location:
+                if not p.at_destination() \
+                        and p.location == s.taxi.location \
+                        and not p.in_car:
                     p.in_car = True
                     s.taxi.pickup(pi)
             else:

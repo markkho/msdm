@@ -69,6 +69,7 @@ def visualize_taxicab_transition(ax=None,
                                  action=None,
                                  reward=None,
                                  passenger_colors=None,
+                                 max_passengers=1,
                                  taxi_color=None):
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
@@ -80,6 +81,7 @@ def visualize_taxicab_transition(ax=None,
         walls = mdp.walls
         taxi = state.taxi
         passengers = state.passengers
+        max_passengers = mdp.max_passengers
 
     # draw tiles
     tiles = list(product(range(width), range(height)))
@@ -129,11 +131,13 @@ def visualize_taxicab_transition(ax=None,
     # group by locations
     pass_radius = .12
     p_locs = {}
+    p_in_car = []
     for p, pcolor in zip(passengers, passenger_colors):
         if p.in_car:
-            plot_circle(p.location, ax=ax, r=pass_radius,
-                        sub_state=(1, 1), facecolor=pcolor,
-                        edgecolor='black')
+            p_in_car.append((p, pcolor))
+            # plot_circle(p.location, ax=ax, r=pass_radius,
+            #             sub_state=(1, 1), facecolor=pcolor,
+            #             edgecolor='black')
         else:
             p_locs[p.location] = p_locs.get(p.location, [])
             p_locs[p.location].append((p, pcolor))
@@ -148,6 +152,25 @@ def visualize_taxicab_transition(ax=None,
             plot_circle(loc, ax=ax, r=pass_radius,
                         sub_state=sstate, facecolor=pcolor,
                         edgecolor='white')
+
+    if max_passengers == 1:
+        if len(p_in_car) > 0:
+            p, pcolor = p_in_car[0]
+            plot_circle(p.location, ax=ax, r=pass_radius,
+                        sub_state=(1, 1), facecolor=pcolor,
+                        edgecolor='black')
+    else:
+        car_sstates = []
+        for yx in product([2, 1], [1, 2]):
+            xy = (yx[1], yx[0])
+            car_sstates.append(xy)
+        for sstate, (p, pcolor) in zip(car_sstates, p_in_car):
+            plot_circle(p.location, ax=ax, r=pass_radius,
+                        sub_state=sstate,
+                        sub_rows=4, sub_cols=4,
+                        facecolor=pcolor,
+                        edgecolor='black')
+
 
     # draw destinations
     dests = {}
@@ -211,7 +234,9 @@ def animate_transitions(taximdp, traj, filename,
             locations=taximdp.locs,
             walls=taximdp.walls,
             taxi=s_to_plot.taxi,
-            passengers=s_to_plot.passengers)
+            passengers=s_to_plot.passengers,
+            max_passengers=taximdp.max_passengers
+        )
 
 
     frames = list(product(range(len(traj)), ('s', 'ns')))
