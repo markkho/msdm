@@ -2,8 +2,8 @@ import logging
 import warnings
 import time
 
-from easymdp3.core.agent import Planner
-from easymdp3.core.util import argmax_dict, calc_esoftmax_dist, \
+from pyrlap.core.agent import Planner
+from pyrlap.core.util import argmax_dict, calc_esoftmax_dist, \
     calc_esoftmax_policy
 
 logger = logging.getLogger(__name__)

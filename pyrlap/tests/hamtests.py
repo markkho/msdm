@@ -1,10 +1,10 @@
 import unittest
 import numpy as np
 
-from easymdp3.domains.taxicab import TaxiCabMDP
-from easymdp3.domains.taxicab.taskhierarchies import \
+from pyrlap.domains.taxicab import TaxiCabMDP
+from pyrlap.domains.taxicab.taskhierarchies import \
     getput_hierarchy, restricted_getput, simple_getput, simple_insideoutside
-from easymdp3.algorithms.hierarchicalqlearning import HierarchicalQLearner
+from pyrlap.algorithms.hierarchicalqlearning import HierarchicalQLearner
 
 class HAMTests(unittest.TestCase):
     def setUp(self):

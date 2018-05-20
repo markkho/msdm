@@ -2,7 +2,7 @@
 
 import logging
 
-from easymdp3.core.util import sample_prob_dict, calc_esoftmax_dist
+from pyrlap.core.util import sample_prob_dict, calc_esoftmax_dist
 
 logger = logging.getLogger(__name__)
 

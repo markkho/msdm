@@ -1,5 +1,5 @@
-from easymdp3.core.util import calc_esoftmax_dist
-from easymdp3.core.agent import Learner
+from pyrlap.core.util import calc_esoftmax_dist
+from pyrlap.core.agent import Learner
 
 class Qlearning(Learner):
     def __init__(self, mdp,

@@ -1,6 +1,6 @@
-from easymdp3.core.hierarchicalrl import AbstractMachine, \
+from pyrlap.core.hierarchicalrl import AbstractMachine, \
     HierarchyOfAbstractMachines
-from easymdp3.domains.taxicab import TaxiCabMDP
+from pyrlap.domains.taxicab import TaxiCabMDP
 
 # Restricted get/put hierarchy
 class Root(AbstractMachine):

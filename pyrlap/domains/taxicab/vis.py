@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patheffects as path_effects
 import matplotlib.animation as animation
 
-from easymdp3.domains.gridworld.gridworldvis \
+from pyrlap.domains.gridworld.gridworldvis \
     import visualize_states as visualize_locs, \
     visualize_walls
 

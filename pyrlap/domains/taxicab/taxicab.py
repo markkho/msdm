@@ -2,9 +2,9 @@ from collections import namedtuple
 
 import numpy as np
 
-from easymdp3.core.mdp import MDP
-from easymdp3.core.util import sample_prob_dict
-from easymdp3.domains.gridworld import GridWorld
+from pyrlap.core.mdp import MDP
+from pyrlap.core.util import sample_prob_dict
+from pyrlap.domains.gridworld import GridWorld
 from .vis import visualize_taxicab_transition
 
 default_walls = [((0, 0), '>'), ((1, 0), '<'),

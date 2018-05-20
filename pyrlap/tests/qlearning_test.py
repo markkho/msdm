@@ -1,8 +1,8 @@
 import unittest
 import numpy as np
 
-from easymdp3.domains.gridworld import GridWorld
-from easymdp3.algorithms.qlearning import Qlearning
+from pyrlap.domains.gridworld import GridWorld
+from pyrlap.algorithms.qlearning import Qlearning
 
 class QLearningTests(unittest.TestCase):
     def test_qlearner_on_simple_deterministic_gridworld(self):

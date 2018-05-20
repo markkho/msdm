@@ -3,7 +3,7 @@ from itertools import product
 
 import numpy as np
 
-from easymdp3.domains.gridworld import GridWorld
+from pyrlap.domains.gridworld import GridWorld
 
 class GridWorldTestCase(unittest.TestCase):
     def test_simple_deterministic_world(self):

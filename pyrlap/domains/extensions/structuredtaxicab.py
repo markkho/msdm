@@ -1,8 +1,8 @@
 from collections import namedtuple
 from itertools import product
 
-from easymdp3.domains.taxicab import TaxiCabMDP
-from easymdp3.domains.taxicab.utils import \
+from pyrlap.domains.taxicab import TaxiCabMDP
+from pyrlap.domains.taxicab.utils import \
     get_interior_tiles, get_building_walls
 
 class StructuredTaxiCab(TaxiCabMDP):

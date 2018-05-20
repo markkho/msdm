@@ -1,9 +1,9 @@
 from itertools import product
 
-from easymdp3.core.hierarchicalrl import AbstractMachine, \
+from pyrlap.core.hierarchicalrl import AbstractMachine, \
     HierarchyOfAbstractMachines
-from easymdp3.domains.gridworld import GridWorld
-from easymdp3.domains.taxicab.utils import get_building_walls
+from pyrlap.domains.gridworld import GridWorld
+from pyrlap.domains.taxicab.utils import get_building_walls
 
 gw = GridWorld(
     width=7, height=7,

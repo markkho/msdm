@@ -6,10 +6,10 @@ logger = logging.getLogger(__name__)
 
 import numpy as np
 
-from easymdp3.core.mdp import MDP
-from easymdp3.core.reward_function import RewardFunction
-from easymdp3.algorithms.valueiteration import ValueIteration
-from easymdp3.core.util import sample_prob_dict
+from pyrlap.core.mdp import MDP
+from pyrlap.core.reward_function import RewardFunction
+from pyrlap.algorithms.valueiteration import ValueIteration
+from pyrlap.core.util import sample_prob_dict
 class GridWorld(MDP):
     def __init__(self, width=None, height=None,
                  gridworld_array=None,
@@ -550,7 +550,7 @@ class GridWorld(MDP):
              discount_rate=.99,
              randchoose=0.0):
         #depends on matplotlib, which not every dist will have
-        from easymdp3.domains.gridworld.gridworldvis import visualize_states, \
+        from pyrlap.domains.gridworld.gridworldvis import visualize_states, \
             visualize_action_values, plot_agent_location, plot_text, \
             visualize_walls
 

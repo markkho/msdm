@@ -1,8 +1,8 @@
 import numpy as np
 import logging
 
-from easymdp3.core.util import calc_esoftmax_dist, sample_prob_dict
-from easymdp3.core.hierarchicalrl import HAMState
+from pyrlap.core.util import calc_esoftmax_dist, sample_prob_dict
+from pyrlap.core.hierarchicalrl import HAMState
 
 logger = logging.getLogger(__name__)
 
