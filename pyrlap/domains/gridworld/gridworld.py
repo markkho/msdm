@@ -27,6 +27,7 @@ class GridWorld(MDP):
                  non_std_t_features=None,
 
                  walls=None, #[((x, y), side),...]
+                 wall_feature=None,
 
                  starting_states=None,
                  state_rewards=None, #deprecated
@@ -94,6 +95,11 @@ class GridWorld(MDP):
         if feature_types is None:
             feature_types = {}
 
+        # walls
+        if walls is None:
+            walls = []
+        self.walls = walls
+
         for s in self.states:
             f = state_features.get(s, None)
             if f in non_std_t_features:
@@ -101,6 +107,8 @@ class GridWorld(MDP):
             if f in feature_types:
                 state_types[s] = state_types.get(s, [])
                 state_types[s].append(feature_types[f])
+            if wall_feature is not None and f == wall_feature:
+                self.walls.append(s)
 
         for s, non_std_t in non_std_t_states.items():
             if 'side' in non_std_t:
@@ -122,10 +130,7 @@ class GridWorld(MDP):
 
         self.state_types = state_types
 
-        #walls
-        if walls is None:
-            walls = []
-        self.walls = walls
+
 
 
 
@@ -280,26 +285,31 @@ class GridWorld(MDP):
         "normal" transitions (taking into account walls)
         """
 
-        # handle walls
+        # handle 1D walls
         if (s, a) in self.walls:
-            res = s
+            ns = s
 
         #handle non-wall transitions
         elif s[1] < self.height - 1 and a == '^':
-            res = s[0], s[1] + 1
+            ns = s[0], s[1] + 1
         elif s[1] > 0 and a == 'v':
-            res = s[0], s[1] - 1
+            ns = s[0], s[1] - 1
         elif s[0] < self.width - 1 and a == '>':
-            res = s[0] + 1, s[1]
+            ns = s[0] + 1, s[1]
         elif s[0] > 0 and a == '<':
-            res = s[0] - 1, s[1]
+            ns = s[0] - 1, s[1]
         elif a == 'x':
-            res = s
+            ns = s
 
         #handle default transition
         else:
-            res = s
-        return res
+            ns = s
+
+        #handle 2D walls
+        if ns in self.walls:
+            ns = s
+
+        return ns
 
     def _get_side_actions(self, a):
         if a in '^v':
