@@ -84,6 +84,7 @@ def visualize_action_values(ax=None, state_action_values=None,
                             color_valence=False,
                             global_maxval=None,
                             arrowwidth=.1,
+                            text_values=False,
                             **kwargs):
     '''
         Supported kwargs:
@@ -135,6 +136,23 @@ def visualize_action_values(ax=None, state_action_values=None,
                     Circle((x + .5, y + .5), radius=mag * .9, fill=False))
             else:
                 raise Exception('unknown action')
+
+            if text_values:
+                if a == '<':
+                    plot_text(axis=ax, state=s, text='%.2f' % v,
+                              x_offset=-.45, y_offset=.07)
+                elif a == '>':
+                    plot_text(axis=ax, state=s, text='%.2f' % v,
+                              x_offset=.14, y_offset=.07)
+                elif a == 'v':
+                    plot_text(axis=ax, state=s, text='%.2f' % v,
+                              x_offset=.05, y_offset=-.3)
+                elif a == '^':
+                    plot_text(axis=ax, state=s, text='%.2f' % v,
+                              x_offset=.05, y_offset=.3)
+                else:
+                    plot_text(axis=ax, state=s, text='%.2f' % v,
+                              x_offset=0, y_offset=0)
     return ax
 
 
