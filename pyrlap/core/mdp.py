@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from .util import sample_prob_dict
+from .util import sample_prob_dict, SANSRTuple
 
 class MDP(object):
     #=============================================#
@@ -70,9 +70,6 @@ class MDP(object):
                         frontier.add(ns)
         return (tf, rf)
 
-    def transition_reward_dist(self, s, a):
-        raise NotImplementedError
-
     def get_state_actions(self):
         raise NotImplementedError
 
@@ -130,6 +127,6 @@ class MDP(object):
             a = policy(s)
             ns = self.transition(s, a)
             r = self.reward(s, a, ns)
-            traj.append((s, a, ns, r))
+            traj.append(SANSRTuple(s, a, ns, r))
             s = ns
         return traj

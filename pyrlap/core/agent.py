@@ -2,7 +2,7 @@
 
 import logging
 
-from pyrlap.core.util import sample_prob_dict, calc_esoftmax_dist
+from pyrlap.core.util import sample_prob_dict, calc_esoftmax_dist, SANSRTuple
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +38,7 @@ class Agent(object):
             else:
                 ns = self.mdp.transition(s, a)
                 r = self.mdp.reward(s, a, ns)
-            traj.append((s, a, ns, r))
+            traj.append(SANSRTuple(s, a, ns, r))
             s = ns
             if self.mdp.is_terminal(s):
                 break

@@ -1,9 +1,15 @@
 from __future__ import division
 import logging
 import warnings
+from collections import namedtuple
+
 import numpy as np
 
 logger = logging.getLogger(__name__)
+
+
+SANSRTuple = namedtuple('SANSRTuple', 's a ns r')
+
 #================================#
 #
 #    Functions related to policies
