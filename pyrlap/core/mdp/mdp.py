@@ -30,16 +30,7 @@ class MDP(object):
         return sample_prob_dict(self.transition_reward_dist(s, a))[0]
 
     def reward(self, s=None, a=None, ns=None):
-        if ns is not None:
-            rdist = {}
-            norm = 0
-            for (ns_, r), p in self.transition_reward_dist(s, a).items():
-                if ns_ == ns:
-                    rdist[r] = rdist.get(r, 0) + p
-                    norm += p
-            rdist = {r: p/norm for r, p in rdist.items()}
-            return sample_prob_dict(rdist)
-        return sample_prob_dict(self.transition_reward_dist(s, a))[1]
+        raise NotImplementedError
 
     def reward_dist(self, s=None, a=None, ns=None):
         raise NotImplementedError
