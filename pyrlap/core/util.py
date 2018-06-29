@@ -9,6 +9,8 @@ logger = logging.getLogger(__name__)
 
 
 SANSRTuple = namedtuple('SANSRTuple', 's a ns r')
+SANSTuple = namedtuple('SANSTuple', 's a ns')
+SATuple = namedtuple('SATuple', 's a')
 
 #================================#
 #
