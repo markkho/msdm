@@ -10,6 +10,9 @@ class MDP(object):
     def get_init_state(self):
         raise NotImplementedError
 
+    def get_init_states(self):
+        raise NotImplementedError
+
     def is_terminal(self, s):
         raise NotImplementedError
 
@@ -48,10 +51,15 @@ class MDP(object):
 
     def get_reachable_transition_reward_functions(self,
                                                   max_states=np.inf,
-                                                  init_state=None):
+                                                  init_state=None,
+                                                  init_states=None):
+        if init_states is None:
+            init_states = self.get_init_states()
+
         if init_state is None:
             init_state = self.get_init_state()
-        frontier = {init_state}
+        init_states.append(init_state)
+        frontier = set(init_states)
         visited = set([])
         tf = {}
         rf = {}

@@ -11,7 +11,8 @@ class DictionaryMDP(MDP):
     def __init__(self,
                  transition_dict,
                  reward_dict,
-                 init_state,
+                 init_state=None,
+                 init_states=None,
                  step_cost=0
                  ):
         """
@@ -36,7 +37,16 @@ class DictionaryMDP(MDP):
                         r = s_rdict[a].get(ns, 0) + step_cost
                     s_rdict[a][ns] = r
             self.reward_dict[s] = s_rdict
+
+        if init_states is None:
+            init_states = []
+        if init_state is not None:
+            init_states.append(init_state)
+        else:
+            init_state = init_states[0]
         self.init_state = init_state
+        self.init_states = init_states
+
         self.step_cost = step_cost
 
         self.states = list(self.transition_dict.keys())
@@ -44,6 +54,9 @@ class DictionaryMDP(MDP):
 
     def get_init_state(self):
         return self.init_state
+
+    def get_init_states(self):
+        return self.init_states
 
     def is_terminal(self, s):
         return s == self.__class__.TERMINAL_STATE
