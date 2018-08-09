@@ -9,7 +9,7 @@ import numpy as np
 from pyrlap.core.mdp import MDP
 from pyrlap.core.reward_function import RewardFunction
 from pyrlap.algorithms.valueiteration import ValueIteration
-from pyrlap.core.util import sample_prob_dict
+from pyrlap.core.util import sample_prob_dict, bidict
 class GridWorld(MDP):
     def __init__(self, width=None, height=None,
                  gridworld_array=None,
@@ -18,6 +18,7 @@ class GridWorld(MDP):
                  wall_action=False,
                  state_features=None,
                  absorbing_states=None,
+                 absorbing_features=None,
 
                  slip_states=None,
                  slip_features=None,
@@ -29,7 +30,6 @@ class GridWorld(MDP):
                  walls=None, #[((x, y), side),...]
                  wall_feature=None,
 
-                 starting_states=None,
                  state_rewards=None, #deprecated
                  reward_dict=None,
                  default_reward=0,
@@ -37,6 +37,8 @@ class GridWorld(MDP):
                  feature_rewards=None,
                  include_intermediate_terminal=False,
                  init_state=None,
+                 initstate_features=None,
+                 starting_states=None,
 
                  state_types=None,
                  feature_types=None):
@@ -46,13 +48,18 @@ class GridWorld(MDP):
             h = len(gridworld_array)
             state_features = {(x, y): gridworld_array[h - 1 - y][x] for x, y in
                               product(list(range(w)), list(range(h)))}
+            state_features = bidict(state_features)
             width = w
             height = h
 
+        if state_features is None:
+            state_features = {}
+        self.state_features = state_features
+
         self.width = width
         self.height = height
-        self.states = list(product(list(range(width)), list(range(height)))) + [(-1, -1),
-                                                                    (-2, -2)]
+        self.states = list(product(range(width), range(height))) + \
+                      [(-1, -1), (-2, -2)]
         self.wait_action = wait_action
         self.wall_action = wall_action
         self.cached_transitions = {}
@@ -63,13 +70,13 @@ class GridWorld(MDP):
         if absorbing_states is None:
             absorbing_states = []
         absorbing_states = copy.deepcopy(absorbing_states)
+        if absorbing_features is not None:
+            for f in absorbing_features:
+                absorbing_states.extend(state_features.inverse[f])
+
         self.absorbing_states = frozenset(absorbing_states)
 
 
-
-        if state_features is None:
-            state_features = {}
-        self.state_features = state_features
 
         #non-standard transitions
         non_std_t_moves = ['forward', 'back', 'left', 'right',
@@ -107,7 +114,7 @@ class GridWorld(MDP):
             if f in feature_types:
                 state_types[s] = state_types.get(s, [])
                 state_types[s].append(feature_types[f])
-            if wall_feature is not None and f == wall_feature:
+            if wall_feature is not None and f in wall_feature:
                 self.walls.append(s)
 
         for s, non_std_t in non_std_t_states.items():
@@ -130,10 +137,6 @@ class GridWorld(MDP):
 
         self.state_types = state_types
 
-
-
-
-
         #initial states
         if starting_states is None:
             starting_states = []
@@ -141,7 +144,14 @@ class GridWorld(MDP):
 
         if init_state is not None:
             starting_states.append(init_state)
-        self.starting_states = frozenset(starting_states)
+
+        if initstate_features is not None:
+            for f in initstate_features:
+                starting_states.extend(state_features.inverse[f])
+
+        init_states = set(starting_states)
+
+        self.init_state_dist = {s: 1/len(init_states) for s in init_states}
 
         #reward function stuff
         self.reward_function = RewardFunction(state_features=state_features,
@@ -207,6 +217,9 @@ class GridWorld(MDP):
     def is_any_terminal(self, s):
         return s in [self.terminal_state, self.intermediate_terminal]
 
+    def get_terminal_states(self):
+        return [self.terminal_state, self.intermediate_terminal]
+
     def is_absorbing(self, s):
         return s in self.absorbing_states
 
@@ -217,11 +230,17 @@ class GridWorld(MDP):
         return hashed
 
     def get_init_state(self):
-        if len(self.starting_states) == 0:
+        if len(self.init_state_dist) == 0:
             raise ValueError("No initial state defined")
-        starting_states = list(self.starting_states)
-        i = np.random.choice(len(starting_states))
-        return starting_states[i]
+        return sample_prob_dict(self.init_state_dist)
+
+    def get_init_states(self):
+        if len(self.init_state_dist) == 0:
+            raise ValueError("No initial state defined")
+        return list(self.init_state_dist.keys())
+
+    def get_init_state_dist(self):
+        return self.init_state_dist
 
     def available_actions(self, s=None):
         if s is None:
