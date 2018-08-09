@@ -29,7 +29,7 @@ class State(dict):
     def __str__(self):
         s = []
         for f in self.features:
-            s.append('{}={}'.format(f, self[f]))
+            s.append('{}: {}'.format(f, self[f]))
         return ''.join([self._prefixstr,
                         self._openstr,
                         ', '.join(s),
