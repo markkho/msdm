@@ -1,6 +1,5 @@
 from copy import deepcopy
 from functools import total_ordering
-from collections import OrderedDict
 
 @total_ordering
 class State(dict):
