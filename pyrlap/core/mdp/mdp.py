@@ -10,13 +10,19 @@ class MDP(object):
     def get_init_state(self):
         raise NotImplementedError
 
-    def get_init_states(self):
+    def get_init_state_dist(self):
         raise NotImplementedError
+
+    def get_init_states(self):
+        return []
 
     def is_terminal(self, s):
         raise NotImplementedError
 
     def is_terminal_action(self, a):
+        raise NotImplementedError
+
+    def get_terminal_states(self):
         raise NotImplementedError
 
     def transition_reward_dist(self, s, a):
@@ -38,10 +44,35 @@ class MDP(object):
     def reward_dist(self, s=None, a=None, ns=None):
         raise NotImplementedError
 
-    def available_actions(self, s):
+    def available_actions(self, s=None):
         raise NotImplementedError
 
     # =============================================#
+    """
+    There are multiple ways to represent the probability distribution
+    P(ns, r | s, a). These are functions designed to let you define
+    it in one way and then translate it into the other ways for use in
+    different algorithms.
+    """
+
+    def _cond_tfrf_to_joint(self, s=None, a=None):
+        """
+        Requires that transition_dist(s, a) and reward_dist(s, a, ns)
+        are defined.
+
+        :param s:
+        :param a:
+        :return:
+        """
+        tdist = self.transition_dist(s, a)
+        trdist = {}
+        for ns, tp in tdist.items():
+            rdist = self.reward_dist(s, a, ns)
+            for r, rp in rdist.items():
+                trdist[(ns, r)] = tp * rp
+        return trdist
+
+    # ============================================= #
 
     def get_state_features(self, s):
         raise NotImplementedError
@@ -73,8 +104,11 @@ class MDP(object):
                 rf[s][a] = rf[s].get(a, {})
                 tr_dist = self.transition_reward_dist(s, a)
                 for (ns, r), p in tr_dist.items():
-                    tf[s][a][ns] = p
-                    rf[s][a][ns] = r
+                    tf[s][a][ns] = tf[s][a].get(ns, 0)
+                    tf[s][a][ns] += p
+
+                    rf[s][a][ns] = rf[s][a].get(ns, 0)
+                    rf[s][a][ns] += r*p
                     if ns not in visited:
                         frontier.add(ns)
         return (tf, rf)
@@ -125,7 +159,10 @@ class MDP(object):
         return value
 
     def gen_transition_dict(self, start_state=None):
-        raise NotImplementedError
+        tf, rf = self.get_reachable_transition_reward_functions(
+            init_state=start_state
+        )
+        return tf
 
     def run_policy(self, policy, init_state=None):
         if init_state is None:
