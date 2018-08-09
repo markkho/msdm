@@ -86,7 +86,6 @@ class RewardFunction(object):
         self.cache_rewards = cache_rewards
         
     def reward(self, s=None, a=None, ns=None):
-
         if self.type == 'state_dict':
             reward = self.reward_dict.get(ns, self.default_reward)
 
