@@ -4,12 +4,13 @@ from .state import State
 @total_ordering
 class Belief(State):
     def __init__(self, bdict=None, owner='', **kwargs):
-        super(Belief, self).__init__(bdict,
-                                     immutable=True,
-                                     _prefixstr='b'+owner,
-                                     _openstr='{',
-                                     _closestr='}',
-                                     **kwargs)
+        super(Belief, self).__init__(
+            bdict,
+            immutable=True,
+            _prefixstr=None,
+            _openstr='({',
+            _closestr="}}, owner={})".format(repr(owner)),
+            **kwargs)
         self.owner = owner
 
     def __hash__(self):

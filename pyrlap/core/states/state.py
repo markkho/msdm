@@ -7,9 +7,9 @@ class State(dict):
                  fvals=None,
                  immutable=True,
 
-                 _prefixstr='s',
-                 _openstr='{',
-                 _closestr='}',
+                 _prefixstr=None,
+                 _openstr='({',
+                 _closestr='})',
                  **kwargs):
         if fvals is None:
             fvals = kwargs
@@ -18,6 +18,8 @@ class State(dict):
         self.vals = tuple([self[f] for f in self.features])
         self.immutable = immutable
 
+        if _prefixstr is None:
+            _prefixstr = self.__class__.__name__
         self._prefixstr = _prefixstr
         self._openstr = _openstr
         self._closestr = _closestr
@@ -25,10 +27,10 @@ class State(dict):
     def __hash__(self):
         return hash(tuple([(f, self[f]) for f in self.features]))
 
-    def __str__(self):
+    def __repr__(self):
         s = []
         for f in self.features:
-            s.append('{}: {}'.format(f, self[f]))
+            s.append('{}: {}'.format(repr(f), repr(self[f])))
         return ''.join([self._prefixstr,
                         self._openstr,
                         ', '.join(s),
@@ -55,11 +57,14 @@ class State(dict):
         for f in self.features:
             yield f
 
+    def __str__(self):
+        return self.pretty_str()
+
     def pretty_str(self, indent='    ', maxcols=80):
         def __recursion(s, depth):
-            flat_chars = len(str(s)) + len(indent * (depth + 1))
+            flat_chars = len(repr(s)) + len(indent * (depth + 1))
             if not isinstance(s, State) or flat_chars < maxcols:
-                stack.append(str(s))
+                stack.append(repr(s))
                 return
 
             indents = indent * (depth + 1)
@@ -94,3 +99,10 @@ class State(dict):
         frozen = deepcopy(self)
         frozen.immutable = True
         return frozen
+
+    def vectorize(self):
+        raise NotImplementedError
+
+# class StateVariable(object):
+#     def __init__(self, value):
+#         self.value =
