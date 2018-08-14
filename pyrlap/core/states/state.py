@@ -108,8 +108,7 @@ class State(dict):
                 return
 
             indents = indent * (depth + 1)
-            stack.append("{}({{\n".format(self.__class__.__name__))
-            # stack.append(s._prefixstr+s._openstr+'\n')
+            stack.append("{}({{\n".format(s.__class__.__name__))
 
             for fi, (f, v) in enumerate(s.items()):
                 stack.append(indents)
