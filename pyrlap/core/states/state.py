@@ -10,30 +10,46 @@ class State(dict):
                  fvals=None,
                  variables=None,
                  immutable=True,
-
-                 # _prefixstr=None,
-                 # _openstr='({',
-                 # _closestr='})',
                  **kwargs):
         if fvals is None:
             fvals = kwargs
         super(State, self).__init__(fvals)
         self.features = tuple(sorted(list(fvals.keys())))
         self.vals = tuple([self[f] for f in self.features])
+
         if variables is None:
             variables = {}
+
+        # recursively search substates to consolidate variables
+        def _finddel_variables(s: State):
+            if not isinstance(s, State):
+                return
+
+            #ensure variables are the same
+            for var in s.var_order:
+                if var in variables and variables[var] != s.variables[var]:
+                    raise ValueError("Different {} in sub-states".format(var))
+
+            for varval in s. var_vals:
+                _finddel_variables(varval)
+
+            variables.update(s.variables)
+            for f, v in zip(s.features, s.vals):
+                _finddel_variables(f)
+                _finddel_variables(v)
+
+
+        for f, v in zip(self.features, self.vals):
+            _finddel_variables(f)
+            _finddel_variables(v)
+
         self.variables = variables
         self.var_order = tuple(sorted(list(self.variables.keys())))
         self.var_vals = tuple([self.variables[v] for v in self.var_order])
         self.immutable = immutable
 
-        # if _prefixstr is None:
-        #     _prefixstr = self.__class__.__name__
-        # self._prefixstr = _prefixstr
-        # self._openstr = _openstr
-        # self._closestr = _closestr
-
     def __hash__(self):
+        # todo: hash the value of variables, not just the '_pointer'
         return hash((self.features, self.vals, self.var_order, self.var_vals))
 
     def __repr__(self):
@@ -58,6 +74,9 @@ class State(dict):
         super(State, self).__setitem__(key, value)
 
     def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+
         if self.features != other.features:
             raise TypeError("States have different features")
         return hash(self) == hash(other)
@@ -75,6 +94,11 @@ class State(dict):
 
     def __str__(self):
         return self.pretty_str()
+
+    def clear_variables(self):
+        self.variables = {}
+        self.var_order = ()
+        self.var_vals = ()
 
     def pretty_str(self, indent='    ', maxcols=80):
         def __recursion(s, depth):
@@ -97,24 +121,28 @@ class State(dict):
                 else:
                     stack.append(',\n')
             stack.append("{}}}".format(indent * depth))
-
-            for vi, (var, val) in enumerate(zip(s.var_order, s.var_vals)):
-                if vi == 0:
-                    stack.append(",\n"+(indent * depth)+"variables={\n")
-                stack.append(indents)
-                __recursion(var, depth=depth + 1)
-                stack.append(": ")
-                __recursion(val, depth=depth + 1)
-                if vi == (len(s.var_order) - 1):
-                    stack.append("\n")
-                else:
-                    stack.append(",\n")
-            if len(s.var_order) > 0:
-                stack.append("{}}})".format(indent * depth))
+            if depth > 0:
+                stack.append(")")
 
         stack = []
 
         __recursion(self, 0)
+
+        depth = 0
+        for vi, (var, val) in enumerate(zip(self.var_order, self.var_vals)):
+            if vi == 0:
+                stack.append(",\n" + (indent * depth) + "variables={\n")
+            # stack.append(indents)
+            __recursion(var, depth=depth + 1)
+            stack.append(": ")
+            __recursion(val, depth=depth + 1)
+            if vi == (len(self.var_order) - 1):
+                stack.append("\n")
+            else:
+                stack.append(",\n")
+        if len(self.var_order) > 0:
+            stack.append("{}}}".format(indent * depth))
+        stack.append(")")
         return ''.join(stack)
 
     def items(self):
@@ -127,9 +155,20 @@ class State(dict):
         for f in self: yield self[f]
 
     def freeze(self):
-        frozen = deepcopy(self)
-        frozen.immutable = True
-        return frozen
+        def __recursion(s):
+            if is_variable(s):
+                return __recursion(self.variables[s])
+
+            if not isinstance(s, State):
+                return s
+
+            fvals = {}
+            for f in s.features:
+                v = s[f]
+                fvals[__recursion(f)] = __recursion(v)
+            return s.__class__(fvals)
+
+        return __recursion(self)
 
     def vectorize(self):
         raise NotImplementedError
