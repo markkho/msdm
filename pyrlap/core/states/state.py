@@ -1,40 +1,56 @@
 from copy import deepcopy
 from functools import total_ordering
 
+def is_variable(x):
+    return isinstance(x, str) and x[0] == '_'
+
 @total_ordering
 class State(dict):
     def __init__(self,
                  fvals=None,
+                 variables=None,
                  immutable=True,
 
-                 _prefixstr=None,
-                 _openstr='({',
-                 _closestr='})',
+                 # _prefixstr=None,
+                 # _openstr='({',
+                 # _closestr='})',
                  **kwargs):
         if fvals is None:
             fvals = kwargs
         super(State, self).__init__(fvals)
         self.features = tuple(sorted(list(fvals.keys())))
         self.vals = tuple([self[f] for f in self.features])
+        if variables is None:
+            variables = {}
+        self.variables = variables
+        self.var_order = tuple(sorted(list(self.variables.keys())))
+        self.var_vals = tuple([self.variables[v] for v in self.var_order])
         self.immutable = immutable
 
-        if _prefixstr is None:
-            _prefixstr = self.__class__.__name__
-        self._prefixstr = _prefixstr
-        self._openstr = _openstr
-        self._closestr = _closestr
+        # if _prefixstr is None:
+        #     _prefixstr = self.__class__.__name__
+        # self._prefixstr = _prefixstr
+        # self._openstr = _openstr
+        # self._closestr = _closestr
 
     def __hash__(self):
-        return hash(tuple([(f, self[f]) for f in self.features]))
+        return hash((self.features, self.vals, self.var_order, self.var_vals))
 
     def __repr__(self):
-        s = []
-        for f in self.features:
-            s.append('{}: {}'.format(repr(f), repr(self[f])))
-        return ''.join([self._prefixstr,
-                        self._openstr,
-                        ', '.join(s),
-                        self._closestr,])
+        fvals = ['{}: {}'.format(repr(f), repr(v)) for f, v in self.items()]
+        fvals = ', '.join(fvals)
+        if len(self.var_order) == 0:
+            return '{}({{{}}})'.format(self.__class__.__name__, fvals)
+        else:
+            varvals = zip(self.var_order, self.var_vals)
+            varvals = ['{}: {}'.format(repr(r), repr(l)) for r, l in varvals]
+            varvals = ', '.join(varvals)
+
+            return '{class}({{{fvals}}}, variables={{{varvals}}})'.format(**{
+                'class': self.__class__.__name__,
+                'fvals': fvals,
+                'varvals': varvals
+            })
 
     def __setitem__(self, key, value):
         if self.immutable:
@@ -68,7 +84,8 @@ class State(dict):
                 return
 
             indents = indent * (depth + 1)
-            stack.append(s._prefixstr+s._openstr+'\n')
+            stack.append("{}({{\n".format(self.__class__.__name__))
+            # stack.append(s._prefixstr+s._openstr+'\n')
 
             for fi, (f, v) in enumerate(s.items()):
                 stack.append(indents)
@@ -79,7 +96,21 @@ class State(dict):
                     stack.append('\n')
                 else:
                     stack.append(',\n')
-            stack.append((indent * depth) + s._closestr)
+            stack.append("{}}}".format(indent * depth))
+
+            for vi, (var, val) in enumerate(zip(s.var_order, s.var_vals)):
+                if vi == 0:
+                    stack.append(",\n"+(indent * depth)+"variables={\n")
+                stack.append(indents)
+                __recursion(var, depth=depth + 1)
+                stack.append(": ")
+                __recursion(val, depth=depth + 1)
+                if vi == (len(s.var_order) - 1):
+                    stack.append("\n")
+                else:
+                    stack.append(",\n")
+            if len(s.var_order) > 0:
+                stack.append("{}}})".format(indent * depth))
 
         stack = []
 
@@ -102,7 +133,3 @@ class State(dict):
 
     def vectorize(self):
         raise NotImplementedError
-
-# class StateVariable(object):
-#     def __init__(self, value):
-#         self.value =

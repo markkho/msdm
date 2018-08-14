@@ -7,9 +7,9 @@ class Belief(State):
         super(Belief, self).__init__(
             bdict,
             immutable=True,
-            _prefixstr=None,
-            _openstr='({',
-            _closestr="}}, owner={})".format(repr(owner)),
+            # _prefixstr=None,
+            # _openstr='({',
+            # _closestr="}}, owner={})".format(repr(owner)),
             **kwargs)
         self.owner = owner
 
