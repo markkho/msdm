@@ -312,6 +312,7 @@ def visualize_walls(ax=None, walls=None, wall_styles=None, wall_width=.13):
         ax.add_patch(w)
     return ax
 
+
 def visualize_intervention_trajectory(axis, traj, absorbing_states,
                                       show_intervention_counts=True,
                                       show_agent_moves=True,
@@ -322,6 +323,7 @@ def visualize_intervention_trajectory(axis, traj, absorbing_states,
                                       ):
     '''
     traj format is [(s, a, ns, intervention), ...]
+    intervention is None or the resulting state
     '''
     if agent_move_kwargs is None:
         agent_move_kwargs = {}
@@ -359,6 +361,10 @@ def visualize_intervention_trajectory(axis, traj, absorbing_states,
         elif t[2] in absorbing_states:
             traj_segment.append((t[2], '%'))
             traj_segments.append(traj_segment)
+
+    # if there were no interventions, just plot the trajectory
+    if len(traj_segments) == 0 and show_agent_moves:
+        visualize_trajectory(axis, traj, **agent_move_kwargs)
 
     # plotting episode
     last_segment = None
