@@ -157,5 +157,5 @@ fabric.properties
 .idea/*
 
 # unique to this
-dev_notes.md
+*dev_notes.md
 *.mp4
