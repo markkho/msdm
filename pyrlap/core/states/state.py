@@ -65,8 +65,8 @@ class State(dict):
                     raise ValueError(
                         "Different variable {} in sub-states".format(var))
 
-            for varval in s.variables.values():
-                __findstore_vars(varval, s)
+            # for varval in s.variables.values():
+            #     __findstore_vars(varval, s)
 
             for f, v in zip(s.features, s.vals):
                 __findstore_vars(f, s)
@@ -79,6 +79,21 @@ class State(dict):
             __findstore_vars(f, self)
             __findstore_vars(v, self)
 
+        #once self.variables has all the info from all sub.variables
+        # set them to all point to self.variables
+        def _setvariables(s: State, parent : State = None):
+            if is_variable(s):
+                s = parent.__get_variable_value(s)
+                if is_variable(s):
+                    return
+            if not isinstance(s, State):
+                return
+            for f, v in s.items():
+                _setvariables(f, s)
+                _setvariables(v, s)
+            s.variables = self.variables
+        _setvariables(self)
+
     def __calc_hash(self):
         def _rec_hash(s: State):
             if is_variable(s):
@@ -87,6 +102,9 @@ class State(dict):
                 # if value isn't accessible yet
                 if is_variable(s):
                     return hash(s)
+
+                if isinstance(s, State):
+                    s.__calc_hash()
 
                 return _rec_hash(s)
 
