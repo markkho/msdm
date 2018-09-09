@@ -358,7 +358,7 @@ def visualize_intervention_trajectory(axis, traj, absorbing_states,
                 if not plot_post_absorbing_state:
                     break
             traj_segment = []
-        elif t[2] in absorbing_states:
+        elif t[2] in absorbing_states or ti == (len(traj) - 1):
             traj_segment.append((t[2], '%'))
             traj_segments.append(traj_segment)
 
