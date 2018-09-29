@@ -278,7 +278,6 @@ def plot_point(axis, state, point_format='bx', **kwargs):
 def plot_text(axis, state, text, outline=False, outline_linewidth=1,
               outline_color='black',
               x_offset=0, y_offset=0,
-              mytext=None,
               **kwargs):
     mytext = axis.text(state[0] + .5 + x_offset, state[1] + .5 + y_offset,
                        text, **kwargs)

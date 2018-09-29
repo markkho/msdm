@@ -11,7 +11,9 @@ from pyrlap.core.reward_function import RewardFunction
 from pyrlap.algorithms.valueiteration import ValueIteration
 from pyrlap.core.util import sample_prob_dict, bidict
 class GridWorld(MDP):
-    def __init__(self, width=None, height=None,
+    def __init__(self,
+                 width=None,
+                 height=None,
                  gridworld_array=None,
 
                  wait_action=False,
@@ -569,69 +571,29 @@ class GridWorld(MDP):
     #                                                #
     # ============================================== #
 
-    def plot(self, ax=None,
-             tile_colors=None,
-             feature_colors=None,
-             plot_policy=False,
-             plot_agent=False,
-             annotations=None,
-             softmax_temp=0.0,
-             discount_rate=.99,
-             randchoose=0.0):
+    def plot(self,
+             ax = None,
+             tile_colors : dict = None,
+             feature_colors : dict = None,
+             figsize : tuple = None,
+             annotations: dict = None,
+             title: str = None
+        ):
+
         #depends on matplotlib, which not every dist will have
-        from pyrlap.domains.gridworld.gridworldvis import visualize_states, \
-            visualize_action_values, plot_agent_location, plot_text, \
-            visualize_walls
+        from pyrlap.domains.gridworld.plotter import GridWorldPlotter
 
-        default_feature_colors = {
-            'a': 'orange',
-            'b': 'purple',
-            'c': 'cyan',
-            'x': 'red',
-            'p': 'pink',
-            '.': 'white',
-            'y': 'yellow',
-            'g': 'yellow',
-            'n': 'white'
-        }
-
-        if feature_colors is None:
-            feature_colors = default_feature_colors
-        else:
-            temp_fcolors = copy.deepcopy(default_feature_colors)
-            temp_fcolors.update(feature_colors)
-            feature_colors = temp_fcolors
-
-        if tile_colors is None:
-            tile_colors = {}
-        plot_states = []
-        for s in self.states:
-            if self.is_any_terminal(s):
-                continue
-            if s in tile_colors:
-                continue
-            f = self.state_features.get(s, '.')
-            tile_colors[s] = feature_colors[f]
-            plot_states.append(s)
-
-        ax = visualize_states(ax=ax,
-                              states=plot_states,
-                              tile_color=tile_colors)
-
-        ax = visualize_walls(ax=ax, walls=self.walls)
-
-        if annotations is not None:
-            for annotation_dict in annotations:
-                plot_text(axis=ax, **annotation_dict)
-
-        if plot_policy:
-            policy = self.solve(discount_rate=discount_rate,
-                                softmax_temp=softmax_temp,
-                                randchoose=randchoose)
-            visualize_action_values(ax=ax,
-                                    state_action_values=policy.to_dict())
-
-        if plot_agent:
-            agent = plot_agent_location(self.get_init_state(), ax=ax)
-
-        return ax
+        gwp = GridWorldPlotter(**{
+            'gw': self,
+            'tile_colors': tile_colors,
+            'feature_colors': feature_colors,
+            'ax': ax,
+            'figsize': figsize,
+            'title': title
+        })
+        if annotations is None:
+            annotations = {}
+        for aname, ann in annotations.items():
+            gwp.annotate(**ann, name=aname)
+        gwp.plot()
+        return gwp
