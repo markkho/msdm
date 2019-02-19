@@ -2,7 +2,7 @@ import numpy as np
 import logging
 
 from pyrlap.core.util import calc_esoftmax_dist, sample_prob_dict
-from pyrlap.core.hierarchicalrl import HAMState
+from pyrlap.hierarchicalrl.ham.ham import HAMState
 
 logger = logging.getLogger(__name__)
 

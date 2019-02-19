@@ -1,4 +1,4 @@
-from pyrlap.core.hierarchicalrl import AbstractMachine, \
+from pyrlap.hierarchicalrl.ham.ham import AbstractMachine, \
     HierarchyOfAbstractMachines
 from pyrlap.domains.taxicab import TaxiCabMDP
 

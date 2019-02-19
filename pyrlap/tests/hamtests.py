@@ -2,9 +2,9 @@ import unittest
 import numpy as np
 
 from pyrlap.domains.taxicab import TaxiCabMDP
-from pyrlap.domains.taxicab.taskhierarchies import \
+from pyrlap.hierarchicalrl.ham.domains.taxicab import \
     getput_hierarchy, restricted_getput, simple_getput, simple_insideoutside
-from pyrlap.algorithms.hierarchicalqlearning import HierarchicalQLearner
+from pyrlap.hierarchicalrl.ham.hierarchicalqlearning import HierarchicalQLearner
 
 class HAMTests(unittest.TestCase):
     def setUp(self):

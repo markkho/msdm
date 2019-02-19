@@ -1,6 +1,6 @@
 from itertools import product
 
-from pyrlap.core.hierarchicalrl import AbstractMachine, \
+from pyrlap.hierarchicalrl.ham.ham import AbstractMachine, \
     HierarchyOfAbstractMachines
 from pyrlap.domains.gridworld import GridWorld
 from pyrlap.domains.taxicab.utils import get_building_walls
