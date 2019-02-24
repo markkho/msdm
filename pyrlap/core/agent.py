@@ -3,18 +3,22 @@
 import logging
 
 from pyrlap.core.util import sample_prob_dict, calc_esoftmax_dist, SANSRTuple
+from pyrlap.core.mdp.mdp import MDP as MDPClass
 
 logger = logging.getLogger(__name__)
 
 
 class Agent(object):
-    def __init__(self, mdp):
+    def __init__(self, mdp: MDPClass):
         self.mdp = mdp
 
     def __getitem__(self, s):
         return self.act(s)
 
     def act_dist(self, s, softmax_temp=None, randchoose=None):
+        raise NotImplementedError
+
+    def to_dict(self) -> dict:
         raise NotImplementedError
 
     def act(self, s, softmax_temp=None, randchoose=None):
