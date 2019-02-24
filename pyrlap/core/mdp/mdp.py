@@ -4,6 +4,7 @@ import numpy as np
 import copy
 
 from pyrlap.core.util import sample_prob_dict, SANSRTuple, SANSTuple
+from pyrlap.core.transition_function import TransitionFunction
 
 class MDP(object):
     #=============================================#
@@ -111,13 +112,25 @@ class MDP(object):
                     rf[s][a][ns] += r*p
                     if ns not in visited:
                         frontier.add(ns)
-        return (tf, rf)
+        return (TransitionFunction(tf), rf)
+
+    def get_reachable_states(self, max_states=np.inf,
+                             init_state=None, init_states=None):
+        return self.get_reachable_transition_reward_functions(
+            max_states, init_state, init_states
+        )[0].keys()
 
     def get_state_actions(self):
         raise NotImplementedError
 
     def get_state_action_nextstates(self):
         raise NotImplementedError
+    
+    def iterate_sans_prob(self):
+        for s in self.get_states():
+            for a in self.available_actions(s):
+                for ns, prob in self.transition_dist(s, a).items():
+                    yield (s, a, ns, prob)
 
     def get_reward_dict(self):
         raise NotImplementedError
