@@ -18,6 +18,9 @@ class GridWorld(MDP):
 
                  wait_action=False,
                  wall_action=False,
+                 distinct_absorbing_action:
+                    "sets whether actions in an absorbing state are distinct"
+                    = True,
                  state_features=None,
                  absorbing_states=None,
                  absorbing_features=None,
@@ -60,14 +63,17 @@ class GridWorld(MDP):
 
         self.width = width
         self.height = height
-        self.states = list(product(range(width), range(height))) + \
-                      [(-1, -1), (-2, -2)]
-        self.wait_action = wait_action
-        self.wall_action = wall_action
-        self.cached_transitions = {}
-        self.include_intermediate_terminal = include_intermediate_terminal
         self.intermediate_terminal = (-2, -2)
         self.terminal_state = (-1, -1)
+        self.states = list(product(range(width), range(height))) + \
+                      [self.terminal_state]
+        if include_intermediate_terminal:
+            self.states.append((self.intermediate_terminal))
+        self.wait_action = wait_action
+        self.wall_action = wall_action
+        self.distinct_absorbing_action = distinct_absorbing_action
+        self.cached_transitions = {}
+        self.include_intermediate_terminal = include_intermediate_terminal
 
         if absorbing_states is None:
             absorbing_states = []
@@ -116,8 +122,8 @@ class GridWorld(MDP):
             if f in feature_types:
                 state_types[s] = state_types.get(s, [])
                 state_types[s].append(feature_types[f])
-            if wall_feature is not None and f in wall_feature:
-                self.walls.append(s)
+            if wall_feature is not None and f is not None and f in wall_feature:
+                self.walls.append((s, None)) #state and side
 
         for s, non_std_t in non_std_t_states.items():
             if 'side' in non_std_t:
@@ -254,7 +260,7 @@ class GridWorld(MDP):
         actions = []
 
         # handle absorbing, terminal, and intermediate terminal states
-        if s in self.absorbing_states:
+        if s in self.absorbing_states and self.distinct_absorbing_action:
             actions.append(self.TERMINAL_ACTION)
         elif s == self.terminal_state:
             actions.append(self.TERMINAL_ACTION)
@@ -554,7 +560,7 @@ class GridWorld(MDP):
               discount_rate,
               softmax_temp=0.0,
               randchoose=0.0,
-              **kwargs):
+              **kwargs) -> ValueIteration:
         planner = ValueIteration(mdp=self,
                                  discount_rate=discount_rate,
                                  softmax_temp=softmax_temp,
@@ -577,11 +583,22 @@ class GridWorld(MDP):
              feature_colors : dict = None,
              figsize : tuple = None,
              annotations: dict = None,
-             title: str = None
+             title: str = None,
+             state_partition = None
         ):
 
         #depends on matplotlib, which not every dist will have
-        from pyrlap.domains.gridworld.plotter import GridWorldPlotter
+        from pyrlap.domains.gridworld.plotter import GridWorldPlotter, \
+            DISTINCT_COLORS
+        from itertools import cycle
+
+        if state_partition is not None:
+            pcolors = cycle(DISTINCT_COLORS)
+            tile_colors = {}
+            for i, ss in enumerate(state_partition):
+                c = next(pcolors)
+                for s in ss:
+                    tile_colors[s] = c
 
         gwp = GridWorldPlotter(**{
             'gw': self,

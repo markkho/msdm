@@ -308,6 +308,8 @@ def visualize_walls(ax=None, walls=None, wall_styles=None, wall_width=.13):
             w = Rectangle((x, y), wall_width, 1, **kwargs)
         elif side == '>':
             w = Rectangle((x + 1 - wall_width, y), wall_width, 1, **kwargs)
+        else:
+            w = Rectangle(s, 1, 1, **kwargs)
         ax.add_patch(w)
     return ax
 
