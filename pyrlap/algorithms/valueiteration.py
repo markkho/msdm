@@ -37,7 +37,7 @@ class ValueIteration(Planner):
     def solve(self):
         if self.tf is None:
             self.build_model()
-        vf = {s : self.init_val for s in self.tf.keys()}
+        vf = {s : self.init_val for s in self.tf}
         optimal_pol = {}
         action_vals = {}
         logger.debug('Running Value Iteration')
