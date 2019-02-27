@@ -586,6 +586,8 @@ class GridWorld(MDP):
              title: str = None,
              state_partition = None, #StatePartition
              value_function = None,
+             cmap="bwr_r",
+             value_function_range=None,
              show_value_numbers = True,
              **kwargs
         ):
@@ -626,5 +628,7 @@ class GridWorld(MDP):
         if value_function is not None:
             gwp.plot_value(vf = value_function,
                            show_value_numbers = show_value_numbers,
+                           cmap=cmap,
+                           value_function_range=value_function_range,
                            **kwargs)
         return gwp

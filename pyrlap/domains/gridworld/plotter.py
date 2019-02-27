@@ -1,4 +1,6 @@
 import copy
+from colorsys import rgb_to_hsv, hsv_to_rgb
+
 import matplotlib.colors as colors
 import matplotlib.cm as cmx
 import matplotlib.pyplot as plt
@@ -17,6 +19,15 @@ DISTINCT_COLORS = ['#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231',
                    '#008080', '#e6beff', '#9a6324', '#fffac8', '#800000',
                    '#aaffc3', '#808000', '#ffd8b1', '#000075', '#808080',
                    '#ffffff', '#000000']
+
+def get_contrast_color(color):
+    r, g, b = colors.to_rgb(color)
+    luminance = (0.299*r**2 + 0.587*g**2 + 0.114*b**2)**.5
+    if luminance < .7:
+        return "white"
+    return 'grey'
+
+
 
 
 class GridWorldPlotter(object):
@@ -37,7 +48,8 @@ class GridWorldPlotter(object):
             '.': 'white',
             'y': 'yellow',
             'g': 'yellow',
-            'n': 'white'
+            'n': 'white',
+            '#': 'black'
         }
         if feature_colors is None:
             feature_colors = default_feature_colors
@@ -95,7 +107,9 @@ class GridWorldPlotter(object):
                    vi : ValueIteration = None,
                    vf : ValueFunction = None,
                    show_value_numbers : bool = True,
-                   fontsize=10
+                   fontsize=10,
+                   cmap : "matplotlib color map" = "bwr_r",
+                   value_function_range = None
                    ):
         if vi is not None:
             visualize_action_values(ax=self.ax,
@@ -104,9 +118,14 @@ class GridWorldPlotter(object):
                                     )
         elif vf is not None:
             vmax_abs = max(abs(v) for v in vf.values())
-            red_blue = plt.get_cmap('bwr_r')
-            color_norm = colors.Normalize(vmin=-vmax_abs, vmax=vmax_abs)
-            value_map = cmx.ScalarMappable(norm=color_norm, cmap=red_blue)
+
+            if value_function_range is None:
+                value_function_range = [-vmax_abs, vmax_abs]
+            vmin, vmax = value_function_range
+
+            colorrange = plt.get_cmap(cmap)
+            color_norm = colors.Normalize(vmin=vmin, vmax=vmax)
+            value_map = cmx.ScalarMappable(norm=color_norm, cmap=colorrange)
             tile_colors = {s: value_map.to_rgba(v) for s, v in vf.items()}
             visualize_states(ax=self.ax, states=self.states_to_plot,
                              tile_color=tile_colors)
@@ -114,11 +133,11 @@ class GridWorldPlotter(object):
                 for s in self.gw.get_states():
                     if self.gw.is_any_terminal(s):
                         continue
-                    color = 'white' if abs(vf[s]/vmax_abs) > .2 else 'black'
+                    # color = 'white' if abs(vf[s]/vmax_abs) > .2 else 'black'
                     self.annotate(x=s[0],
                                   y=s[1],
                                   text="%.2f" % vf[s],
-                                  color=color,
+                                  color=get_contrast_color(tile_colors[s]),
                                   horizontalalignment='center',
                                   verticalalignment='center',
                                   fontsize=fontsize
