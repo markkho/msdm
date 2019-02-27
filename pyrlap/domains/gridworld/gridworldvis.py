@@ -79,6 +79,16 @@ def visualize_deterministic_policy(ax, policy, absorbing_action='%', **kwargs):
                    a != absorbing_action])
     return visualize_action_values(ax, policy, **kwargs)
 
+def visualize_state_values(ax=None, state_values=None, global_maxval=None):
+    if global_maxval is None:
+        global_maxval = -np.inf
+        for s, v in state_values.items():
+            if global_maxval < np.absolute(v):
+                global_maxval = np.absolute(v)
+
+
+
+
 
 def visualize_action_values(ax=None, state_action_values=None,
                             color_valence=False,

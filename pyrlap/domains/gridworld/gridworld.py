@@ -262,9 +262,9 @@ class GridWorld(MDP):
         # handle absorbing, terminal, and intermediate terminal states
         if s in self.absorbing_states and self.distinct_absorbing_action:
             actions.append(self.TERMINAL_ACTION)
-        elif s == self.terminal_state:
+        elif s == self.terminal_state and self.distinct_absorbing_action:
             actions.append(self.TERMINAL_ACTION)
-        elif s == self.intermediate_terminal:
+        elif s == self.intermediate_terminal and self.distinct_absorbing_action:
             actions.append(self.TERMINAL_ACTION)
 
         # handle 'normal' transitions with no wall actions
@@ -584,7 +584,10 @@ class GridWorld(MDP):
              figsize : tuple = None,
              annotations: dict = None,
              title: str = None,
-             state_partition = None
+             state_partition = None, #StatePartition
+             value_function = None,
+             show_value_numbers = True,
+             **kwargs
         ):
 
         #depends on matplotlib, which not every dist will have
@@ -593,12 +596,19 @@ class GridWorld(MDP):
         from itertools import cycle
 
         if state_partition is not None:
-            pcolors = cycle(DISTINCT_COLORS)
-            tile_colors = {}
-            for i, ss in enumerate(state_partition):
-                c = next(pcolors)
-                for s in ss:
-                    tile_colors[s] = c
+            if hasattr(state_partition, "get_color"):
+                get_color = state_partition.get_color
+                for eq_class in state_partition:
+                    c = get_partition_color(eq_class)
+                    for s in eq_class:
+                        tile_colors[s] = c
+            else:
+                pcolors = cycle(DISTINCT_COLORS)
+                tile_colors = {}
+                for i, ss in enumerate(state_partition):
+                    c = next(pcolors)
+                    for s in ss:
+                        tile_colors[s] = c
 
         gwp = GridWorldPlotter(**{
             'gw': self,
@@ -613,4 +623,8 @@ class GridWorld(MDP):
         for aname, ann in annotations.items():
             gwp.annotate(**ann, name=aname)
         gwp.plot()
+        if value_function is not None:
+            gwp.plot_value(vf = value_function,
+                           show_value_numbers = show_value_numbers,
+                           **kwargs)
         return gwp

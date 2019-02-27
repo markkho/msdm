@@ -1,10 +1,13 @@
 import copy
+import matplotlib.colors as colors
+import matplotlib.cm as cmx
+import matplotlib.pyplot as plt
 
 from pyrlap.domains.gridworld import GridWorld
 from pyrlap.domains.gridworld.gridworldvis import visualize_states, \
     visualize_action_values, plot_agent_location, plot_text, \
     visualize_walls, visualize_trajectory
-from pyrlap.core.agent import Agent
+from pyrlap.core.agent import Agent, ValueFunction
 from pyrlap.algorithms.valueiteration import ValueIteration
 
 import matplotlib.pyplot as plt
@@ -48,11 +51,11 @@ class GridWorldPlotter(object):
         else:
             tile_colors = copy.copy(tile_colors)
 
-        plot_states = []
+        states_to_plot = []
         for s in gw.states:
             if gw.is_any_terminal(s):
                 continue
-            plot_states.append(s)
+            states_to_plot.append(s)
             if s in tile_colors:
                 continue
             if (s, None) in gw.walls:
@@ -75,12 +78,12 @@ class GridWorldPlotter(object):
         self.tile_colors = tile_colors
         self.ax = ax
 
-        self.plot_states = plot_states
+        self.states_to_plot = states_to_plot
         self.annotations = {}
         self.trajectories = {}
 
     def plot(self):
-        visualize_states(ax=self.ax, states=self.plot_states,
+        visualize_states(ax=self.ax, states=self.states_to_plot,
                          tile_color=self.tile_colors)
         visualize_walls(ax=self.ax, walls=self.gw.walls)
 
@@ -88,11 +91,38 @@ class GridWorldPlotter(object):
         p = agent.to_dict()
         visualize_action_values(ax=self.ax, state_action_values=p)
 
-    def plot_value(self, vi: ValueIteration):
-        visualize_action_values(ax=self.ax,
-                                state_action_values=vi.action_value_function,
-                                color_valence=True
-                                )
+    def plot_value(self,
+                   vi : ValueIteration = None,
+                   vf : ValueFunction = None,
+                   show_value_numbers : bool = True,
+                   fontsize=10
+                   ):
+        if vi is not None:
+            visualize_action_values(ax=self.ax,
+                                    state_action_values=vi.action_value_function,
+                                    color_valence=True
+                                    )
+        elif vf is not None:
+            vmax_abs = max(abs(v) for v in vf.values())
+            red_blue = plt.get_cmap('bwr_r')
+            color_norm = colors.Normalize(vmin=-vmax_abs, vmax=vmax_abs)
+            value_map = cmx.ScalarMappable(norm=color_norm, cmap=red_blue)
+            tile_colors = {s: value_map.to_rgba(v) for s, v in vf.items()}
+            visualize_states(ax=self.ax, states=self.states_to_plot,
+                             tile_color=tile_colors)
+            if show_value_numbers:
+                for s in self.gw.get_states():
+                    if self.gw.is_any_terminal(s):
+                        continue
+                    color = 'white' if abs(vf[s]/vmax_abs) > .2 else 'black'
+                    self.annotate(x=s[0],
+                                  y=s[1],
+                                  text="%.2f" % vf[s],
+                                  color=color,
+                                  horizontalalignment='center',
+                                  verticalalignment='center',
+                                  fontsize=fontsize
+                                  )
 
     def plot_trajectory(self, traj, name=None, **kwargs):
         traj_patches = visualize_trajectory(axis=self.ax, traj=traj, **kwargs)
@@ -122,5 +152,5 @@ class GridWorldPlotter(object):
             s = self.gw.get_init_state()
         self.agent = plot_agent_location(s, ax=self.ax)
 
-    def title(self, title):
-        self.ax.set_title(title)
+    def title(self, title, **kwargs):
+        self.ax.set_title(title, **kwargs)
