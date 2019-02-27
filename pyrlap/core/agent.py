@@ -2,7 +2,10 @@
 
 import logging, warnings
 from random import randint
-from collections import Mapping
+import sys
+from collections import Mapping, defaultdict
+
+import numpy as np
 
 from pyrlap.core.util import sample_prob_dict, calc_esoftmax_dist, SANSRTuple
 from pyrlap.core.mdp.mdp import MDP as MDPClass
@@ -74,7 +77,7 @@ class Agent(object):
 
     def value(self,
               discount_rate=.99,
-              max_iterations=150,
+              max_iterations=250,
               converge_delta=.01) -> ValueFunction:
         """
         return the value function of this policy - basically just do
@@ -106,6 +109,42 @@ class Agent(object):
                 "Policy evaluation did not converge after %d iterations (delta=%.2f)" \
                 % (i, change))
         return ValueFunction(vf)
+
+    def successor_representation(self, state=None, discount_rate=.99):
+        mdp = self.mdp
+        states = sorted(mdp.get_reachable_states())
+        if state is None:
+            state = mdp.get_init_state()
+
+        # calculate reward process resulting from policy
+        rp_matrix = np.zeros((len(states), len(states)))
+        for s in states:
+            adist = self.act_dist(s)
+            if mdp.is_terminal(s):
+                continue
+            ns_dist = defaultdict(float)
+            for a, p in adist.items():
+                nsd = mdp.transition_dist(s, a)
+                for ns, nsp in nsd.items():
+                    ns_dist[ns] += nsp * p
+            assert ((sum(ns_dist.values()) - 1) < .00001)  # sum to 1
+            for ns, nsp in ns_dist.items():
+                rp_matrix[states.index(s), states.index(ns)] = nsp
+
+        m_tot = np.eye(len(states)) - rp_matrix
+        if np.linalg.cond(m_tot) < 1/sys.float_info.epsilon:
+            m_tot = np.linalg.inv(m_tot)
+        else:
+            warnings.warn(
+                "Undiscounted transition matrix is singular. "+
+                ("Calculating discounted occupancy dr = %.2f" % discount_rate)
+            )
+            m_tot = np.eye(len(states)) - discount_rate*rp_matrix
+            m_tot = np.linalg.inv(m_tot)
+
+        occupancy = m_tot[states.index(state), :]
+        occupancy = dict(zip(states, occupancy))
+        return occupancy
 
 class RandomAgent(Agent):
     def act_dist(self, s, softmax_temp=None, randchoose=None):
