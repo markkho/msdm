@@ -20,6 +20,9 @@ class MDP(object):
     def is_terminal(self, s):
         raise NotImplementedError
 
+    def is_any_terminal(self, s):
+        raise NotImplementedError
+
     def is_terminal_action(self, a):
         raise NotImplementedError
 
