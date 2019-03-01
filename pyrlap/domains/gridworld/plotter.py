@@ -1,5 +1,4 @@
 import copy
-from colorsys import rgb_to_hsv, hsv_to_rgb
 
 import matplotlib.colors as colors
 import matplotlib.cm as cmx
@@ -11,8 +10,6 @@ from pyrlap.domains.gridworld.gridworldvis import visualize_states, \
     visualize_walls, visualize_trajectory
 from pyrlap.core.agent import Agent, ValueFunction
 from pyrlap.algorithms.valueiteration import ValueIteration
-
-import matplotlib.pyplot as plt
 
 DISTINCT_COLORS = ['#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231',
                    '#911eb4', '#46f0f0', '#f032e6', '#bcf60c', '#fabebe',
