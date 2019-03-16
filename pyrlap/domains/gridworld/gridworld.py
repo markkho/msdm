@@ -173,7 +173,9 @@ class GridWorld(MDP):
         self.terminal_state_reward = self.reward_function.terminal_state_reward
 
         self.TERMINAL_ACTION = '%'
-        self.ACTION_LIST = [self.TERMINAL_ACTION, '>', '<', 'v', '^']
+        self.ACTION_LIST = ['>', '<', 'v', '^']
+        if self.distinct_absorbing_action:
+            self.ACTION_LIST.append(self.TERMINAL_ACTION)
         if self.wait_action:
             self.ACTION_LIST.append('x')
 
@@ -598,19 +600,19 @@ class GridWorld(MDP):
         from itertools import cycle
 
         if state_partition is not None:
-            if hasattr(state_partition, "get_color"):
-                get_color = state_partition.get_color
-                for eq_class in state_partition:
-                    c = get_partition_color(eq_class)
-                    for s in eq_class:
-                        tile_colors[s] = c
-            else:
-                pcolors = cycle(DISTINCT_COLORS)
-                tile_colors = {}
-                for i, ss in enumerate(state_partition):
-                    c = next(pcolors)
-                    for s in ss:
-                        tile_colors[s] = c
+            # if hasattr(state_partition, "get_color"):
+            #     get_color = state_partition.get_color
+            #     for eq_class in state_partition:
+            #         c = get_partition_color(eq_class)
+            #         for s in eq_class:
+            #             tile_colors[s] = c
+            # else:
+            pcolors = cycle(DISTINCT_COLORS)
+            tile_colors = {}
+            for i, ss in enumerate(state_partition):
+                c = next(pcolors)
+                for s in ss:
+                    tile_colors[s] = c
 
         gwp = GridWorldPlotter(**{
             'gw': self,
