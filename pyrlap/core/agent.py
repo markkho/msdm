@@ -32,14 +32,17 @@ class ValueFunction(Mapping):
         return key
 
 class Agent(object):
-    def __init__(self, mdp: MDPClass):
+    def __init__(self, mdp: MDPClass, policy_dict: dict = None):
         self.mdp = mdp
+        self.policy_dict = policy_dict
 
     def __getitem__(self, s):
         return self.act(s)
 
     def act_dist(self, s, softmax_temp=None, randchoose=None):
-        raise NotImplementedError
+        if self.policy_dict is None:
+            raise NotImplementedError
+        return self.policy_dict[s]
 
     def to_dict(self, **kwargs) -> dict:
         policy = {}
@@ -110,11 +113,18 @@ class Agent(object):
                 % (i, change))
         return ValueFunction(vf)
 
-    def successor_representation(self, state=None, discount_rate=.99):
+    def successor_representation(self,
+                                 state=None,
+                                 init_state_dist=None,
+                                 discount_rate=.99,
+                                 normalize=False):
         mdp = self.mdp
         states = sorted(mdp.get_reachable_states())
-        if state is None:
-            state = mdp.get_init_state()
+        if init_state_dist is None:
+            if state is None:
+                init_state_dist = mdp.get_init_state_dist()
+            else:
+                init_state_dist = {state: 1}
 
         # calculate reward process resulting from policy
         rp_matrix = np.zeros((len(states), len(states)))
@@ -142,7 +152,16 @@ class Agent(object):
             m_tot = np.eye(len(states)) - discount_rate*rp_matrix
             m_tot = np.linalg.inv(m_tot)
 
-        occupancy = m_tot[states.index(state), :]
+        init_states, init_probs = list(zip(*init_state_dist.items()))
+        init_idx = [states.index(s) for s in init_states]
+        occupancy = m_tot[init_idx, :].T @ init_probs
+
+        terminal_states = \
+            [states.index(ts) for ts in self.mdp.get_terminal_states()
+             if ts in states]
+        occupancy[terminal_states] = 0
+        if normalize:
+            occupancy = occupancy/np.sum(occupancy)
         occupancy = dict(zip(states, occupancy))
         return occupancy
 
