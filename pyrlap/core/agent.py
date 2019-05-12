@@ -50,6 +50,16 @@ class Agent(object):
             policy[s] = self.act_dist(s, **kwargs)
         return policy
 
+    def as_matrix(self):
+        mats = self.mdp.as_matrices()
+        ss = mats['ss']
+        aa = mats['aa']
+        policy = np.zeros((len(ss), len(aa)))
+        for si, s in enumerate(ss):
+            for ai, a in enumerate(aa):
+                policy[si][ai] = self.act_dist(s).get(a, 0)
+        return policy
+
     def act(self, s, softmax_temp=None, randchoose=None):
         adist = self.act_dist(s, softmax_temp, randchoose)
         return sample_prob_dict(adist)
@@ -78,92 +88,75 @@ class Agent(object):
             i += 1
         return traj
 
-    def value(self,
-              discount_rate=.99,
-              max_iterations=250,
-              converge_delta=.01) -> ValueFunction:
+    def value(self, discount_rate=.99) -> ValueFunction:
         """
         return the value function of this policy - basically just do
         policy evaluation
         """
-        vf = {}
+        sr = self.successor_representation(
+            discount_rate=discount_rate,
+            discounted=True,
+            normalize=False,
+            return_matrix=True
+        )
+        mdp_mat = self.mdp.as_matrices()
+        rf = mdp_mat['rf']
+        tf = mdp_mat['tf']
+        ss = mdp_mat['ss']
+        pol = self.as_matrix()
+        s_rf = np.einsum("san,san,sa->s",tf,rf,pol)
+        v = np.einsum("sn,n->s",sr,s_rf)
+        return ValueFunction({s: val for s, val in zip(ss, v)})
 
-        for i in range(max_iterations):
-            change = 0
-            vf_temp = {}
-            for s in self.mdp.get_states():
-                s_val = 0
-                adist = self.act_dist(s)
-                for a, aprob in adist.items():
-                    ns_dist = self.mdp.transition_dist(s, a)
-                    for ns, nsprob in ns_dist.items():
-                        r = self.mdp.reward(s, a, ns)
-                        v = vf.get(ns, 0)
-                        s_val += (r + discount_rate*v)*aprob*nsprob
-                vf_temp[s] = s_val
-                change = max(change, abs(vf_temp[s] - vf.get(s, 0)))
-            vf = vf_temp
-            logger.debug('iteration: %d   change: %.2f' % (i, change))
-            if change < converge_delta:
-                break
-
-        if change >= converge_delta:
-            warnings.warn(
-                "Policy evaluation did not converge after %d iterations (delta=%.2f)" \
-                % (i, change))
-        return ValueFunction(vf)
+    def calc_occupancy(self,
+                       discount_rate=.99,
+                       discounted=False,
+                       normalize=False):
+        sr = self.successor_representation(
+            discount_rate=discount_rate,
+            discounted=discounted,
+            normalize=normalize,
+            return_matrix=True
+        )
+        s0 = self.mdp.as_matrices()['s0']
+        ss = self.mdp.as_matrices()['ss']
+        occ = np.einsum("s,sn->n", s0, sr)
+        occ = {s: o for s, o in zip(ss, occ)}
+        return occ
 
     def successor_representation(self,
-                                 state=None,
-                                 init_state_dist=None,
                                  discount_rate=.99,
-                                 normalize=False):
-        mdp = self.mdp
-        states = sorted(mdp.get_reachable_states())
-        if init_state_dist is None:
-            if state is None:
-                init_state_dist = mdp.get_init_state_dist()
+                                 discounted=False,
+                                 normalize=False,
+                                 return_matrix=False):
+        mdp_mat = self.mdp.as_matrices()
+        tf = mdp_mat['tf']
+        ss = mdp_mat['ss']
+
+        mp = np.einsum("san,sa->sn", tf, self.as_matrix())
+
+        # Calculate discounted or undiscounted successor representation
+        if not discounted:
+            if np.linalg.cond(np.eye(len(ss)) - mp) < 1/sys.float_info.epsilon:
+                sr = np.linalg.inv(np.eye(len(ss)) - mp)
             else:
-                init_state_dist = {state: 1}
+                warnings.warn(
+                    "Undiscounted transition matrix is singular. "+
+                    ("Calculating discounted occupancy dr = %.2f" % discount_rate)
+                )
+                sr = np.linalg.inv(np.eye(len(ss)) - discount_rate*mp)
+        if discounted:
+            sr = np.linalg.inv(np.eye(len(ss)) - discount_rate * mp)
 
-        # calculate reward process resulting from policy
-        rp_matrix = np.zeros((len(states), len(states)))
-        for s in states:
-            adist = self.act_dist(s)
-            if mdp.is_terminal(s):
-                continue
-            ns_dist = defaultdict(float)
-            for a, p in adist.items():
-                nsd = mdp.transition_dist(s, a)
-                for ns, nsp in nsd.items():
-                    ns_dist[ns] += nsp * p
-            assert ((sum(ns_dist.values()) - 1) < .00001)  # sum to 1
-            for ns, nsp in ns_dist.items():
-                rp_matrix[states.index(s), states.index(ns)] = nsp
-
-        m_tot = np.eye(len(states)) - rp_matrix
-        if np.linalg.cond(m_tot) < 1/sys.float_info.epsilon:
-            m_tot = np.linalg.inv(m_tot)
-        else:
-            warnings.warn(
-                "Undiscounted transition matrix is singular. "+
-                ("Calculating discounted occupancy dr = %.2f" % discount_rate)
-            )
-            m_tot = np.eye(len(states)) - discount_rate*rp_matrix
-            m_tot = np.linalg.inv(m_tot)
-
-        init_states, init_probs = list(zip(*init_state_dist.items()))
-        init_idx = [states.index(s) for s in init_states]
-        occupancy = m_tot[init_idx, :].T @ init_probs
-
-        terminal_states = \
-            [states.index(ts) for ts in self.mdp.get_terminal_states()
-             if ts in states]
-        occupancy[terminal_states] = 0
         if normalize:
-            occupancy = occupancy/np.sum(occupancy)
-        occupancy = dict(zip(states, occupancy))
-        return occupancy
+            sr_norm = np.einsum("sn->s", sr)
+            sr = np.einsum("s,sn->sn", 1/sr_norm, sr)
+
+        if return_matrix:
+            return sr
+
+        sr = {s: dict(zip(ss, s_sr)) for s, s_sr in zip(ss, sr)}
+        return sr
 
 class RandomAgent(Agent):
     def act_dist(self, s, softmax_temp=None, randchoose=None):
