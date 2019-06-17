@@ -3,8 +3,6 @@ from itertools import product
 
 import numpy as np
 
-import pytweening
-
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle, Arrow, Circle
 from matplotlib.path import Path
@@ -421,6 +419,7 @@ def plot_agent_location(state,
                         ax=None,
                         zorder=10,
                         default_agent_radius=.3):
+    import pytweening
     if next_state in [(-1, -1), (-2, -2)]:
         next_state = None
 

@@ -11,11 +11,16 @@ from pyrlap.domains.gridworld.gridworldvis import visualize_states, \
 from pyrlap.core.agent import Agent, ValueFunction
 from pyrlap.algorithms.valueiteration import ValueIteration
 
-DISTINCT_COLORS = ['#A9A9A9', '#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231',
-                   '#911eb4', '#46f0f0', '#f032e6', '#bcf60c', '#fabebe',
-                   '#008080', '#e6beff', '#9a6324', '#fffac8', '#800000',
-                   '#aaffc3', '#808000', '#ffd8b1', '#000075', '#808080',
-                   '#ffffff', '#000000']
+DISTINCT_COLORS = [
+    '#A9A9A9', '#e6194b', '#3cb44b',
+    '#ffe119', '#4363d8', '#f58231',
+    '#911eb4', '#46f0f0', '#f032e6',
+    '#bcf60c', '#fabebe', '#008080',
+    '#e6beff', '#9a6324', '#fffac8',
+    '#800000', '#aaffc3', '#808000',
+    '#ffd8b1', '#000075', '#808080',
+    '#ffffff', '#000000'
+]
 
 def get_contrast_color(color):
     r, g, b = colors.to_rgb(color)
@@ -43,7 +48,8 @@ class GridWorldPlotter(object):
             'y': 'yellow',
             'g': 'yellow',
             'n': 'white',
-            '#': 'black'
+            '#': 'black',
+            'j': 'lightgreen'
         }
         if feature_colors is None:
             feature_colors = default_feature_colors
@@ -67,7 +73,7 @@ class GridWorldPlotter(object):
             if (s, None) in gw.walls:
                 continue
             f = gw.state_features.get(s, '.')
-            tile_colors[s] = feature_colors[f]
+            tile_colors[s] = feature_colors.get(f, 'grey')
 
 
         if figsize is None:
@@ -92,10 +98,24 @@ class GridWorldPlotter(object):
         visualize_states(ax=self.ax, states=self.states_to_plot,
                          tile_color=self.tile_colors)
         visualize_walls(ax=self.ax, walls=self.gw.walls)
+        return self
 
-    def plot_policy(self, agent: Agent):
-        p = agent.to_dict()
-        visualize_action_values(ax=self.ax, state_action_values=p)
+    def plot_policy(self, agent: Agent = None, policy_dict : dict = None):
+        if policy_dict is None:
+            p = agent.to_dict()
+        else:
+            p = policy_dict
+        p = {s: adist for s, adist in p.items() if not self.gw.is_wall(s)}
+        visualize_action_values(ax=self.ax, state_action_values=p,
+                                global_maxval=1.0)
+        return self
+
+    def plot_action_values(self, action_values, **kwargs):
+        av = {s: vs for s, vs in action_values.items() if not self.gw.is_wall(s)}
+        visualize_action_values(ax=self.ax,
+                                state_action_values=av,
+                                **kwargs)
+        return self
 
     def plot_value(self,
                    vi : ValueIteration = None,
@@ -121,13 +141,18 @@ class GridWorldPlotter(object):
             color_norm = colors.Normalize(vmin=vmin, vmax=vmax)
             value_map = cmx.ScalarMappable(norm=color_norm, cmap=colorrange)
             tile_colors = {s: value_map.to_rgba(v) for s, v in vf.items()}
-            visualize_states(ax=self.ax, states=self.states_to_plot,
+            states_to_plot = \
+                [s for s in self.states_to_plot if not self.gw.is_wall(s)]
+            visualize_states(ax=self.ax, states=states_to_plot,
                              tile_color=tile_colors)
             if show_value_numbers:
                 for s in self.gw.get_states():
                     if self.gw.is_any_terminal(s):
                         continue
-                    # color = 'white' if abs(vf[s]/vmax_abs) > .2 else 'black'
+                    if self.gw.is_wall(s):
+                        continue
+                    if s not in vf:
+                        continue
                     self.annotate(x=s[0],
                                   y=s[1],
                                   text="%.2f" % vf[s],
@@ -136,12 +161,14 @@ class GridWorldPlotter(object):
                                   verticalalignment='center',
                                   fontsize=fontsize
                                   )
+        return self
 
     def plot_trajectory(self, traj, name=None, **kwargs):
         traj_patches = visualize_trajectory(axis=self.ax, traj=traj, **kwargs)
         if name is None:
             name = "trajectory-"+str(len(self.trajectories))
         self.trajectories[name] = traj_patches
+        return self
 
     def annotate(self, x, y, text,
                  outline=False,
@@ -159,11 +186,14 @@ class GridWorldPlotter(object):
         if name is None:
             name = "annotation-"+str(len(self.annotations))
         self.annotations[name] = txt
+        return self
 
     def plot_agent(self, s=None):
         if s is None:
             s = self.gw.get_init_state()
         self.agent = plot_agent_location(s, ax=self.ax)
+        return self
 
     def title(self, title, **kwargs):
         self.ax.set_title(title, **kwargs)
+        return self
