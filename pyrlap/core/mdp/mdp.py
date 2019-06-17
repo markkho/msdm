@@ -20,6 +20,9 @@ class MDP(object):
     def is_terminal(self, s):
         raise NotImplementedError
 
+    def is_absorbing(self, s):
+        raise NotImplementedError
+
     def is_any_terminal(self, s):
         raise NotImplementedError
 
@@ -84,15 +87,26 @@ class MDP(object):
     def get_states(self):
         raise NotImplementedError
 
+    def get_non_terminal_states(self):
+        states = []
+        for s in self.get_states():
+            if not (
+                self.is_absorbing(s) or
+                self.is_terminal(s)
+            ):
+                states.append(s)
+        return states
+
     def get_reachable_transition_reward_functions(self,
                                                   max_states=np.inf,
                                                   init_state=None,
                                                   init_states=None):
         if init_states is None:
-            init_states = self.get_init_states()
+            init_states = []
 
         if init_state is None:
             init_state = self.get_init_state()
+
         init_states.append(init_state)
         frontier = set(init_states)
         visited = set([])
@@ -218,3 +232,25 @@ class MDP(object):
                     else:
                         frontier.add(tuple(new_pre_traj))
         return list(trajs)
+
+    def as_matrices(self):
+        aa = self.available_actions()
+        aa_i = {a: i for i, a in enumerate(aa)}
+        ss = self.get_states()
+        ss_i = {s: i for i, s in enumerate(ss)}
+        tf = np.zeros((len(ss), len(aa), len(ss)), dtype=np.float32)
+        rf = np.zeros((len(ss), len(aa), len(ss)), dtype=np.float32)
+        for s in ss:
+            for a in aa:
+                ns_dist = self.transition_dist(s, a)
+                for ns, p in ns_dist.items():
+                    tf[ss_i[s], aa_i[a], ss_i[ns]] = p
+                    rf[ss_i[s], aa_i[a], ss_i[ns]] = self.reward(s, a, ns)
+        s0 = self.get_init_state_dist()
+        s0 = np.array([s0.get(s, 0) for s in ss], dtype=np.float32)
+        non_term = set(self.get_non_terminal_states())
+        nt_states = np.array([1 if s in non_term else 0 for s in ss])
+        return {
+            'tf': tf, 'rf': rf, 's0': s0, 'ss': ss, 'aa': aa,
+            'nt_states': nt_states
+        }
