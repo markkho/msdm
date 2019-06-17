@@ -33,7 +33,7 @@ class GridWorld(MDP):
                  non_std_t_features=None,
 
                  walls=None, #[((x, y), side),...]
-                 wall_feature=None,
+                 wall_feature="#",
 
                  state_rewards=None, #deprecated
                  reward_dict=None,
@@ -65,10 +65,6 @@ class GridWorld(MDP):
         self.height = height
         self.intermediate_terminal = (-2, -2)
         self.terminal_state = (-1, -1)
-        self.states = list(product(range(width), range(height))) + \
-                      [self.terminal_state]
-        if include_intermediate_terminal:
-            self.states.append((self.intermediate_terminal))
         self.wait_action = wait_action
         self.wall_action = wall_action
         self.distinct_absorbing_action = distinct_absorbing_action
@@ -80,7 +76,8 @@ class GridWorld(MDP):
         absorbing_states = copy.deepcopy(absorbing_states)
         if absorbing_features is not None:
             for f in absorbing_features:
-                absorbing_states.extend(state_features.inverse[f])
+                if f in state_features.inverse:
+                    absorbing_states.extend(state_features.inverse[f])
 
         self.absorbing_states = frozenset(absorbing_states)
 
@@ -114,6 +111,11 @@ class GridWorld(MDP):
         if walls is None:
             walls = []
         self.walls = walls
+
+        self.states = list(product(range(width), range(height))) + \
+                      [self.terminal_state]
+        if include_intermediate_terminal:
+            self.states.append((self.intermediate_terminal))
 
         for s in self.states:
             f = state_features.get(s, None)
@@ -227,6 +229,9 @@ class GridWorld(MDP):
     def is_any_terminal(self, s):
         return s in [self.terminal_state, self.intermediate_terminal]
 
+    def is_wall(self, s):
+        return (s, None) in self.walls
+
     def get_terminal_states(self):
         return [self.terminal_state, self.intermediate_terminal]
 
@@ -301,6 +306,17 @@ class GridWorld(MDP):
     def get_states(self):
         return self.states
 
+    def get_non_terminal_states(self):
+        states = []
+        for s in self.get_states():
+            if not (
+                self.is_absorbing(s) or
+                self.is_terminal(s) or
+                self.is_wall(s)
+            ):
+                states.append(s)
+        return states
+
     # ============================================== #
     #                                                #
     #                                                #
@@ -335,7 +351,7 @@ class GridWorld(MDP):
             ns = s
 
         #handle 2D walls
-        if ns in self.walls:
+        if (ns, None) in self.walls:
             ns = s
 
         return ns
