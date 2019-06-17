@@ -14,7 +14,7 @@ setup(name='pyrlap',
       license='MIT',
       packages=['pyrlap'],
       install_requires=[
-          'markdown',
+          'markdown', 'numpy', 'matplotlib', 'scipy'
       ],
       test_suite='nose.collector',
       tests_require=['nose'],
