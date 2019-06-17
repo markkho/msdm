@@ -55,9 +55,12 @@ class Agent(object):
         ss = mats['ss']
         aa = mats['aa']
         policy = np.zeros((len(ss), len(aa)))
+        pol_dict = self.to_dict()
         for si, s in enumerate(ss):
+            if s not in pol_dict:
+                continue
             for ai, a in enumerate(aa):
-                policy[si][ai] = self.act_dist(s).get(a, 0)
+                policy[si][ai] = pol_dict[s].get(a, 0)
         return policy
 
     def act(self, s, softmax_temp=None, randchoose=None):
