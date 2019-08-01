@@ -72,6 +72,7 @@ class ValueIteration(Planner):
         self.optimal_policy = optimal_pol
         self.value_function = vf
         self.action_value_function = action_vals
+        self.iterations_run = i
 
     def act_dist(self, s, softmax_temp=None, randchoose=None):
         if softmax_temp is None:
