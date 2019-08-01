@@ -254,3 +254,13 @@ class MDP(object):
             'tf': tf, 'rf': rf, 's0': s0, 'ss': ss, 'aa': aa,
             'nt_states': nt_states
         }
+
+    def is_valid_transition(self, s, a, ns, *args, **kwargs):
+        ns_dist = self.transition_dist(s, a)
+        return ns in ns_dist
+
+    def is_valid_trajectory(self, traj):
+        for step in traj:
+            if not self.is_valid_transition(*step):
+                return False
+        return True
