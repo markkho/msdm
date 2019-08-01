@@ -25,12 +25,12 @@ class GridWorld(MDP):
                  absorbing_states=None,
                  absorbing_features=None,
 
-                 slip_states=None,
-                 slip_features=None,
-                 sticky_states=None,
+                 slip_states:dict=None,
+                 slip_features:dict=None,
+                 sticky_states:dict=None,
 
-                 non_std_t_states=None,
-                 non_std_t_features=None,
+                 non_std_t_states:dict=None,
+                 non_std_t_features:dict=None,
 
                  walls=None, #[((x, y), side),...]
                  wall_feature="#",
@@ -650,3 +650,15 @@ class GridWorld(MDP):
                            value_function_range=value_function_range,
                            **kwargs)
         return gwp
+
+    def as_bitmap(self):
+        bmap = np.zeros((self.height, self.width))
+        codes = {}
+        for x in range(self.width):
+            for y in range(self.height):
+                s = (x, y)
+                f = self.state_features[s]
+                b = codes.get(f, len(codes))
+                codes[f] = b
+                bmap[self.height - y - 1][x] = b
+        return bmap
