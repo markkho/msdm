@@ -17,6 +17,7 @@ class GridWorld(MDP):
                  gridworld_array=None,
 
                  wait_action=False,
+                 all_actions_always_available=False,
                  wall_action=False,
                  distinct_absorbing_action:
                     "sets whether actions in an absorbing state are distinct"
@@ -67,6 +68,7 @@ class GridWorld(MDP):
         self.terminal_state = (-1, -1)
         self.wait_action = wait_action
         self.wall_action = wall_action
+        self.all_actions_always_available = all_actions_always_available
         self.distinct_absorbing_action = distinct_absorbing_action
         self.cached_transitions = {}
         self.include_intermediate_terminal = include_intermediate_terminal
@@ -87,6 +89,7 @@ class GridWorld(MDP):
         non_std_t_moves = ['forward', 'back', 'left', 'right',
                            '2forward', '2back', 'horseleft',
                            'horseright', 'diagleft', 'diagright',
+                           'north', 'south', 'east', 'west',
                            'stay']
         self.non_std_t_moves = non_std_t_moves
         non_std_t_states = copy.deepcopy(non_std_t_states)
@@ -258,7 +261,7 @@ class GridWorld(MDP):
         return self.init_state_dist
 
     def available_actions(self, s=None):
-        if s is None:
+        if s is None or self.all_actions_always_available:
             return self.ACTION_LIST
         try:
             return self.available_action_cache[s]
@@ -442,6 +445,18 @@ class GridWorld(MDP):
                     res = self._normal_transition(s, a_)
                 elif move == 'right':
                     a_ = self._get_right_action(a)
+                    res = self._normal_transition(s, a_)
+                elif move == 'north':
+                    a_ = '^'
+                    res = self._normal_transition(s, a_)
+                elif move == 'south':
+                    a_ = 'v'
+                    res = self._normal_transition(s, a_)
+                elif move == 'east':
+                    a_ = '>'
+                    res = self._normal_transition(s, a_)
+                elif move == 'west':
+                    a_ = '<'
                     res = self._normal_transition(s, a_)
                 elif move == '2forward':
                     ns = self._normal_transition(s, a)
