@@ -1,8 +1,10 @@
 from copy import deepcopy
+from functools import lru_cache
 
 from .mdp import MDP
 
 from pyrlap.algorithms.valueiteration import ValueIteration
+from pyrlap.core.util import sample_prob_dict
 
 class DictionaryMDP(MDP):
     TERMINAL_ACTION = 'terminal-action'
@@ -13,6 +15,7 @@ class DictionaryMDP(MDP):
                  reward_dict,
                  init_state=None,
                  init_states=None,
+                 init_state_dist=None,
                  step_cost=0
                  ):
         """
@@ -38,25 +41,28 @@ class DictionaryMDP(MDP):
                     s_rdict[a][ns] = r
             self.reward_dict[s] = s_rdict
 
-        if init_states is None:
-            init_states = []
-        if init_state is not None:
-            init_states.append(init_state)
-        else:
-            init_state = init_states[0]
-        self.init_state = init_state
-        self.init_states = init_states
+        if init_state_dist is not None:
+            self.init_state_dist = init_state_dist
+        elif init_states is not None:
+            self.init_state_dist = {s: 1/len(init_states) for s in init_states}
+        elif init_state is not None:
+            self.init_state_dist = {init_state: 1}
 
         self.step_cost = step_cost
 
         self.states = list(self.transition_dict.keys())
-        self.states.append(self.__class__.TERMINAL_STATE)
 
     def get_init_state(self):
-        return self.init_state
+        return sample_prob_dict(self.init_state_dist)
 
     def get_init_states(self):
-        return self.init_states
+        return list(self.init_state_dist.keys())
+
+    def get_init_state_dist(self):
+        return self.init_state_dist
+
+    def is_absorbing(self, s):
+        return False
 
     def is_terminal(self, s):
         return s == self.__class__.TERMINAL_STATE
@@ -77,7 +83,17 @@ class DictionaryMDP(MDP):
     def reward(self, s=None, a=None, ns=None):
         return self.reward_dict.get(s, {}).get(a, {}).get(ns, self.step_cost)
 
-    def available_actions(self, s):
+    @lru_cache()
+    def available_actions(self, s=None):
+        if s is None:
+            aa = set([])
+            for s in self.get_states():
+                if s == DictionaryMDP.TERMINAL_STATE:
+                    aa.add(DictionaryMDP.TERMINAL_ACTION)
+                    continue
+                aa = aa.union(self.transition_dict[s].keys())
+            aa = sorted(list(aa))
+            return aa
         if self.is_terminal(s):
             return [self.__class__.TERMINAL_ACTION, ]
         return list(self.transition_dict[s].keys())
