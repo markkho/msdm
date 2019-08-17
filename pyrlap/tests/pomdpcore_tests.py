@@ -3,6 +3,7 @@ import unittest
 from pyrlap.domains.tiger import TigerProblem, TigerCounterAgent
 from pyrlap.core.pomdp import RandomPOMDPAgent
 
+
 class POMDPCoreTests(unittest.TestCase):
     def test_counter_agent(self):
         tp = TigerProblem(
