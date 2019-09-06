@@ -1,6 +1,8 @@
 from collections import namedtuple
 from .pomdp import PartiallyObservableMarkovDecisionProcess
 
+import numpy as np
+
 SANSORTuple = namedtuple("SANSORTuple", "s a ns o r")
 StateActionObsNodeTuple = namedtuple("StateActionObsNodeTuple",
                                      "s z a ns o nz r")
@@ -8,15 +10,20 @@ StateActionObsNodeTuple = namedtuple("StateActionObsNodeTuple",
 class POMDPAgent:
     def __init__(self, pomdp : PartiallyObservableMarkovDecisionProcess):
         self.pomdp = pomdp
+        self._belief_state = None
+
+    # todo: automatically track belief state
 
     def initialize(self, internal_state=None):
         """This can be a belief or some other internal representation."""
+        # self._belief_state = self.pomdp.initial_belief()
         raise NotImplementedError
 
     def act(self, **kwargs):
         raise NotImplementedError
 
     def update(self, o: "observation"):
+        # self._belief_state = self.pomdp.belief_update(self._belief_state, o)
         raise NotImplementedError
 
     def get_internal_state(self):

@@ -21,29 +21,29 @@ class PartiallyObservableStochasticGame(object):
     def reward_dist(self, s=None, a=None, ns=None) -> Mapping[Iterable, float]:
         raise self.sg.reward_dist(s, a, ns)
 
-    def get_states(self):
+    def get_states(self) -> Iterable[State]:
         return self.sg.get_states()
 
-    def get_init_state(self):
+    def get_init_state(self) -> State:
         return self.sg.get_init_state()
 
-    def get_observations(self):
+    def get_observations(self) -> Iterable[Observation]:
         obs = set([])
         for s, a, ns, p in self.sg.iterate_sans_prob():
             odist = self.observation_dist(a, ns)
             obs = obs.union(set(odist.keys()))
         return sorted(list(obs))
 
-    def available_actions(self):
+    def available_actions(self) -> Iterable[Action]:
         return self.sg.available_actions()
 
-    def transition_dist(self, s, a):
+    def transition_dist(self, s : State, a : Action) -> Mapping[State, Probability]:
         return self.sg.transition_dist(s, a)
 
-    def transition(self, s, a):
+    def transition(self, s : State, a : Action) -> State:
         return self.sg.transition(s, a)
 
-    def as_matrices(self):
+    def as_matrices(self) -> dict:
         mats = self.sg.as_matrices()
         oo = self.get_observations()
         aa = mats['aa']
@@ -60,5 +60,5 @@ class PartiallyObservableStochasticGame(object):
         mats['oo'] = oo
         return mats
 
-    def is_terminal(self, s):
+    def is_terminal(self, s : State) -> bool:
         return self.sg.is_terminal(s)

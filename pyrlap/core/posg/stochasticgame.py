@@ -15,11 +15,11 @@ class StochasticGame(MDP):
     def reward(self,
                s=None,
                a : Union([Iterable, None]) = None,
-               ns=None) -> Iterable:
+               ns=None) -> Iterable[float]:
         raise NotImplementedError
 
-    def transition(self, s, a : Iterable) -> State:
+    def transition(self, s, a : Iterable[Action]) -> State:
         raise NotImplementedError
 
-    def transition_dist(self, s, a: Iterable) -> Mapping[State, Probability]:
+    def transition_dist(self, s, a: Iterable[Action]) -> Mapping[State, Probability]:
         raise NotImplementedError
