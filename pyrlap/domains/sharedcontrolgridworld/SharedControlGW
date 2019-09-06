@@ -1,0 +1,24 @@
+
+from pyrlap.domains.gridworld.gridworld import GridWorld
+''' 
+A shared control gridworld is a gridworld with n acting agents
+
+
+'''
+class SharedControlGridWorld(GridWorld):
+
+    def transition(self, human_action, machine_action, state):
+        #"state" has three attributes: mode, location, and lava
+        if state['mode'] == 'manual':
+            self._normal_transition(human_action, state['location'])
+        else:
+            self._normal_transition(machine_action, state['location'])
+
+    def reward_function(self, state):
+        location = state['location']
+        if self.is_absorbing(location):
+            return 10
+        elif self.is_terminal(location):
+            return -10
+        else:
+            return 0
