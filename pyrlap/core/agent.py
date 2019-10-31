@@ -6,6 +6,7 @@ import sys
 from collections import Mapping, defaultdict
 
 import numpy as np
+import torch
 
 from pyrlap.core.util import sample_prob_dict, calc_esoftmax_dist, SANSRTuple
 from pyrlap.core.mdp.mdp import MDP as MDPClass
@@ -32,9 +33,22 @@ class ValueFunction(Mapping):
         return key
 
 class Agent(object):
-    def __init__(self, mdp: MDPClass, policy_dict: dict = None):
+    def __init__(self,
+                 mdp: MDPClass,
+                 policy_dict: dict = None,
+                 policy_matrix: "S x A matrix" = None
+                 ):
         self.mdp = mdp
+        if policy_matrix is not None:
+            if torch.is_tensor(policy_matrix):
+                policy_matrix = policy_matrix.data.numpy()
+            policy_dict = {}
+            for si, s in enumerate(mdp.get_states()):
+                policy_dict[s] = {}
+                for ai, a in enumerate(mdp.available_actions()):
+                    policy_dict[s][a] = policy_matrix[si][ai]
         self.policy_dict = policy_dict
+
 
     def __getitem__(self, s):
         return self.act(s)
