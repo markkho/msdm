@@ -45,6 +45,7 @@ class GridWorld(MDP):
                  init_state=None,
                  initstate_features=None,
                  starting_states=None,
+                 init_state_dist=None,
 
                  state_types=None,
                  feature_types=None):
@@ -151,20 +152,23 @@ class GridWorld(MDP):
         self.state_types = state_types
 
         #initial states
-        if starting_states is None:
-            starting_states = []
-        starting_states = copy.deepcopy(starting_states)
+        if init_state_dist is None:
 
-        if init_state is not None:
-            starting_states.append(init_state)
+            if starting_states is None:
+                starting_states = []
+            starting_states = copy.deepcopy(starting_states)
 
-        if initstate_features is not None:
-            for f in initstate_features:
-                starting_states.extend(state_features.inverse[f])
+            if init_state is not None:
+                starting_states.append(init_state)
 
-        init_states = set(starting_states)
+            if initstate_features is not None:
+                for f in initstate_features:
+                    starting_states.extend(state_features.inverse[f])
 
-        self.init_state_dist = {s: 1/len(init_states) for s in init_states}
+            init_states = set(starting_states)
+
+            init_state_dist = {s: 1/len(init_states) for s in init_states}
+        self.init_state_dist = init_state_dist
 
         #reward function stuff
         self.reward_function = RewardFunction(state_features=state_features,
