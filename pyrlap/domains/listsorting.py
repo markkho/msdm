@@ -72,7 +72,8 @@ class ListSortingTaskMDP(MDP):
             nsswap = "no-swap"
             return {(slist, nsswap): 1.0}
 
-        i0, i1 = a # attempt to swap i1 with i0
+        i0_i1 = sorted(list(a)) # attempt to swap i1 with i0
+        i0, i1 = i0_i1
         if slist[i1] < slist[i0]:
             nslist = list(slist)
             nslist[i0] = slist[i1]
