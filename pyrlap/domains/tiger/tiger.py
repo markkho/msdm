@@ -80,5 +80,8 @@ class TigerProblem(PartiallyObservableMarkovDecisionProcess):
         else:
             return {'reset': 1.0}
 
+    def get_init_observation_dist(self):
+        return {s: {'reset': 1.0} for s in self.mdp.get_states()}
+
     def available_actions(self):
         return ['listen', 'left-door', 'right-door']
