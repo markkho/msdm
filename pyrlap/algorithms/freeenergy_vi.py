@@ -71,13 +71,17 @@ class FreeEnergyValueIteration(Planner):
                 break
             fev = new_fev
         fev = new_fev
+        kl_divs = (pi*torch.log(pi/pi0)).sum(dim=1)
 
         pol = pi.data.numpy()
         fev = fev.data.numpy()
         fq = fq.data.numpy()
+        kl_divs = kl_divs.data.numpy()
 
         self.optimal_policy = \
             {s: dict(zip(mats['aa'], adist)) for s, adist in zip(mats['ss'], pol)}
         self.value_function = dict(zip(mats['ss'], fev))
         self.action_value_function =\
             {s: dict(zip(mats['aa'], aq)) for s, aq in zip(mats['ss'], fq)}
+        self.state_kl_divergences = \
+            {s: d for s, d in zip(mats['ss'], kl_divs)}
