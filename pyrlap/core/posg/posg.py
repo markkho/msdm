@@ -7,7 +7,7 @@ from pyrlap.core.posg.stochasticgame import StochasticGame
 
 class PartiallyObservableStochasticGame(object):
     def __init__(self, sg : StochasticGame):
-        self.sg = StochasticGame
+        self.sg = sg
 
     def observation(self, a, ns) -> Iterable[Observation]:
         raise NotImplementedError
