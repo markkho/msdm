@@ -104,7 +104,7 @@ class MDP(object):
                                                   init_state=None,
                                                   init_states=None):
         if init_states is None:
-            init_states = []
+            init_states = list(self.get_init_state_dist().keys())
 
         if init_state is None:
             init_state = self.get_init_state()
@@ -237,11 +237,15 @@ class MDP(object):
 
     def as_matrices(self,
                     as_torch=False,
+                    only_reachable=False,
                     tensor_dtype=torch.float,
                     torch_device="cpu"):
         aa = self.available_actions()
         aa_i = {a: i for i, a in enumerate(aa)}
-        ss = self.get_states()
+        if only_reachable:
+            ss = list(self.get_reachable_states())
+        else:
+            ss = self.get_states()
         ss_i = {s: i for i, s in enumerate(ss)}
         tf = np.zeros((len(ss), len(aa), len(ss)), dtype=np.float32)
         rf = np.zeros((len(ss), len(aa), len(ss)), dtype=np.float32)
@@ -257,13 +261,20 @@ class MDP(object):
         nt_states = np.array([1 if s in non_term else 0 for s in ss])
         reachable = set(self.get_reachable_states())
         reachable_states = np.array([1 if s in reachable else 0 for s in ss])
+
+        sa_rf = np.einsum("sar,sar->sa", tf, rf)
+
         if as_torch:
             tf = torch.Tensor(tf).type(tensor_dtype).to(torch_device)
             rf = torch.Tensor(rf).type(tensor_dtype).to(torch_device)
             s0 = torch.Tensor(s0).type(tensor_dtype).to(torch_device)
             nt_states = torch.Tensor(nt_states).type(tensor_dtype).to(torch_device)
+            sa_rf = torch.Tensor(sa_rf).type(tensor_dtype).to(torch_device)
+
+
         return {
-            'tf': tf, 'rf': rf, 's0': s0, 'ss': ss, 'aa': aa,
+            'tf': tf, 'rf': rf, "sa_rf": sa_rf,
+            's0': s0, 'ss': ss, 'aa': aa,
             'nt_states': nt_states, 'reachable_states': reachable_states
         }
 
