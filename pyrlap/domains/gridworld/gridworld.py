@@ -58,6 +58,7 @@ class GridWorld(MDP):
             state_features = bidict(state_features)
             width = w
             height = h
+            self.gridworld_array = gridworld_array
 
         if state_features is None:
             state_features = {}
@@ -670,8 +671,11 @@ class GridWorld(MDP):
                            **kwargs)
         return gwp
 
-    def as_bitmap(self):
-        bmap = np.zeros((self.height, self.width))
+    def as_bitmap(self, xy_flip=True):
+        if xy_flip:
+            bmap = np.zeros((self.height, self.width))
+        else:
+            bmap = np.zeros((self.width, self.height))
         codes = {}
         for x in range(self.width):
             for y in range(self.height):
@@ -679,5 +683,8 @@ class GridWorld(MDP):
                 f = self.state_features[s]
                 b = codes.get(f, len(codes))
                 codes[f] = b
-                bmap[self.height - y - 1][x] = b
+                if xy_flip:
+                    bmap[self.height - y - 1][x] = b
+                else:
+                    bmap[x][y] = b
         return bmap
