@@ -149,21 +149,22 @@ class Agent(object):
         mdp_mat = self.mdp.as_matrices()
         tf = mdp_mat['tf']
         ss = mdp_mat['ss']
+        nts = mdp_mat['nt_states']
 
         mp = np.einsum("san,sa->sn", tf, self.as_matrix())
 
         # Calculate discounted or undiscounted successor representation
         if not discounted:
-            if np.linalg.cond(np.eye(len(ss)) - mp) < 1/sys.float_info.epsilon:
-                sr = np.linalg.inv(np.eye(len(ss)) - mp)
+            if np.linalg.cond(np.eye(len(ss)) - mp*nts) < 1/sys.float_info.epsilon:
+                sr = np.linalg.inv(np.eye(len(ss)) - (mp*nts))
             else:
                 warnings.warn(
                     "Undiscounted transition matrix is singular. "+
                     ("Calculating discounted occupancy dr = %.2f" % discount_rate)
                 )
-                sr = np.linalg.inv(np.eye(len(ss)) - discount_rate*mp)
+                sr = np.linalg.inv(np.eye(len(ss)) - discount_rate*(mp*nts))
         if discounted:
-            sr = np.linalg.inv(np.eye(len(ss)) - discount_rate * mp)
+            sr = np.linalg.inv(np.eye(len(ss)) - discount_rate * (mp*nts))
 
         if normalize:
             sr_norm = np.einsum("sn->s", sr)
