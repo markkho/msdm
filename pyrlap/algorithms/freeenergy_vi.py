@@ -85,3 +85,8 @@ class FreeEnergyValueIteration(Planner):
             {s: dict(zip(mats['aa'], aq)) for s, aq in zip(mats['ss'], fq)}
         self.state_kl_divergences = \
             {s: d for s, d in zip(mats['ss'], kl_divs)}
+
+    def act_dist(self, s, softmax_temp=None, randchoose=None):
+        adist = self.optimal_policy[s]
+        adist_norm = sum(adist.values())
+        return {a: p/adist_norm for a, p in adist.items()}
