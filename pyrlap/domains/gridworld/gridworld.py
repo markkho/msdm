@@ -48,7 +48,9 @@ class GridWorld(MDP):
                  init_state_dist=None,
 
                  state_types=None,
-                 feature_types=None):
+                 feature_types=None,
+
+                 feature_colors=None):
 
         if gridworld_array is not None:
             w = len(gridworld_array[0])
@@ -193,6 +195,8 @@ class GridWorld(MDP):
         self.transition_cache = {}
         self.available_action_cache = {}
         self.solved = False
+
+        self.feature_colors = feature_colors
 
     def __hash__(self):
         try:
@@ -649,6 +653,11 @@ class GridWorld(MDP):
                 c = next(pcolors)
                 for s in ss:
                     tile_colors[s] = c
+
+        if (tile_colors is None) and \
+                (feature_colors is None) and \
+                (self.feature_colors is not None):
+            feature_colors = self.feature_colors
 
         gwp = GridWorldPlotter(**{
             'gw': self,

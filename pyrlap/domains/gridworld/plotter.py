@@ -130,7 +130,7 @@ class GridWorldPlotter(object):
                                     state_action_values=vi.action_value_function,
                                     color_valence=True
                                     )
-        elif vf is not None:
+        elif (vf is not None) and (len(vf) > 0):
             vmax_abs = max(abs(v) for v in vf.values())
 
             if value_function_range is None:
@@ -161,6 +161,42 @@ class GridWorldPlotter(object):
                                   verticalalignment='center',
                                   fontsize=fontsize
                                   )
+        return self
+
+    def plot_state_categories(self,
+                              state_categories : dict,
+                              value=None,
+                              categories=None,
+                              cmap="Accent",
+                              fontsize=10):
+        ss = list(state_categories.keys())
+        if value is None:
+            value = {s: 1.0 for s in ss}
+        if categories is None:
+            categories = sorted(list(set(state_categories.values())))
+        colorrange = plt.get_cmap(cmap)
+        color_norm = colors.Normalize(vmin=0,
+                                      vmax=len(categories))
+        category_map = cmx.ScalarMappable(cmap=colorrange, norm=color_norm)
+        tile_colors = {}
+        for s in ss:
+            cat_i = categories.index(state_categories[s])
+            tile_colors[s] = category_map.to_rgba(cat_i, value[s])
+        visualize_states(ax=self.ax, states=ss, tile_color=tile_colors)
+        for s in ss:
+            if self.gw.is_any_terminal(s):
+                continue
+            if self.gw.is_wall(s):
+                continue
+            self.annotate(
+                x=s[0],
+                y=s[1],
+                text="{}".format(state_categories[s]),
+                color=get_contrast_color(tile_colors[s]),
+                horizontalalignment='center',
+                verticalalignment='center',
+                fontsize=fontsize
+            )
         return self
 
     def plot_trajectory(self, traj, name=None, **kwargs):
