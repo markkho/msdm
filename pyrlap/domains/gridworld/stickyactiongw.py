@@ -12,6 +12,17 @@ from pyrlap.algorithms.valueiteration import ValueIteration
 class StickyActionGridWorld(MDP):
     def __init__(self, base_gw: GridWorld,
                  switch_cost=-1, init_action=None):
+        """
+        Example usage with a given gridworld MDP:
+        ```
+        sagw = StickyActionGridWorld(gw, init_action='%')
+        sagw.plot().plot_policy(policy_dict=sagw.get_state_policy(1.0))
+        ```
+
+        :param base_gw:
+        :param switch_cost:
+        :param init_action:
+        """
         self.gw = base_gw
         self.init_action = init_action
         self.switch_cost = switch_cost
@@ -107,33 +118,44 @@ class StickyActionGridWorld(MDP):
         vi = self.solve(discount_rate, softmax_temp=softmax_temp,
                         randchoose=randchoose, **kwargs)
         pi = vi.as_matrix()
-        ss = self.get_states()
-
-        sr = vi.successor_representation(discount_rate=discount_rate,
-                                         return_matrix=True)
-
         mats = self.as_matrices()
-        s0 = mats['s0']
         aa = mats['aa']
-        occ = np.einsum("sn,s->n", sr, s0)
-        nocc = occ / occ.sum()
+        gs = self.calc_gridstate_weight(pi)
+        gs_weight = gs['gs_weight']
+        gss = gs['gss']
 
-        # calc "featurized" states
-        # this is based on p(s | ~s) \propto p(~s | s)rho(s)
-        # where fs represents p(~s | s)
-        fss = list(set([s for s, a in mats['ss']]))
-        fs = []
-        for sa in mats['ss']:
-            fs.append([1 if sa[0] == s else 0 for s in fss])
-        fs = np.array(fs)
-        f_post = np.einsum("sf,s->sf", fs, nocc)
-        f_post_norm = f_post.sum(axis=0)
-        f_post_norm[f_post_norm == 0] = 1
-        f_post = np.einsum("sf,f->sf", f_post, 1 / f_post_norm)
-
-        flat_pi = np.einsum("sa,sf->fa", pi, f_post)
-        flat_pi = {s: dict(zip(aa, ap)) for s, ap in zip(fss, flat_pi)}
+        flat_pi = np.einsum("sa,sf->fa", pi, gs_weight)
+        flat_pi = {s: dict(zip(aa, ap)) for s, ap in zip(gss, flat_pi)}
         flat_pi = {s: ap for s, ap in flat_pi.items() if
                    (sum(ap.values()) != 0.0)}
 
         return flat_pi
+
+    def get_gridstate_matrix(self, ss) -> Mapping:
+        """Get matrix that relates grid states to grid + last-action states"""
+        gss = self.gw.get_reachable_states()
+        gs = []
+        for s in ss:
+            gs.append([1 if s[0] == gs else 0 for gs in gss])
+        gs = np.array(gs)
+        return {'gs': gs, 'gss': gss}
+
+    def calc_gridstate_weight(self, pi_mat):
+        """
+        Calculates the weights on grid states under a
+        gridstate + last-action state policy.
+        """
+        mats = self.as_matrices()
+        mp = np.einsum("san,sa->sn", mats['tf'], pi_mat)
+        occ = np.linalg.inv(np.eye(mp.shape[0]) - mp * mats['nt_states'])
+        occ = np.einsum("sn,s->n", occ, mats['s0'])
+        nocc = occ / occ.sum()
+
+        gs_mats = self.get_gridstate_matrix(mats['ss'])
+        gs = gs_mats['gs']
+        g_post = np.einsum("sg,s->sg", gs, nocc)
+        g_post_norm = g_post.sum(axis=0)
+        g_post_norm[g_post_norm == 0] = 1
+        g_post = np.einsum("sg,g->sg", g_post, 1/g_post_norm)
+        return {'gs_weight': g_post, 'gss': gs_mats['gss']}
+
