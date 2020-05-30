@@ -27,6 +27,7 @@ def visualize_states(ax=None, states=None,
             - plot_size is an integer specifying how many tiles wide
               and high the plot is, with the grid itself in the middle
     '''
+    assert len(states) > 0
     if tile_color is None:
         tile_color = {}
 

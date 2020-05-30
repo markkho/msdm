@@ -123,7 +123,8 @@ class GridWorldPlotter(object):
                    show_value_numbers : bool = True,
                    fontsize=10,
                    cmap : "matplotlib color map" = "bwr_r",
-                   value_function_range = None
+                   value_function_range = None,
+                   plot_all_states=True
                    ):
         if vi is not None:
             visualize_action_values(ax=self.ax,
@@ -143,8 +144,11 @@ class GridWorldPlotter(object):
             tile_colors = {s: value_map.to_rgba(v) for s, v in vf.items()}
             states_to_plot = \
                 [s for s in self.states_to_plot if not self.gw.is_wall(s)]
-            visualize_states(ax=self.ax, states=states_to_plot,
-                             tile_color=tile_colors)
+            if not plot_all_states:
+                states_to_plot = [s for s in states_to_plot if s in vf]
+            if len(states_to_plot) > 0:
+                visualize_states(ax=self.ax, states=states_to_plot,
+                                 tile_color=tile_colors)
             if show_value_numbers:
                 for s in self.gw.get_states():
                     if self.gw.is_any_terminal(s):
