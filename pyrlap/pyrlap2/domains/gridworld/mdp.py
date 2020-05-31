@@ -55,6 +55,7 @@ class GridWorld(TabularMarkovDecisionProcess):
         self._statealiases = statealiases
         self._initstates = sorted(initstates)
         self._walls = sorted(walls)
+        self._wallFeatures = wallFeatures
         self._absorbingStates = sorted(absorbingStates)
 
         actionaliases = {
@@ -192,7 +193,7 @@ class GridWorld(TabularMarkovDecisionProcess):
             featureColors = {
                 'g': 'yellow',
                 'x': 'red',
-                '#': 'black'
+                **{f: 'black' for f in self._wallFeatures}
             }
         if ax is None:
             if figsize is None:
@@ -215,6 +216,7 @@ class ANDGridWorld(ANDMarkovDecisionProcess, GridWorld):
         assert (mdp1.height == mdp2.height) and (mdp1.width == mdp2.width)
         ANDMarkovDecisionProcess.__init__(self, mdp1, mdp2)
         self._xyfeatures = {**mdp1._xyfeatures, **mdp2._xyfeatures}
+        self._wallFeatures = tuple(sorted(set(mdp1._wallFeatures + mdp2._wallFeatures)))
         self._walls = sorted(set(mdp1._walls + mdp2._walls))
         self._actions = sorted(set(mdp1._actions + mdp2._actions))
         self._actionaliases = {**mdp1._actionaliases, **mdp2._actionaliases}
