@@ -13,8 +13,7 @@ from pyrlap.pyrlap2.core.mdp.factoredmdp import \
     FactoredMarkovDecisionProcess, \
     ANDFactoredMarkovDecisionProcess
 
-from pyrlap.pyrlap2.core.agent.agent import Agent
-from pyrlap.pyrlap2.core.agent.planner import Planner
-from pyrlap.pyrlap2.core.agent.tabularagent import TabularAgent
+from pyrlap.pyrlap2.core.policy.policy import Policy
+from pyrlap.pyrlap2.core.policy.tabularpolicy import TabularPolicy
 
 from pyrlap.pyrlap2.core.plotting import Plottable, Plotter

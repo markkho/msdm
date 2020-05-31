@@ -71,7 +71,7 @@ class CoreTestCase(unittest.TestCase):
         vi = VectorizedValueIteration(temperature=.1,
                                       entropyRegularization=True)
         vi.planOn(gw1)
-        stateTraj = vi.runOn(gw1)['stateTraj']
+        stateTraj = vi.policy.runOn(gw1)['stateTraj']
         self.assertTrue(stateTraj[-2] in gw1.absorbingStates)
         self.assertTrue(stateTraj[-1] == TERMINALSTATE)
         self.assertTrue(stateTraj[0] in gw1.initStates)

@@ -3,7 +3,7 @@ from pyrlap.pyrlap2.core.mdp.mdp import MarkovDecisionProcess
 from pyrlap.pyrlap2.core.distributions import Distribution
 from pyrlap.pyrlap2.core.variables import TERMINALSTATE
 
-class Agent(ABC):
+class Policy(ABC):
     @abstractmethod
     def getActionDist(self, s) -> Distribution:
         pass
@@ -30,9 +30,4 @@ class Agent(ABC):
             'actionTraj': actions,
             'rewardTraj': rewards
         }
-
-
-
-        raise NotImplementedError
-
 

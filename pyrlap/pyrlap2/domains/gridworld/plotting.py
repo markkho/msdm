@@ -9,7 +9,7 @@ import matplotlib.patches as patches
 import matplotlib.colors as colors
 import matplotlib.cm as cmx
 
-from pyrlap.pyrlap2.core import State, TERMINALSTATE, Action, TabularAgent
+from pyrlap.pyrlap2.core import State, TERMINALSTATE, Action, TabularPolicy
 from pyrlap.pyrlap2.domains.gridworld.mdp import GridWorld
 
 DISTINCT_COLORS = [
@@ -272,8 +272,8 @@ class GridWorldPlotter:
                 self.ax.add_patch(patch)
         return self
 
-    def plotPolicy(self, agent: Union[TabularAgent, dict]) -> "GridWorldPlotter":
-        if isinstance(agent, TabularAgent):
+    def plotPolicy(self, agent: Union[TabularPolicy, dict]) -> "GridWorldPlotter":
+        if isinstance(agent, TabularPolicy):
             policy = agent.asDict()
         else:
             policy = agent
