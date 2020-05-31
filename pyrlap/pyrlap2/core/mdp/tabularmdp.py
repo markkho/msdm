@@ -56,10 +56,11 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         ss = self.states
         aa = self.actions
         tf = np.zeros((len(ss), len(aa), len(ss)))
-        for (si, ai, nsi), _ in np.ndenumerate(tf):
-            s, a, ns = ss[si], aa[ai], ss[nsi]
-            p = self.getNextStateDist(s, a).prob(ns)
-            tf[si, ai, nsi] = p
+        for si, s in enumerate(ss):
+            for ai, a in enumerate(aa):
+                nsdist = self.getNextStateDist(s, a)
+                for nsi, ns in enumerate(ss):
+                    tf[si, ai, nsi] = nsdist.prob(ns)
         self._tfmatrix = tf
         return self._tfmatrix
 
