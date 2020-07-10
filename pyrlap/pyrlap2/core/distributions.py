@@ -72,13 +72,17 @@ class Multinomial(Enumerable, Distribution):
             return np.array(self._logits)
         return np.array(self._probs)
 
-    def combineEnergyWith(self, other: "Multinomial"):
+    def combineEnergyWith(self, other: "Multinomial",
+                          selfweight=1.0,
+                          otherweight=1.0):
         """
         Combines two distributions by multiplying probabilities
         and normalizing
         """
         fullsupport = sorted(set(self.support + other.support))
-        new_logits = {e: self.logit(e) + other.logit(e) for e in fullsupport}
+        new_logits = {e: self.logit(e)*selfweight +
+                         other.logit(e)*otherweight
+                      for e in fullsupport}
         new_logits = {e: l for e, l in new_logits.items() if l != -np.inf}
         assert len(new_logits) > 0, "Degenerate distribution"
         new_support, new_logits = zip(*sorted(new_logits.items()))
