@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 def readme():
     with open('README.rst') as f:
@@ -12,7 +12,7 @@ setup(name='pyrlap',
       author="Mark Ho",
       author_email='mark.ho.cs@gmail.com',
       license='MIT',
-      packages=['pyrlap'],
+      packages=find_packages(),
       install_requires=['numpy', 'matplotlib', 'scipy'],
       test_suite='nose.collector',
       tests_require=['nose'],
