@@ -89,6 +89,10 @@ class GridWorld(TabularMarkovDecisionProcess):
         return self._walls
 
     @property
+    def wallFeatures(self):
+        return self._wallFeatures
+
+    @property
     def initStates(self):
         try:
             return self._initstates
@@ -182,8 +186,8 @@ class GridWorld(TabularMarkovDecisionProcess):
              figsize=None,
              figsizeMult=1,
              featureColors=None,
-             plotInitStates=False,
-             plotAbsorbingStates=False
+             plotInitStates=True,
+             plotAbsorbingStates=True
              ):
         if allElements:
             plotInitStates = True

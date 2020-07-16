@@ -186,21 +186,23 @@ class GridWorldPlotter:
                      valueRange=None,
                      showColors=True,
                      isCategorical=False,
-                     colorvalue_func="bwr_r") -> "GridWorldPlotter":
+                     colorValueFunc="bwr_r") -> "GridWorldPlotter":
+        if len(stateMap) == 0:
+            return self
         # state map - colors / numbers
         vmax_abs = max(abs(v) for k, v in stateMap.items())
         if valueRange is None:
             valueRange = [-vmax_abs, vmax_abs]
         vmin, vmax = valueRange
         if isCategorical:
-            colorvalue_func = lambda i: DISTINCT_COLORS[
+            colorValueFunc = lambda i: DISTINCT_COLORS[
                 int(i) % len(DISTINCT_COLORS)]
-        elif isinstance(colorvalue_func, str):
-            colorrange = plt.get_cmap(colorvalue_func)
+        elif isinstance(colorValueFunc, str):
+            colorrange = plt.get_cmap(colorValueFunc)
             color_norm = colors.Normalize(vmin=vmin, vmax=vmax)
             colorvalue_map = cmx.ScalarMappable(norm=color_norm,
                                                 cmap=colorrange)
-            colorvalue_func = lambda v: colorvalue_map.to_rgba(v)
+            colorValueFunc = lambda v: colorvalue_map.to_rgba(v)
         for s, v in stateMap.items():
             assert isinstance(s, State)
             if s == TERMINALSTATE:
@@ -211,7 +213,7 @@ class GridWorldPlotter:
             xy = (sdict['x'], sdict['y'])
             color = 'w'
             if showColors:
-                color = colorvalue_func(v)
+                color = colorValueFunc(v)
                 square = Rectangle(xy, 1, 1,
                                    color=color,
                                    ec='k', lw=2)
@@ -272,14 +274,16 @@ class GridWorldPlotter:
                 self.ax.add_patch(patch)
         return self
 
-    def plotPolicy(self, agent: Union[TabularPolicy, dict]) -> "GridWorldPlotter":
-        if isinstance(agent, TabularPolicy):
-            policy = agent.asDict()
-        else:
-            policy = agent
+    def plotPolicy(self, policy: Union[TabularPolicy, dict]) -> "GridWorldPlotter":
+        if isinstance(policy, TabularPolicy):
+            policy = policy.policydict
         return self.plotStateActionMap(
             stateActionMap=policy,
             plotOverWalls=False,
             valueRange=[0, 1],
             colorvalue_func=lambda v: 'k'
         )
+
+    def title(self, title, **kwargs):
+        self.ax.set_title(title, **kwargs)
+        return self
