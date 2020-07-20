@@ -13,6 +13,13 @@ from pyrlap.pyrlap2.core.mdp.factoredmdp import \
     FactoredMarkovDecisionProcess, \
     ANDFactoredMarkovDecisionProcess
 
+from pyrlap.pyrlap2.core.posg.posg import \
+    PartiallyObservableStochasticGame, \
+    ANDPartiallyObservableStochasticGame 
+
+from pyrlap.pyrlap2.core.stochasticgame import \
+	StochasticGame, ANDStochasticGame
+
 from pyrlap.pyrlap2.core.policy.policy import Policy
 from pyrlap.pyrlap2.core.policy.tabularpolicy import TabularPolicy
 
