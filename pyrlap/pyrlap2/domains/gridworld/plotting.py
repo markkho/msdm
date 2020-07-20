@@ -102,8 +102,11 @@ class GridWorldPlotter:
         for s in stateTraj:
             if s == TERMINALSTATE:
                 break
-            s = dict(zip([v.name for v in s.variables], s.values))
-            xys.append((s['x'], s['y']))
+            if isinstance(s, State):
+                s = dict(zip([v.name for v in s.variables], s.values))
+                xys.append((s['x'], s['y']))
+            elif isinstance(s, tuple):
+                xys.append(s)
 
         if len(xys) == 2:
             p0 = tuple(np.array(xys[0]) + .5)
