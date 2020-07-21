@@ -1,4 +1,4 @@
-from typing import Iterable
+from typing import Iterable, Mapping, Hashable
 from abc import ABC, abstractmethod
 
 from pyrlap.pyrlap2.core.distributions import Distribution
@@ -12,23 +12,15 @@ class PartiallyObservableStochasticGame(ABC):
     - next state, observation distributions
     """
 
-    def __init__(self, variables):
-        self._variables = sorted(variables)
-        self._vardict = {v.name: v for v in variables}
-
-    def getVar(self, name):
-        return self._vardict[name]
+    def __init__(self, agentList):
+        self._agentList = agentList
 
     @property
-    def variables(self):
-        return self._variables
+    def agents(self):
+        return self._agentList
 
     @abstractmethod
-    def getNextStateObservationDist(self, s, ja) -> Distribution:
-        pass
-
-    @abstractmethod
-    def getReward(self, s, ja, ns) -> Iterable[float]:
+    def getInitialStateDist(self) -> Distribution:
         pass
 
     @abstractmethod
@@ -36,7 +28,24 @@ class PartiallyObservableStochasticGame(ABC):
         pass
 
     @abstractmethod
-    def getInitialStateDist(self) -> Distribution:
+    def getNextStateDist(self, s: "state", ja: "jointaction") -> Distribution:
+        pass
+
+    @abstractmethod
+    def getJointObservationDist(self, 
+            s: "state", 
+            ja: "jointaction", 
+            ns: "nextstate"
+        ) -> Distribution:
+        pass
+
+    @abstractmethod
+    def getJointRewards(self, 
+            s: "state", 
+            ja: "jointaction",
+            ns: "nextstate",
+            jo: "jointobservation"
+        ) -> Mapping[Hashable, float]:
         pass
 
     def __and__(self, other: "PartiallyObservableStochasticGame"):

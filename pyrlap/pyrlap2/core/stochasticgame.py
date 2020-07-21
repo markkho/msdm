@@ -1,4 +1,4 @@
-from typing import Iterable
+from typing import Iterable, Mapping, Hashable
 from abc import ABC, abstractmethod
 
 from pyrlap.pyrlap2.core.distributions import Distribution
@@ -12,31 +12,31 @@ class StochasticGame(ABC):
     - next state distributions
     """
 
-    def __init__(self, variables):
-        self._variables = sorted(variables)
-        self._vardict = {v.name: v for v in variables}
-
-    def getVar(self, name):
-        return self._vardict[name]
-
+    def __init__(self, agentList):
+        self._agentList = agentList
+        
     @property
-    def variables(self):
-        return self._variables
-
-    @abstractmethod
-    def getNextStateDist(self, s, ja) -> Distribution:
-        pass
-
-    @abstractmethod
-    def getReward(self, s, ja, ns) -> Iterable[float]:
-        pass
-
-    @abstractmethod
-    def getJointActionDist(self, s) -> Distribution:
-        pass
+    def agents(self):
+    	return self._agentList
 
     @abstractmethod
     def getInitialStateDist(self) -> Distribution:
+        pass
+
+    @abstractmethod
+    def getJointActionDist(self, s: "state") -> Distribution:
+        pass
+
+    @abstractmethod
+    def getNextStateDist(self, s: "state", ja: "jointaction") -> Distribution:
+        pass
+
+    @abstractmethod
+    def getJointRewards(self, 
+            s: "state", 
+            ja: "jointaction",
+            ns: "nextstate",
+        ) -> Mapping[Hashable, float]:
         pass
 
     def __and__(self, other: "StochasticGame"):
