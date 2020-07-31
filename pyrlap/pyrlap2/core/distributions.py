@@ -61,7 +61,9 @@ class Multinomial(Enumerable, Distribution):
     def sample(self):
         return self.support[np.random.choice(len(self.support), p=self._probs)]
 
-    def items(self):
+    def items(self, probs=False):
+        if probs:
+            return zip(self.support, self._probs)
         return zip(self.support, self._logits)
 
     def keys(self):
