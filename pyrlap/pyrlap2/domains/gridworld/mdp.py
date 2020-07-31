@@ -74,7 +74,7 @@ class GridWorld(TabularMarkovDecisionProcess):
             featureRewards = {'g': 0}
         self._featureRewards = featureRewards
         self.stepCost = stepCost
-        self.terminationProb = terminationProb
+        self.terminationProb = terminationProb #basically discount rate
 
     @property
     def height(self):
@@ -126,6 +126,9 @@ class GridWorld(TabularMarkovDecisionProcess):
         self._absorbingStates = sorted(abss)
         return self._absorbingStates
 
+    def isTerminal(self, s):
+        return s == TERMINALSTATE
+
     @property
     def locationFeatures(self):
         return self._xyfeatures
@@ -166,7 +169,8 @@ class GridWorld(TabularMarkovDecisionProcess):
         return baseTransition.mixWith(termination, 1 - self.terminationProb)
 
     def getReward(self, state, action, nextstate) -> float:
-        if state == TERMINALSTATE:
+        if (state == TERMINALSTATE) or (nextstate == TERMINALSTATE):
+        # if state == TERMINALSTATE:
             return 0.0
         f = self._xyfeatures.get(nextstate, None)
         return self._featureRewards.get(f, 0.0) + self.stepCost
