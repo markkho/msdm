@@ -50,6 +50,7 @@ class LAOStar:
                 "bestaction": actionorder[0],
                 "actionorder": actionorder,
                 "visitorder": len(eGraph),
+                "expandedorder": -1,
                 "expanded": False
             }
             eGraph[_hash(s0)] = node
@@ -128,9 +129,10 @@ class LAOStar:
                     toget.extend(bestchildrenstates)
             return sGraph
 
-        def expandGraph(eGraph, n):
+        def expandGraph(eGraph, n, nExpanded):
             s = n['state']
             n['expanded'] = True
+            n['expandedorder'] = nExpanded
             aa = n['actionorder']
             for a in aa:
                 children = []
@@ -146,6 +148,7 @@ class LAOStar:
                             "bestaction": actionorder[0],
                             "actionorder": actionorder,
                             "visitorder": len(eGraph),
+                            "expandedorder": -1,
                             "parents": [n, ],
                             "actionchildren": {},
                             "expanded": False
@@ -175,9 +178,11 @@ class LAOStar:
 
         if showProgress:
             pbar = tqdm.tqdm()
+        nExpanded = 0
         for s0 in initStates:
             n0 = eGraph[_hash(s0)]
-            expandGraph(eGraph, n0)
+            expandGraph(eGraph, n0, nExpanded)
+            nExpanded += 1
             z = getAncestors(eGraph, n0)
             updateDP(z, eGraph)
         sGraph = getSolutionGraph(eGraph, initStates)
@@ -190,7 +195,8 @@ class LAOStar:
             if len(ntt) == 0:
                 break
             nonterm = max(ntt, key=lambda n: (n["value"], -n["visitorder"]))
-            expandGraph(eGraph, nonterm)
+            expandGraph(eGraph, nonterm, nExpanded)
+            nExpanded += 1
             z = getAncestors(eGraph, nonterm)
             updateDP(z, eGraph)
             sGraph = getSolutionGraph(eGraph, initStates)
@@ -202,5 +208,6 @@ class LAOStar:
             eGraph=eGraph,
             sGraph=sGraph,
             laoIter=laoIter,
+            nonterminaltips=ntt,
             seed=seed
         )
