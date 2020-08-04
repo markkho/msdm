@@ -1,8 +1,11 @@
 from abc import ABC, abstractmethod
+from itertools import product
+from copy import deepcopy
 from collections import defaultdict
 import numpy as np
 from scipy.special import softmax
 from pyrlap.pyrlap2.core.enumerable import Enumerable
+from pyrlap.pyrlap2.core.utils import dict_merge, dict_match, naturaljoin
 
 class Distribution(ABC):
     @abstractmethod
@@ -74,42 +77,42 @@ class Multinomial(Enumerable, Distribution):
             return np.array(self._logits)
         return np.array(self._probs)
 
-    def combineEnergyWith(self, other: "Multinomial",
-                          selfweight=1.0,
-                          otherweight=1.0):
-        """
-        Combines two distributions by multiplying probabilities
-        and normalizing
-        """
-        fullsupport = sorted(set(self.support + other.support))
-        new_logits = {e: self.logit(e)*selfweight +
-                         other.logit(e)*otherweight
-                      for e in fullsupport}
-        new_logits = {e: l for e, l in new_logits.items() if l != -np.inf}
-        assert len(new_logits) > 0, "Degenerate distribution"
-        new_support, new_logits = zip(*sorted(new_logits.items()))
-        return Multinomial(support=new_support, logits=new_logits)
-
-    def mixWith(self, other: "Multinomial", selfprob: float = .5):
-        """
-        Returns the distribution associated with a weighted mixture
-        of self and other.
-        """
-        if selfprob == 0.0:
-            return other
-        elif selfprob == 1.0:
-            return self
-
-        new_probs = defaultdict(float)
-        for e, p in zip(self.support, self.probs):
-            new_probs[e] += p*selfprob
-        for e, p in zip(other.support, other.probs):
-            new_probs[e] += p*(1-selfprob)
-        new_support, new_probs = zip(*sorted(new_probs.items()))
-        return Multinomial(support=new_support, probs=new_probs)
-
     def __and__(self, other: "Multinomial"):
-        return self.combineEnergyWith(other)
+        """
+        Distribution conjunction:
+        Multiplies two multinomial distributions (adds their log probabilities) 
+        with optionally factored variables.
+        If the support of both are dictionaries, each nested key functions
+        as a variable name. If there are shared variables, these are combined
+        by adding the energies of support elements where their assignments match, 
+        effectively making each distribution a factor in a factor graph.
+        """
+        jsupport = []
+        jlogits = []
+        for si, oi in product(self.support, other.support):
+            if isinstance(si, dict) and isinstance(oi, dict):
+                if dict_match(si, oi): #not efficient if the cartesian product is large 
+                    jsupport.append(dict_merge(si, oi))
+                    jlogits.append(self.logit(si) + other.logit(oi))
+            else:
+                jsupport.append((si, oi))
+                jlogits.append(self.logit(si) + other.logit(oi))
+        assert len(jlogits) > 0, "Degenerate distribution"
+        return Multinomial(support=jsupport, logits=jlogits)
+
+    def __or__(self, other):
+        """
+        Distribution disjunction
+        This is equivalent to marginalization
+        see https://arxiv.org/pdf/2004.06030.pdf
+        """
+        raise NotImplementedError
+
+    def __sub__(self, other):
+        """
+        Distribution subtraction / negation
+        """
+        raise NotImplementedError
 
     def __str__(self):
         e_l = ", ".join([f"{e}: {l:.2f}" for e, l in self.items()])
