@@ -7,22 +7,13 @@ from pyrlap.pyrlap2.core.distributions import Distribution
 class MarkovDecisionProcess(ABC):
     """
     MDPs are defined by:
-    - variables, which determine states and actions
     - action distributions, which bias actions at each state
     - initial state distributions
     - next state distributions
     """
 
-    def __init__(self, variables: Iterable[TaskVariable]):
-        self._mdpvariables = sorted(variables)
-        self._vardict = {v.name: v for v in variables}
-
-    def getVar(self, name):
-        return self._vardict[name]
-
-    @property
-    def variables(self):
-        return self._mdpvariables
+    def __init__(self):
+        pass
 
     @abstractmethod
     def getNextStateDist(self, s: State, a: Action) -> Distribution:

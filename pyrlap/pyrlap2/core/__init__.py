@@ -24,3 +24,5 @@ from pyrlap.pyrlap2.core.policy.policy import Policy
 from pyrlap.pyrlap2.core.policy.tabularpolicy import TabularPolicy
 
 from pyrlap.pyrlap2.core.plotting import Plottable, Plotter
+
+from pyrlap.pyrlap2.core.assignmentmap import AssignmentMap
