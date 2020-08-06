@@ -2,7 +2,7 @@ from scipy.special import softmax, logsumexp
 from typing import Mapping
 import numpy as np
 from pyrlap.pyrlap2.core import TabularPolicy, \
-    TabularMarkovDecisionProcess, Multinomial
+    TabularMarkovDecisionProcess, Multinomial, AssignmentMap
 
 class VectorizedValueIteration:
     def __init__(self,
@@ -44,14 +44,16 @@ class VectorizedValueIteration:
 
     @property
     def valuefunc(self) -> Mapping:
-        vf = dict(zip(self.states, self._valuevec))
+        vf = AssignmentMap()
+        for s, v in zip(self.states, self._valuevec):
+            vf[s] = v
         return vf
 
     @property
     def actionvaluefunc(self) -> Mapping:
-        qf = {}
+        qf = AssignmentMap()
         for si, s in enumerate(self.states):
-            qf[s] = {}
+            qf[s] = AssignmentMap()
             for ai, a in enumerate(self.actions):
                 qf[s][a] = self._qvaluemat[si, ai]
         return qf
@@ -59,3 +61,16 @@ class VectorizedValueIteration:
     @property
     def policy(self) -> TabularPolicy:
         return self._policy
+
+    #shortcuts
+    @property
+    def V(self):
+        return self.valuefunc
+
+    @property
+    def Q(self):
+        return self.actionvaluefunc
+ 
+    @property
+    def pi(self):
+        return self.policy

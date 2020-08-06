@@ -2,6 +2,7 @@ from typing import Mapping
 import numpy as np
 
 from pyrlap.pyrlap2.core.policy.policy import Policy
+from pyrlap.pyrlap2.core.assignmentmap import AssignmentMap
 from pyrlap.pyrlap2.core.distributions import Multinomial, Distribution
 from pyrlap.pyrlap2.core.mdp.mdp import MarkovDecisionProcess
 class TabularPolicy(Policy):
@@ -9,9 +10,9 @@ class TabularPolicy(Policy):
         self._states = states
         self._actions = actions
         if policymatrix is not None:
-            policydict = {}
+            policydict = AssignmentMap()
             for si, s in enumerate(states):
-                policydict[s] = {}
+                policydict[s] = AssignmentMap()
                 for ai, a in enumerate(actions):
                     if policymatrix[si, ai] > 0:
                         policydict[s][a] = policymatrix[si, ai]
