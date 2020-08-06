@@ -1,11 +1,16 @@
 import matplotlib.pyplot as plt
+import json
+from pyrlap.pyrlap2.domains.gridworld.parsing import stringToElementArray
 
 from pyrlap.pyrlap2.core import \
-    State, TaskVariable, Action, TERMINALSTATE, Multinomial, \
     TabularMarkovDecisionProcess, \
-    ANDMarkovDecisionProcess
+    ANDMarkovDecisionProcess, AssignmentMap, Multinomial
+
+TERMINALSTATE = {'x': -1, 'y': -1}
+TERMINALDIST = Multinomial([TERMINALSTATE,])
 
 class GridWorld(TabularMarkovDecisionProcess):
+
     def __init__(self,
                  tileArray,
                  tileArrayFormat=None,
@@ -18,75 +23,71 @@ class GridWorld(TabularMarkovDecisionProcess):
                  successProb=1.0,
                  terminationProb=0.0
                  ):
-        xvar = TaskVariable("x", tuple(range(len(tileArray[0]))), ("state",))
-        axvar = TaskVariable("ax", (-1, 0, 1), ("action",))
-        yvar = TaskVariable("y", tuple(range(len(tileArray))), ("state",))
-        ayvar = TaskVariable("ay", (-1, 0, 1), ("action",))
-        super().__init__(variables=[xvar, axvar, yvar, ayvar])
-
-        states = set([])
-        xyfeatures = {}
-        walls = set([])
-        absorbingStates = set([])
-        initstates = set([])
-        statealiases = {}
-        for y, row in enumerate(tileArray):
-            y = len(tileArray) - y - 1
-            for x, f in enumerate(row):
-                s = State((xvar, yvar), (x, y))
-                states.add(s)
-                if f == TERMINALSTATE:
-                    continue
-                statealiases[(x, y)] = s
-
-                if f in defaultFeatures:
-                    continue
+        super().__init__()
+        parseParams = {"colsep": "", "rowsep": "\n", "elementsep": "."}
+        if not isinstance(tileArray, str):
+            tileArray = "\n".join(tileArray)
+        elementArray = stringToElementArray(tileArray, **parseParams)
+        states = []
+        walls = AssignmentMap()
+        absorbingStates = AssignmentMap()
+        initStates = AssignmentMap()
+        locFeatures = AssignmentMap()
+        for y_, row in enumerate(elementArray):
+            y = len(elementArray) - y_ - 1
+            for x, elements in enumerate(row):
+                if len(elements) > 0:
+                    f = elements[0]
+                else:
+                    f = ''
+                s = {'x': x, 'y': y}
+                locFeatures[s] = f
+                states.append(s)
                 if f in initFeatures:
-                    initstates.add(s)
+                    initStates[s] = None
                 if f in absorbingFeatures:
-                    absorbingStates.add(s)
+                    absorbingStates[s] = None
                 if f in wallFeatures:
-                    walls.add(s)
-                xyfeatures[s] = f
+                    walls[s] = None
+        states.append(TERMINALSTATE)
+        states = sorted(states, key=lambda s: json.dumps(s, sort_keys=True))
 
-        states.add(TERMINALSTATE)
-        xyfeatures[TERMINALSTATE] = None
-        self._states = sorted(states)
-        self._statealiases = statealiases
-        self._initstates = sorted(initstates)
-        self._walls = sorted(walls)
+        actions = [
+            {'dx': 0, 'dy': 0},
+            {'dx': 1},
+            {'dx': -1},
+            {'dy': 1},
+            {'dy': -1}
+        ]
+        actions = sorted(actions, key=lambda a: json.dumps(a, sort_keys=True))
+        self._states = states
+        self._initStates = initStates
+        self._walls = walls
         self._wallFeatures = wallFeatures
-        self._absorbingStates = sorted(absorbingStates)
-
-        actionaliases = {
-            '^': Action((axvar, ayvar), (0, 1)),
-            'v': Action((axvar, ayvar), (0, -1)),
-            '>': Action((axvar, ayvar), (1, 0)),
-            '<': Action((axvar, ayvar), (-1, 0)),
-            'x': Action((axvar, ayvar), (0, 0)),
-        }
-        self._actionaliases = actionaliases
-        self._actions = sorted(actionaliases.values())
-
-        self._xyfeatures = xyfeatures
+        self._locFeatures = locFeatures
+        self._absorbingStates = absorbingStates
+        self._actions = actions
         self.successProb = successProb
         if featureRewards is None:
             featureRewards = {'g': 0}
         self._featureRewards = featureRewards
         self.stepCost = stepCost
         self.terminationProb = terminationProb #basically discount rate
+        self._height = len(elementArray)
+        self._width = len(elementArray[0])
+
 
     @property
     def height(self):
-        return max(self.getVar("y").domain) + 1
+        return self._height
 
     @property
     def width(self):
-        return max(self.getVar('x').domain) + 1
+        return self._width
 
     @property
     def walls(self):
-        return self._walls
+        return list(self._walls)
 
     @property
     def wallFeatures(self):
@@ -94,14 +95,7 @@ class GridWorld(TabularMarkovDecisionProcess):
 
     @property
     def initStates(self):
-        try:
-            return self._initstates
-        except AttributeError:
-            pass
-        s0 = self.getInitialStateDist()
-        s0 = sorted([s for s in s0.support if s0.prob(s) > 0])
-        self._initstates = s0
-        return self._initstates
+        return list(self._initStates)
 
     @property
     def absorbingStates(self):
@@ -109,77 +103,44 @@ class GridWorld(TabularMarkovDecisionProcess):
         Absorbing states are those that lead to the terminal state always
         (excluding the terminal state).
         """
-        try:
-            return self._absorbingStates
-        except AttributeError:
-            pass
-        abss = []
-        for s in self.states:
-            if s == TERMINALSTATE:
-                continue
-            is_abs = True
-            for a in self.actions:
-                if self.getNextStateDist(s, a).prob(TERMINALSTATE) != 1.0:
-                    is_abs = False
-            if is_abs:
-                abss.append(s)
-        self._absorbingStates = sorted(abss)
-        return self._absorbingStates
+        return list(self._absorbingStates)
 
     def isTerminal(self, s):
         return s == TERMINALSTATE
 
-    @property
-    def locationFeatures(self):
-        return self._xyfeatures
-
     def getNextStateDist(self, s, a) -> Multinomial:
-        if s == TERMINALSTATE:
-            return Multinomial([TERMINALSTATE, ])
-
-        try:
-            x, y = s.values
-        except AttributeError:
-            s = self._statealiases[s]
-            x, y = s.values
-
-        try:
-            ax, ay = a.values
-        except AttributeError:
-            a = self._actionaliases[a]
-            ax, ay = a.values
-
-        nx, ny = x + ax, y + ay
-        ns = State(s.variables, (nx, ny))
-
-        termination = Multinomial([TERMINALSTATE, ])
+        if self.isTerminal(s):
+            return TERMINALDIST
         if s in self.absorbingStates:
-            return termination
+            return TERMINALDIST
+
+        x, y = s['x'], s['y']
+        ax, ay = a.get('dx', 0), a.get('dy', 0)
+        nx, ny = x + ax, y + ay
+        ns = {'x': nx, 'y': ny}
 
         if ns not in self.states:
-            baseTransition = Multinomial([s, ])
+            bdist = Multinomial([s,])
         elif ns in self.walls:
-            baseTransition = Multinomial([s, ])
-        elif s == ns:
-            baseTransition = Multinomial([s, ])
+            bdist = Multinomial([s,])
+        elif ns == s:
+            bdist = Multinomial([s,])
         else:
-            baseTransition = \
-                 Multinomial([s, ns],
-                             probs=[1 - self.successProb, self.successProb])
-        return baseTransition.mixWith(termination, 1 - self.terminationProb)
+            bdist = Multinomial(support=[s, ns], probs=[1 - self.successProb, self.successProb])
+        
+        return bdist*(1 - self.terminationProb) | TERMINALDIST*self.terminationProb
 
     def getReward(self, state, action, nextstate) -> float:
-        if (state == TERMINALSTATE) or (nextstate == TERMINALSTATE):
-        # if state == TERMINALSTATE:
+        if self.isTerminal(state) or self.isTerminal(nextstate):
             return 0.0
-        f = self._xyfeatures.get(nextstate, None)
+        f = self._locFeatures.get(nextstate, "")
         return self._featureRewards.get(f, 0.0) + self.stepCost
 
     def getActionDist(self, state) -> Multinomial:
         return Multinomial([a for a in self._actions])
 
     def getInitialStateDist(self) -> Multinomial:
-        return Multinomial([s for s in self._initstates])
+        return Multinomial([s for s in self.initStates])
 
     def __and__(self, other):
         return ANDGridWorld(self, other)

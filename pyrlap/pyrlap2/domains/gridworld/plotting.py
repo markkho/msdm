@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Mapping, Union, Callable
+from typing import Mapping, Union, Callable, Hashable
 from numbers import Number
 
 import matplotlib.pyplot as plt
@@ -9,7 +9,7 @@ import matplotlib.patches as patches
 import matplotlib.colors as colors
 import matplotlib.cm as cmx
 
-from pyrlap.pyrlap2.core import State, TERMINALSTATE, Action, TabularPolicy
+from pyrlap.pyrlap2.core import TabularPolicy
 from pyrlap.pyrlap2.domains.gridworld.mdp import GridWorld
 
 DISTINCT_COLORS = [
@@ -45,11 +45,10 @@ class GridWorldPlotter:
         """Plot gridworld features"""
         ss = self.gw.states
         for s in ss:
-            if s == TERMINALSTATE:
+            if self.gw.isTerminal(s):
                 continue
-            sdict = dict(zip([v.name for v in s.variables], s.values))
-            xy = (sdict['x'], sdict['y'])
-            f = self.gw.locationFeatures.get(s)
+            xy = (s['x'], s['y'])
+            f = self.gw._locFeatures.get(s)
             color = featureColors.get(f, 'w')
             square = Rectangle(xy, 1, 1,
                                facecolor=color,
@@ -64,8 +63,9 @@ class GridWorldPlotter:
 
     def plotInitStates(self, markerSize=15):
         for s in self.gw.initStates:
-            sdict = dict(zip([v.name for v in s.variables], s.values))
-            x, y = sdict['x'], sdict['y']
+            # sdict = dict(zip([v.name for v in s.variables], s.values))
+            # x, y = sdict['x'], sdict['y']
+            x, y = s['x'], s['y']
             self.ax.plot(x + .5, y + .5,
                          markeredgecolor='cornflowerblue',
                          marker='o',
@@ -76,8 +76,9 @@ class GridWorldPlotter:
 
     def plotAbsorbingStates(self, markerSize=15):
         for s in self.gw.absorbingStates:
-            sdict = dict(zip([v.name for v in s.variables], s.values))
-            x, y = sdict['x'], sdict['y']
+            # sdict = dict(zip([v.name for v in s.variables], s.values))
+            # x, y = sdict['x'], sdict['y']
+            x, y = s['x'], s['y']
             self.ax.plot(x + .5, y + .5,
                          markeredgecolor='cornflowerblue',
                          marker='x',
@@ -100,13 +101,12 @@ class GridWorldPlotter:
 
         xys = []
         for s in stateTraj:
-            if s == TERMINALSTATE:
+            if self.gw.isTerminal(s):
                 break
-            if isinstance(s, State):
-                s = dict(zip([v.name for v in s.variables], s.values))
-                xys.append((s['x'], s['y']))
-            elif isinstance(s, tuple):
+            if isinstance(s, tuple):
                 xys.append(s)
+            elif isinstance(s, dict):
+                xys.append((s['x'], s['y']))
 
         if len(xys) == 2:
             p0 = tuple(np.array(xys[0]) + .5)
@@ -182,7 +182,7 @@ class GridWorldPlotter:
         return self
 
     def plotStateMap(self,
-                     stateMap: Mapping[State, Number],
+                     stateMap: Mapping,
                      plotOverWalls=False,
                      fontsize=10,
                      showNumbers=True,
@@ -207,13 +207,17 @@ class GridWorldPlotter:
                                                 cmap=colorrange)
             colorValueFunc = lambda v: colorvalue_map.to_rgba(v)
         for s, v in stateMap.items():
-            assert isinstance(s, State)
-            if s == TERMINALSTATE:
+            if self.gw.isTerminal(s):
                 continue
             if (not plotOverWalls) and (s in self.gw.walls):
                 continue
-            sdict = dict(zip([v.name for v in s.variables], s.values))
-            xy = (sdict['x'], sdict['y'])
+            if isinstance(s, dict):
+                xy = s['x'], s['y']
+            elif isinstance(s, tuple) or isinstance(s, list):
+                xy = s
+            else:
+                raise Exception("unknown state representation")
+
             color = 'w'
             if showColors:
                 color = colorValueFunc(v)
@@ -232,7 +236,7 @@ class GridWorldPlotter:
 
     def plotStateActionMap(self,
                            stateActionMap: Mapping[
-                               State, Mapping[Action, Number]],
+                               Hashable, Mapping[Hashable, Number]],
                            plotOverWalls=False,
                            valueRange=None,
                            colorvalue_func: Union[Callable, str]="bwr_r",
@@ -255,15 +259,23 @@ class GridWorldPlotter:
             colorvalue_func = lambda v: colorvalue_map.to_rgba(v)
 
         for s, av in stateActionMap.items():
-            if s == TERMINALSTATE:
+            if self.gw.isTerminal(s):
                 continue
             if (not plotOverWalls) and (s in self.gw.walls):
                 continue
-            sdict = dict(zip([v.name for v in s.variables], s.values))
-            x, y = sdict['x'], sdict['y']
+            # sdict = dict(zip([v.name for v in s.variables], s.values))
+            # x, y = sdict['x'], sdict['y']
+            if isinstance(s, dict):
+                x, y = s['x'], s['y']
+            elif isinstance(s, tuple) or isinstance(s, list):
+                x, y = s
+            else:
+                raise Exception("unknown state representation")
+
             for a, v in av.items():
-                adict = dict(zip([v.name for v in a.variables], a.values))
-                dx, dy = adict['ax'], adict['ay']
+                # adict = dict(zip([v.name for v in a.variables], a.values))
+                # dx, dy = adict['ax'], adict['ay']
+                dx, dy = a['dx'], a['dy']
                 arrowColor = colorvalue_func(v)
                 mag = abs(v) / absvmax
                 mag *= .5
