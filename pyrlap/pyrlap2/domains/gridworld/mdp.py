@@ -10,7 +10,6 @@ TERMINALSTATE = {'x': -1, 'y': -1}
 TERMINALDIST = Multinomial([TERMINALSTATE,])
 
 class GridWorld(TabularMarkovDecisionProcess):
-
     def __init__(self,
                  tileArray,
                  tileArrayFormat=None,

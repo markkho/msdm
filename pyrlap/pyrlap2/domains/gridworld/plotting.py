@@ -63,8 +63,6 @@ class GridWorldPlotter:
 
     def plotInitStates(self, markerSize=15):
         for s in self.gw.initStates:
-            # sdict = dict(zip([v.name for v in s.variables], s.values))
-            # x, y = sdict['x'], sdict['y']
             x, y = s['x'], s['y']
             self.ax.plot(x + .5, y + .5,
                          markeredgecolor='cornflowerblue',
@@ -263,8 +261,6 @@ class GridWorldPlotter:
                 continue
             if (not plotOverWalls) and (s in self.gw.walls):
                 continue
-            # sdict = dict(zip([v.name for v in s.variables], s.values))
-            # x, y = sdict['x'], sdict['y']
             if isinstance(s, dict):
                 x, y = s['x'], s['y']
             elif isinstance(s, tuple) or isinstance(s, list):
@@ -273,9 +269,7 @@ class GridWorldPlotter:
                 raise Exception("unknown state representation")
 
             for a, v in av.items():
-                # adict = dict(zip([v.name for v in a.variables], a.values))
-                # dx, dy = adict['ax'], adict['ay']
-                dx, dy = a['dx'], a['dy']
+                dx, dy = a.get('dx', 0.0), a.get('dy', 0.0)
                 arrowColor = colorvalue_func(v)
                 mag = abs(v) / absvmax
                 mag *= .5
@@ -285,7 +279,7 @@ class GridWorldPlotter:
                                   color=arrowColor)
                 else:
                     patch = Circle((x + .5, y + .5), radius=mag * .9,
-                                   fill=False)
+                                   fill=False, color=arrowColor)
                 self.ax.add_patch(patch)
         return self
 
@@ -302,3 +296,19 @@ class GridWorldPlotter:
     def title(self, title, **kwargs):
         self.ax.set_title(title, **kwargs)
         return self
+
+    #shortcuts
+    def pSA(self, *args, **kwargs):
+        return self.plotStateActionMap(*args, **kwargs)
+
+    def pS(self, *args, **kwargs):
+        return self.plotStateMap(*args, **kwargs)
+
+    def pT(self, *args, **kwargs):
+        return self.plotTrajectory(*args, **kwargs)
+
+    def pPi(self, *args, **kwargs):
+        return self.plotPolicy(*args, **kwargs)
+
+    def t(self, *args, **kwargs):
+        return self.title(*args, **kwargs)
