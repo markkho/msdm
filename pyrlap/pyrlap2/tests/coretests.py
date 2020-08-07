@@ -34,9 +34,8 @@ class CoreTestCase(unittest.TestCase):
         gw3 = gw1 & gw2
 
         #test state, aciton, variable composition is consistent
-        self.assertTrue(tuple(gw3.states) == tuple(gw2.states))
-        self.assertTrue(tuple(gw3.actions) == tuple(gw2.actions))
-        self.assertTrue(tuple(gw3.variables) == tuple(gw2.variables))
+        self.assertTrue(all(s3 == s2 for s3, s2 in zip(gw3.states, gw2.states)))
+        self.assertTrue(all(a3 == a2 for a3, a2 in zip(gw3.actions, gw2.actions)))
 
         #test that mdp distributions are consistent
         s0 = gw1.initialstatevec * gw2.initialstatevec
@@ -73,7 +72,7 @@ class CoreTestCase(unittest.TestCase):
         vi.planOn(gw1)
         stateTraj = vi.policy.runOn(gw1)['stateTraj']
         self.assertTrue(stateTraj[-2] in gw1.absorbingStates)
-        self.assertTrue(stateTraj[-1] == TERMINALSTATE)
+        self.assertTrue(gw1.isTerminal(stateTraj[-1]))
         self.assertTrue(stateTraj[0] in gw1.initStates)
 
 if __name__ == '__main__':
