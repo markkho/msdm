@@ -3,7 +3,13 @@ import json
 class AssignmentMap(dict):
     """Dictionary that supports simple dictionaries as keys"""
     def __init__(self, *args, **kwargs):
-        dict.update(self, *args, **kwargs)
+        dict.update(self)
+        if len(args) > 0:
+            for k, v in args[0]:
+                self[k] = v
+        if len(kwargs) > 0:
+            for k, v in kwargs.items():
+                self[k] = v
     
     def __getitem__(self, key):
         if isinstance(key, dict):
@@ -24,9 +30,23 @@ class AssignmentMap(dict):
         dictrepr = dict.__repr__(self)
         return '%s(%s)' % (type(self).__name__, dictrepr)
     
-    def update(self, *args, **kwargs):
-        for k, v in AssignmentMap(*args, **kwargs).items():
+    def update(self, *E, **F):
+        """Updates self in place"""
+        am = AssignmentMap()
+        for e in E:
+            for k in e.keys():
+                am[k] = e[k]
+        for k in F.keys():
+            am[k] = F[k]
+        for k, v in am.items():
             self[k] = v
+
+    def merge(self, *E, **F):
+        """Returns a new merged assignment map"""
+        am = AssignmentMap()
+        am.update(self)
+        am.update(*E, **F)
+        return am
             
     def items(self):
         for k, v in dict.items(self):

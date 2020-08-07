@@ -4,6 +4,9 @@ from pyrlap.pyrlap2.core.mdp import ANDMarkovDecisionProcess, \
     MarkovDecisionProcess
 from pyrlap.pyrlap2.core.variables import State, Action, TERMINALSTATE
 
+from pyrlap.pyrlap2.core.assignmentmap import AssignmentMap as Dict
+from pyrlap.pyrlap2.core.assignmentset import AssignmentSet as Set
+
 class TabularMarkovDecisionProcess(MarkovDecisionProcess):
     """Tabular MDPs can be fully enumerated (e.g., as matrices)"""
     def asMatrices(self):
@@ -24,7 +27,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
             return self._states
         except AttributeError:
             pass
-        states = set([])
+        states = Set([])
         statevars = tuple \
             ([v for v in self.variables if 'state' in v.properties])
         for values in product(*[v.domain for v in statevars]):
@@ -39,7 +42,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
             return self._actions
         except AttributeError:
             pass
-        actions = set([])
+        actions = Set([])
         actionvars = tuple \
             ([v for v in self.variables if "action" in v.properties])
         for vals in product(*[v.domain for v in actionvars]):
@@ -133,9 +136,9 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
             return self._reachablevec
         except AttributeError:
             pass
-        s0 = self.getInitialStateDist().support
-        frontier = set(s0)
-        visited = set(s0)
+        S0 = self.getInitialStateDist().support
+        frontier = Set(S0)
+        visited = Set(S0)
         while len(frontier) > 0:
             s = frontier.pop()
             for a in self.getActionDist(s).support:

@@ -21,7 +21,7 @@ class Policy(ABC):
             ns = mdp.getNextStateDist(s, a).sample()
             r = mdp.getReward(s, a, ns)
             traj.append((s, a, ns, r))
-            if s == TERMINALSTATE:
+            if mdp.isTerminal(s):
                 break
             s = ns
         states, actions, nextstates, rewards = zip(*traj)

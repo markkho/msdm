@@ -117,7 +117,7 @@ class Multinomial(Enumerable, Distribution):
                 jsupport.append((si, oi))
                 jlogits.append(self.logit(si) + other.logit(oi))
         if len(jlogits) > 0:
-            warning.warn("Product distribution has no non-zero support")
+            warnings.warn("Product distribution has no non-zero support")
         return Multinomial(support=jsupport, logits=jlogits)
 
     def __or__(self, other):
