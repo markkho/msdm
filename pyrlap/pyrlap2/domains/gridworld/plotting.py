@@ -48,17 +48,30 @@ class GridWorldPlotter:
             if self.gw.isTerminal(s):
                 continue
             xy = (s['x'], s['y'])
-            f = self.gw._locFeatures.get(s)
+            f = self.gw._locFeatures.get(s, '.')[0]
             color = featureColors.get(f, 'w')
             square = Rectangle(xy, 1, 1,
                                facecolor=color,
                                edgecolor=edgecolor,
                                linewidth=2)
             self.ax.add_patch(square)
+        return self
+
+    def plotOuterBox(self):
         outerbox = Rectangle((0, 0), self.gw.width, self.gw.height,
                              fill=False, edgecolor='black',
                              linewidth=2)
         self.ax.add_patch(outerbox)
+        return self
+
+    def plotWalls(self, facecolor='k', edgecolor='darkgrey'):
+        for ws in self.gw.walls:
+            xy = (ws['x'], ws['y'])
+            square = Rectangle(xy, 1, 1,
+                               facecolor=facecolor,
+                               edgecolor=edgecolor,
+                               linewidth=2)
+            self.ax.add_patch(square)
         return self
 
     def plotInitStates(self, markerSize=15):

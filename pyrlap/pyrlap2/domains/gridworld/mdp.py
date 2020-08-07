@@ -4,7 +4,12 @@ from pyrlap.pyrlap2.domains.gridworld.parsing import stringToElementArray
 
 from pyrlap.pyrlap2.core import \
     TabularMarkovDecisionProcess, \
-    ANDMarkovDecisionProcess, AssignmentMap, Multinomial
+    ANDMarkovDecisionProcess, Multinomial
+
+from pyrlap.pyrlap2.core import AssignmentMap as Dict
+from pyrlap.pyrlap2.core import AssignmentSet as Set
+def dictToStr(d):
+    return json.dumps(d, sort_keys=True)
 
 TERMINALSTATE = {'x': -1, 'y': -1}
 TERMINALDIST = Multinomial([TERMINALSTATE,])
@@ -28,44 +33,41 @@ class GridWorld(TabularMarkovDecisionProcess):
             tileArray = "\n".join(tileArray)
         elementArray = stringToElementArray(tileArray, **parseParams)
         states = []
-        walls = AssignmentMap()
-        absorbingStates = AssignmentMap()
-        initStates = AssignmentMap()
-        locFeatures = AssignmentMap()
+        walls = Set()
+        absorbingStates = Set()
+        initStates = Set()
+        locFeatures = Dict()
         for y_, row in enumerate(elementArray):
             y = len(elementArray) - y_ - 1
             for x, elements in enumerate(row):
+                s = {'x': x, 'y': y}
+                states.append(s)
                 if len(elements) > 0:
                     f = elements[0]
-                else:
-                    f = ''
-                s = {'x': x, 'y': y}
-                locFeatures[s] = f
-                states.append(s)
-                if f in initFeatures:
-                    initStates[s] = None
-                if f in absorbingFeatures:
-                    absorbingStates[s] = None
-                if f in wallFeatures:
-                    walls[s] = None
+                    locFeatures[s] = f
+                    if f in initFeatures:
+                        # initStates[s] = None
+                        initStates.add(s)
+                    if f in absorbingFeatures:
+                        # absorbingStates[s] = None
+                        absorbingStates.add(s)
+                    if f in wallFeatures:
+                        # walls[s] = None
+                        walls.add(s)
         states.append(TERMINALSTATE)
-        states = sorted(states, key=lambda s: json.dumps(s, sort_keys=True))
-
         actions = [
             {'dx': 0, 'dy': 0},
-            {'dx': 1},
-            {'dx': -1},
-            {'dy': 1},
-            {'dy': -1}
+            {'dx': 1, 'dy': 0},
+            {'dx': -1, 'dy': 0},
+            {'dy': 1, 'dx': 0},
+            {'dy': -1, 'dx': 0}
         ]
-        actions = sorted(actions, key=lambda a: json.dumps(a, sort_keys=True))
-        self._states = states
-        self._initStates = initStates
-        self._walls = walls
-        self._wallFeatures = wallFeatures
+        self._actions = sorted(actions, key=dictToStr)
+        self._states = sorted(states, key=dictToStr)
+        self._initStates = sorted(list(initStates), key=dictToStr)
+        self._absorbingStates = sorted(list(absorbingStates), key=dictToStr)
+        self._walls = sorted(list(walls), key=dictToStr)
         self._locFeatures = locFeatures
-        self._absorbingStates = absorbingStates
-        self._actions = actions
         self.successProb = successProb
         if featureRewards is None:
             featureRewards = {'g': 0}
@@ -161,7 +163,6 @@ class GridWorld(TabularMarkovDecisionProcess):
             featureColors = {
                 'g': 'yellow',
                 'x': 'red',
-                **{f: 'black' for f in self._wallFeatures}
             }
         if ax is None:
             if figsize is None:
@@ -171,10 +172,12 @@ class GridWorld(TabularMarkovDecisionProcess):
 
         gwp = GridWorldPlotter(gw=self, ax=ax)
         gwp.plotFeatures(featureColors=featureColors)
+        gwp.plotWalls()
         if plotInitStates:
             gwp.plotInitStates()
         if plotAbsorbingStates:
             gwp.plotAbsorbingStates()
+        gwp.plotOuterBox()
 
         return gwp
 
@@ -182,9 +185,19 @@ class GridWorld(TabularMarkovDecisionProcess):
 class ANDGridWorld(ANDMarkovDecisionProcess, GridWorld):
     def __init__(self, mdp1, mdp2):
         assert (mdp1.height == mdp2.height) and (mdp1.width == mdp2.width)
+        assert (mdp1.actions == mdp2.actions)
         ANDMarkovDecisionProcess.__init__(self, mdp1, mdp2)
-        self._xyfeatures = {**mdp1._xyfeatures, **mdp2._xyfeatures}
-        self._wallFeatures = tuple(sorted(set(mdp1._wallFeatures + mdp2._wallFeatures)))
-        self._walls = sorted(set(mdp1._walls + mdp2._walls))
-        self._actions = sorted(set(mdp1._actions + mdp2._actions))
-        self._actionaliases = {**mdp1._actionaliases, **mdp2._actionaliases}
+
+        # this is mostly for plotting
+        self._width = mdp1._width
+        self._height = mdp1._height
+        self._walls = sorted(list(Set(mdp1._walls) | Set(mdp2._walls)), key=dictToStr)
+        self._initStates = sorted(list(Set(mdp1._initStates) | Set(mdp2._initStates)), key=dictToStr)
+        self._absorbingStates = sorted(list(Set(mdp1._absorbingStates) | Set(mdp2._absorbingStates)), key=dictToStr)
+        self._actions = sorted(list(Set(mdp1._actions) | Set(mdp2._actions)), key=dictToStr)
+        self._states = sorted(list(Set(mdp1._states) | Set(mdp2._states)), key=dictToStr)
+
+        #store as strings of features
+        locFeatures = mdp1._locFeatures.merge(mdp2._locFeatures)
+        locFeatures = [(k, mdp1._locFeatures.get(k, "")+mdp2._locFeatures.get(k, "")) for k, fs in locFeatures.items()]
+        self._locFeatures = Dict(locFeatures)
