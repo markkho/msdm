@@ -4,6 +4,8 @@ import json
 import random
 import numpy as np
 
+from pyrlap.pyrlap2.core.assignmentmap import AssignmentMap as Dict
+
 def _hash(x):
     if isinstance(x, dict):
         return json.dumps(x, sort_keys=True)
@@ -44,7 +46,7 @@ class LAOStar:
             random.shuffle(actionorder)
             node = {
                 "parents": [], 
-                "actionchildren": {},
+                "actionchildren": Dict(),
                 "state": s0, 
                 "value": heuristic(s0),
                 "bestaction": actionorder[0],
@@ -150,7 +152,7 @@ class LAOStar:
                             "visitorder": len(eGraph),
                             "expandedorder": -1,
                             "parents": [n, ],
-                            "actionchildren": {},
+                            "actionchildren": Dict(),
                             "expanded": False
                         }
                         eGraph[_hash(ns)] = nextnode

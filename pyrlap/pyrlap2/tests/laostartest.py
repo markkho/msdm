@@ -29,7 +29,7 @@ class LAOStarTestCase(unittest.TestCase):
         def heuristic(s):
             if mdp.isTerminal(s):
                 return 0.0
-            return -np.sum(np.abs(np.array(s[1]) - np.array(goal[1])))
+            return -np.sum(np.abs(np.array(s['x']) - np.array(goal['x'])))
 
         lao = LAOStar()
         R = lao.planOn(mdp, 
