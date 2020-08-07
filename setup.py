@@ -5,7 +5,7 @@ def readme():
         return f.read()
 
 setup(name='pyrlap',
-      version='0.3',
+      version='0.4',
       description='Library for combining MDPs and solving them for cognitive '+
                   'science research',
       url='https://github.com/markkho/pyrlap',
