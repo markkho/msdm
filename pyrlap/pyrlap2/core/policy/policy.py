@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from pyrlap.pyrlap2.core.mdp.mdp import MarkovDecisionProcess
 from pyrlap.pyrlap2.core.distributions import Distribution
-from pyrlap.pyrlap2.core.variables import TERMINALSTATE
 
 class Policy(ABC):
     @abstractmethod

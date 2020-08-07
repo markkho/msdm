@@ -33,6 +33,9 @@ class Multinomial(Enumerable, Distribution):
     def __init__(self, support, logits=None, probs=None):
         if (probs is None) and (logits is None):
             logits = np.zeros(len(support))
+        if len(support) == 0:
+            probs = []
+            logits = []
         if probs is None:
             if np.sum(logits) == -np.inf:
                 probs = np.zeros(len(support))
@@ -98,6 +101,11 @@ class Multinomial(Enumerable, Distribution):
         by adding the energies of support elements where their assignments match, 
         effectively making each distribution a factor in a factor graph.
         """
+
+        #Conjunction with null distribution is null distribution
+        if (len(self.support) == 0) or (len(other.support) == 0):
+            return Multinomial([])
+
         jsupport = []
         jlogits = []
         # HACK: this should throw a warning or something if the distributions have different headers
@@ -139,6 +147,11 @@ class Multinomial(Enumerable, Distribution):
         pqunequalmix = p*.2 | q*.8 
         pqunequalmix = p*.1 | q*.8 | p*.1
         """
+        if (len(self.support) == 0):
+            return other
+        if (len(other.support) == 0):
+            return self
+
         jsupport = []
         jlogits = []
         matchedrows = []

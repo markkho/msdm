@@ -1,9 +1,7 @@
 from typing import Iterable
 from abc import ABC, abstractmethod
 
-from pyrlap.pyrlap2.core.variables import TaskVariable, State, Action
 from pyrlap.pyrlap2.core.distributions import Distribution
-
 from pyrlap.pyrlap2.core.assignmentcache import AssignmentCache
 
 class MarkovDecisionProcess(ABC):
@@ -14,26 +12,31 @@ class MarkovDecisionProcess(ABC):
     - next state distributions
     """
 
-    def __init__(self):
-        self.getNextStateDist = AssignmentCache(self.getNextStateDist)
-        self.getReward = AssignmentCache(self.getReward)
-        self.getActionDist = AssignmentCache(self.getActionDist)
-        self.getInitialStateDist = AssignmentCache(self.getInitialStateDist)
+    def __init__(self, memoize=True):
+        if memoize:
+            self.getNextStateDist = AssignmentCache(self.getNextStateDist)
+            self.getReward = AssignmentCache(self.getReward)
+            self.getActionDist = AssignmentCache(self.getActionDist)
+            self.getInitialStateDist = AssignmentCache(self.getInitialStateDist)
 
     @abstractmethod
-    def getNextStateDist(self, s: State, a: Action) -> Distribution:
+    def getNextStateDist(self, s, a) -> Distribution:
         pass
 
     @abstractmethod
-    def getReward(self, s: State, a: Action, ns: State) -> float:
+    def getReward(self, s, a, ns) -> float:
         pass
 
     @abstractmethod
-    def getActionDist(self, s: State) -> Distribution:
+    def getActionDist(self, s) -> Distribution:
         pass
 
     @abstractmethod
     def getInitialStateDist(self) -> Distribution:
+        pass
+
+    @abstractmethod
+    def isTerminal(self, s):
         pass
 
     def __and__(self, other: "MarkovDecisionProcess"):

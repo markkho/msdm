@@ -106,6 +106,10 @@ class GridWorld(TabularMarkovDecisionProcess):
         """
         return list(self._absorbingStates)
 
+    @property
+    def locationFeatures(self):
+        return self._locFeatures
+
     def isTerminal(self, s):
         return s == TERMINALSTATE
 
@@ -138,6 +142,8 @@ class GridWorld(TabularMarkovDecisionProcess):
         return self._featureRewards.get(f, 0.0) + self.stepCost
 
     def getActionDist(self, state) -> Multinomial:
+        if self.isTerminal(state):
+            return Multinomial([{'dx': 0, 'dy': 0}])
         return Multinomial([a for a in self._actions])
 
     def getInitialStateDist(self) -> Multinomial:
@@ -152,6 +158,7 @@ class GridWorld(TabularMarkovDecisionProcess):
              figsize=None,
              figsizeMult=1,
              featureColors=None,
+             plotWalls=True,
              plotInitStates=True,
              plotAbsorbingStates=True
              ):
@@ -172,7 +179,8 @@ class GridWorld(TabularMarkovDecisionProcess):
 
         gwp = GridWorldPlotter(gw=self, ax=ax)
         gwp.plotFeatures(featureColors=featureColors)
-        gwp.plotWalls()
+        if plotWalls:
+            gwp.plotWalls()
         if plotInitStates:
             gwp.plotInitStates()
         if plotAbsorbingStates:

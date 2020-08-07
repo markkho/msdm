@@ -1,7 +1,3 @@
-from pyrlap.pyrlap2.core.variables import TaskVariable, State, Action, \
-    TERMINALSTATE, NOTHINGSTATE
-
-from pyrlap.pyrlap2.core.enumerable import Enumerable
 from pyrlap.pyrlap2.core.distributions import Multinomial, Distribution
 from pyrlap.pyrlap2.core.mdp.mdp import \
     MarkovDecisionProcess, \

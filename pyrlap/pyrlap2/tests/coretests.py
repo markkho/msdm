@@ -1,6 +1,5 @@
 import unittest
 import numpy as np
-from pyrlap.pyrlap2.core import TERMINALSTATE
 from pyrlap.pyrlap2.domains import GridWorld
 from pyrlap.pyrlap2.algorithms import VectorizedValueIteration
 
@@ -48,7 +47,10 @@ class CoreTestCase(unittest.TestCase):
         self.assertTrue(sum(gw3.reachablestatevec) <= rv)
 
         #test reward composition
-        eqRF = (gw3.rewardmatrix == (gw1.rewardmatrix + gw2.rewardmatrix)).all()
+        rs = gw3.reachablestatevec*gw1.reachablestatevec*gw2.reachablestatevec
+        ast = gw3.absorbingstatevec*gw1.absorbingstatevec*gw2.absorbingstatevec
+        ignore = rs[None, None, :]*rs[:, None, None]*ast[:, None, None]*ast[None, None, :] 
+        eqRF = (ignore*gw3.rewardmatrix == ignore*(gw1.rewardmatrix + gw2.rewardmatrix)).all()
         self.assertTrue(eqRF)
 
         #test simple transition composition

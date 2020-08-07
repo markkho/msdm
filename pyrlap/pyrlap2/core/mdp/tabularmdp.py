@@ -1,8 +1,8 @@
 from itertools import product
+import warnings, json
 import numpy as np
 from pyrlap.pyrlap2.core.mdp import ANDMarkovDecisionProcess, \
     MarkovDecisionProcess
-from pyrlap.pyrlap2.core.variables import State, Action, TERMINALSTATE
 
 from pyrlap.pyrlap2.core.assignmentmap import AssignmentMap as Dict
 from pyrlap.pyrlap2.core.assignmentset import AssignmentSet as Set
@@ -18,7 +18,8 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
             'sarf': self.stateactionrewardmatrix,
             's0': self.initialstatevec,
             'nt': self.nonterminalstatevec,
-            'rs': self.reachablestatevec
+            'rs': self.reachablestatevec,
+            'ast': self.absorbingstatevec
         }
 
     @property
@@ -27,13 +28,11 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
             return self._states
         except AttributeError:
             pass
-        states = Set([])
-        statevars = tuple \
-            ([v for v in self.variables if 'state' in v.properties])
-        for values in product(*[v.domain for v in statevars]):
-            states.add(State(statevars, tuple(values)))
-        states.add(TERMINALSTATE)
-        self._states = sorted(states)
+        warnings.warn("State space unspecified; performing reachability analysis.")
+        self._states = \
+            sorted(self.getReachableStates(), 
+                key=lambda d: json.dumps(d, sort_keys=True) if isinstance(d, dict) else d
+            )
         return self._states
 
     @property
@@ -42,12 +41,14 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
             return self._actions
         except AttributeError:
             pass
+        warnings.warn("Action space unspecified; performing reachability analysis.")
         actions = Set([])
-        actionvars = tuple \
-            ([v for v in self.variables if "action" in v.properties])
-        for vals in product(*[v.domain for v in actionvars]):
-            actions.add(Action(actionvars, tuple(vals)))
-        self._actions = sorted(actions)
+        for s in self.states:
+            for a in self.getActionDist(s).support:
+                actions.add(a)
+        self._actions = sorted(actions, 
+                key=lambda d: json.dumps(d, sort_keys=True) if isinstance(d, dict) else d
+            )
         return self._actions
 
     @property
@@ -93,10 +94,14 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         ss = self.states
         aa = self.actions
         rf = np.zeros((len(ss), len(aa), len(ss)))
-        for (si, ai, nsi), _ in np.ndenumerate(rf):
-            s, a, ns = ss[si], aa[ai], ss[nsi]
-            r = self.getReward(s, a, ns)
-            rf[si, ai, nsi] = r
+        for si, s in enumerate(ss):
+            for ai, a in enumerate(aa):
+                nsdist = self.getNextStateDist(s, a)
+                for nsi, ns in enumerate(ss):
+                    if ns not in nsdist.support:
+                        continue
+                    r = self.getReward(s, a, ns)
+                    rf[si, ai, nsi] = r
         self._rfmatrix = rf
         return self._rfmatrix
 
@@ -127,7 +132,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         except AttributeError:
             pass
         ss = self.states
-        self._ntvec = np.array([0 if s == TERMINALSTATE else 1 for s in ss])
+        self._ntvec = np.array([0 if self.isTerminal(s) else 1 for s in ss])
         return self._ntvec
 
     @property
@@ -136,6 +141,31 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
             return self._reachablevec
         except AttributeError:
             pass
+        reachable = self.getReachableStates()
+        self._reachablevec = np.array \
+            ([1 if s in reachable else 0 for s in self.states])
+        return self._reachablevec
+
+    @property
+    def absorbingstatevec(self):
+        try:
+            return self._absorbingstatevec
+        except AttributeError:
+            pass
+        def isAbsorbing(s):
+            actions = self.getActionDist(s).support
+            for a in actions:
+                nextstates = self.getNextStateDist(s, a).support
+                for ns in nextstates:
+                    if not self.isTerminal(ns):
+                        return False
+            return True
+        self._absorbingstatevec = np.array([isAbsorbing(s) for s in self.states])
+        return self._absorbingstatevec
+
+    
+
+    def getReachableStates(self):
         S0 = self.getInitialStateDist().support
         frontier = Set(S0)
         visited = Set(S0)
@@ -146,14 +176,10 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
                     if ns not in visited:
                         frontier.add(ns)
                     visited.add(ns)
-        self._reachablevec = np.array \
-            ([1 if s in visited else 0 for s in self.states])
-        return self._reachablevec
+        return visited
 
     def __and__(self, other: "TabularMarkovDecisionProcess"):
         assert isinstance(other, TabularMarkovDecisionProcess)
-        assert all(v == u for v, u in zip(self.variables, other.variables)), \
-            "Variables not aligned"
         assert all(s == z for s, z in zip(self.states, other.states)), \
             "State spaces not aligned"
         assert all(a == b for a, b in zip(self.actions, other.actions)), \
