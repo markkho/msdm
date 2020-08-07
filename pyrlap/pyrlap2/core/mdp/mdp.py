@@ -4,6 +4,8 @@ from abc import ABC, abstractmethod
 from pyrlap.pyrlap2.core.variables import TaskVariable, State, Action
 from pyrlap.pyrlap2.core.distributions import Distribution
 
+from pyrlap.pyrlap2.core.assignmentcache import AssignmentCache
+
 class MarkovDecisionProcess(ABC):
     """
     MDPs are defined by:
@@ -13,7 +15,10 @@ class MarkovDecisionProcess(ABC):
     """
 
     def __init__(self):
-        pass
+        self.getNextStateDist = AssignmentCache(self.getNextStateDist)
+        self.getReward = AssignmentCache(self.getReward)
+        self.getActionDist = AssignmentCache(self.getActionDist)
+        self.getInitialStateDist = AssignmentCache(self.getInitialStateDist)
 
     @abstractmethod
     def getNextStateDist(self, s: State, a: Action) -> Distribution:

@@ -50,3 +50,4 @@ def naturaljoin(*Rs):
         #need to test all combintions of table rows to see if they conflict
         if all([dict_match(r, s) for r, s in combinations(rs, 2)]):
             yield reduce(dict_merge, rs, {})
+            
