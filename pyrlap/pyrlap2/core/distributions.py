@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from itertools import product, chain
 from copy import deepcopy
-import warnings
+import warnings, logging
 from collections import defaultdict
 import json
 import numpy as np
@@ -10,7 +10,8 @@ from pyrlap.pyrlap2.core.enumerable import Enumerable
 from pyrlap.pyrlap2.core.utils import dict_merge, dict_match, naturaljoin
 
 np.seterr(divide='ignore')
-warnings.warn("Ignoring division by zero errors")
+logger = logging.getLogger(__name__)
+logger.info("Ignoring division by zero errors")
 
 class Distribution(ABC):
     @abstractmethod
@@ -125,7 +126,7 @@ class Multinomial(Enumerable, Distribution):
                 jsupport.append((si, oi))
                 jlogits.append(self.logit(si) + other.logit(oi))
         if len(jlogits) > 0:
-            warnings.warn("Product distribution has no non-zero support")
+            logger.debug("Product distribution has no non-zero support")
         return Multinomial(support=jsupport, logits=jlogits)
 
     def __or__(self, other):

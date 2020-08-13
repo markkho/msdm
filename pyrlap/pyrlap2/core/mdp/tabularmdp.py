@@ -1,11 +1,12 @@
 from itertools import product
-import warnings, json
+import warnings, json, logging
 import numpy as np
 from pyrlap.pyrlap2.core.mdp import ANDMarkovDecisionProcess, \
     MarkovDecisionProcess
 
 from pyrlap.pyrlap2.core.assignmentmap import AssignmentMap as Dict
 from pyrlap.pyrlap2.core.assignmentset import AssignmentSet as Set
+logger = logging.getLogger(__name__)
 
 class TabularMarkovDecisionProcess(MarkovDecisionProcess):
     """Tabular MDPs can be fully enumerated (e.g., as matrices)"""
@@ -28,7 +29,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
             return self._states
         except AttributeError:
             pass
-        warnings.warn("State space unspecified; performing reachability analysis.")
+        logger.info("State space unspecified; performing reachability analysis.")
         self._states = \
             sorted(self.getReachableStates(), 
                 key=lambda d: json.dumps(d, sort_keys=True) if isinstance(d, dict) else d
@@ -41,7 +42,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
             return self._actions
         except AttributeError:
             pass
-        warnings.warn("Action space unspecified; performing reachability analysis.")
+        logger.info("Action space unspecified; performing reachability analysis.")
         actions = Set([])
         for s in self.states:
             for a in self.getActionDist(s).support:
