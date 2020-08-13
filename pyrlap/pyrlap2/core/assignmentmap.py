@@ -29,6 +29,11 @@ class AssignmentMap(dict):
     def __repr__(self):
         dictrepr = dict.__repr__(self)
         return '%s(%s)' % (type(self).__name__, dictrepr)
+
+    def __contains__(self, i):
+        if isinstance(i, dict):
+            i = json.dumps(i, sort_keys=True)     
+        return dict.__contains__(self, i)
     
     def update(self, *E, **F):
         """Updates self in place"""

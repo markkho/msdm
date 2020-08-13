@@ -27,6 +27,11 @@ class AssignmentSet:
     
     def __sub__(self, other: "AssignmentSet"):
         return AssignmentSet(self._items - other._items)
+
+    def __contains__(self, i):
+        if isinstance(i, dict):
+            i = json.dumps(i, sort_keys=True)     
+        return self._items.__contains__(i)
     
     def __iter__(self):
         for i in self._items:
