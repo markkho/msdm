@@ -42,6 +42,13 @@ class VectorizedValueIteration:
         self._valuevec = v
         self._qvaluemat = q
 
+    def getSoftPolicy(self, temp=1.0):
+        return TabularPolicy(
+            self.states, 
+            self.actions, 
+            policymatrix=softmax(self._qvaluemat/temp, axis=-1)
+        )
+
     @property
     def valuefunc(self) -> Mapping:
         vf = AssignmentMap()
