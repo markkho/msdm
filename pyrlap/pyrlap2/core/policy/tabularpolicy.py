@@ -45,7 +45,7 @@ class TabularPolicy(Policy):
             return self._policymat
         except AttributeError:
             pass
-        pi = np.zeros(len(self.states), len(self.actions))
+        pi = np.zeros((len(self.states), len(self.actions)))
         for si, s in enumerate(self.states):
             adist = self.getActionDist(s)
             for ai, a in enumerate(self.actions):
