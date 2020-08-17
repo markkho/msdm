@@ -92,6 +92,9 @@ class Multinomial(Enumerable, Distribution):
             return np.array(self._logits)
         return np.array(self._probs)
 
+    def __len__(self):
+        return len(self.support)
+
     def __and__(self, other: "Multinomial"):
         """
         Distribution conjunction:
