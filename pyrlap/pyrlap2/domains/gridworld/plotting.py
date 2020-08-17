@@ -310,6 +310,16 @@ class GridWorldPlotter:
         self.ax.set_title(title, **kwargs)
         return self
 
+    def annotate(self, s, a=None, text="", 
+      fontsize=10, ha='center', va='center', **kwargs):
+        kwargs = {
+            'fontsize': fontsize,
+            'ha': ha,
+            'va': va,
+            **kwargs
+        }
+        self.ax.text(s['x'] + .5, s['y'] + .5, text, **kwargs)
+
     #shortcuts
     def pSA(self, *args, **kwargs):
         return self.plotStateActionMap(*args, **kwargs)
