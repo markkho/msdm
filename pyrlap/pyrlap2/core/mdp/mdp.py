@@ -111,7 +111,7 @@ class ORMarkovDecisionProcess(MarkovDecisionProcess):
     def getReward(self, state, action, nextstate) -> float:
         r1 = self.mdp1.getReward(state, action, nextstate)
         r2 = self.mdp2.getReward(state, action, nextstate)
-        assert r1 == r2, "Mixture of MDPs must have equivalent rewards"
+        assert r1 == r2, "Mixture of MDPs must have equivalent rewards" #may need to change
         return r1
 
     def getActionDist(self, state) -> Distribution:
