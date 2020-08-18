@@ -2,7 +2,7 @@ from typing import Mapping
 import numpy as np
 
 from pyrlap.pyrlap2.core.policy.policy import Policy
-from pyrlap.pyrlap2.core.assignmentmap import AssignmentMap
+from pyrlap.pyrlap2.core.assignment.assignmentmap import AssignmentMap
 from pyrlap.pyrlap2.core.distributions import Multinomial, Distribution
 from pyrlap.pyrlap2.core.mdp.mdp import MarkovDecisionProcess
 class TabularPolicy(Policy):

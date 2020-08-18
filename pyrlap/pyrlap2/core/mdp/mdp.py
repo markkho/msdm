@@ -1,8 +1,7 @@
-from typing import Iterable
 from abc import ABC, abstractmethod
 
 from pyrlap.pyrlap2.core.distributions import Distribution
-from pyrlap.pyrlap2.core.assignmentcache import AssignmentCache
+from pyrlap.pyrlap2.core.assignment.assignmentcache import AssignmentCache
 
 class MarkovDecisionProcess(ABC):
     """

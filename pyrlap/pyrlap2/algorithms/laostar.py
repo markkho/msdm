@@ -4,7 +4,7 @@ import json
 import random
 import numpy as np
 
-from pyrlap.pyrlap2.core.assignmentmap import AssignmentMap as Dict
+from pyrlap.pyrlap2.core.assignment.assignmentmap import AssignmentMap as Dict
 
 def _hash(x):
     if isinstance(x, dict):

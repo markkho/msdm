@@ -1,11 +1,9 @@
-from itertools import product
-import warnings, json, logging
+import json, logging
 import numpy as np
 from pyrlap.pyrlap2.core.mdp import ANDMarkovDecisionProcess, \
     MarkovDecisionProcess
 
-from pyrlap.pyrlap2.core.assignmentmap import AssignmentMap as Dict
-from pyrlap.pyrlap2.core.assignmentset import AssignmentSet as Set
+from pyrlap.pyrlap2.core.assignment.assignmentset import AssignmentSet as Set
 logger = logging.getLogger(__name__)
 
 class TabularMarkovDecisionProcess(MarkovDecisionProcess):
