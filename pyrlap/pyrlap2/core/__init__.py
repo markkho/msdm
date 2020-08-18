@@ -5,6 +5,7 @@ from pyrlap.pyrlap2.core.mdp.mdp import \
 from pyrlap.pyrlap2.core.mdp.tabularmdp import \
     TabularMarkovDecisionProcess, \
     ANDTabularMarkovDecisionProcess
+from pyrlap.pyrlap2.core.mdp.policy import Policy, TabularPolicy
 
 from pyrlap.pyrlap2.core.posg.posg import \
     PartiallyObservableStochasticGame, \
@@ -12,9 +13,6 @@ from pyrlap.pyrlap2.core.posg.posg import \
 
 from pyrlap.pyrlap2.core.stochasticgame import \
 	StochasticGame, ANDStochasticGame
-
-from pyrlap.pyrlap2.core.policy.policy import Policy
-from pyrlap.pyrlap2.core.policy.tabularpolicy import TabularPolicy
 
 from pyrlap.pyrlap2.core.assignment.assignmentmap import AssignmentMap
 from pyrlap.pyrlap2.core.assignment.assignmentset import AssignmentSet

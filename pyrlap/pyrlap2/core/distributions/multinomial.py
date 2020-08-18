@@ -7,7 +7,7 @@ np.seterr(divide='ignore')
 logger = logging.getLogger(__name__)
 logger.info("Ignoring division by zero errors")
 
-from pyrlap.pyrlap2.core.dictutils import dict_merge, dict_match
+from pyrlap.pyrlap2.core.utils.dictutils import dict_merge, dict_match
 from pyrlap.pyrlap2.core.distributions.distributions import Distribution
 
 class Multinomial(Distribution):
