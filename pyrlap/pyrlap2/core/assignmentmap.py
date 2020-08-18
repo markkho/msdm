@@ -11,29 +11,35 @@ class AssignmentMap(dict):
             for k, v in kwargs.items():
                 self[k] = v
     
+    def encode_item(self, i):
+        if isinstance(i, dict):
+            i = json.dumps(i, sort_keys=True)
+        return i
+
+    def decode_item(self, i):
+        try:
+            i = json.loads(i)
+        except json.JSONDecodeError:
+            pass
+        except TypeError:
+            pass
+        return i
+
     def __getitem__(self, key):
-        if isinstance(key, dict):
-            key = json.dumps(key, sort_keys=True)
-        return dict.__getitem__(self, key)
+        return dict.__getitem__(self, self.encode_item(key))
     
     def get(self, key, default=None):
-        if isinstance(key, dict):
-            key = json.dumps(key, sort_keys=True)    
-        return dict.get(self, key, default)
+        return dict.get(self, self.encode_item(key), default)
     
     def __setitem__(self, key, val):
-        if isinstance(key, dict):
-            key = json.dumps(key, sort_keys=True)
-        dict.__setitem__(self, key, val)
+        dict.__setitem__(self, self.encode_item(key), val)
     
     def __repr__(self):
         dictrepr = dict.__repr__(self)
         return '%s(%s)' % (type(self).__name__, dictrepr)
 
     def __contains__(self, i):
-        if isinstance(i, dict):
-            i = json.dumps(i, sort_keys=True)     
-        return dict.__contains__(self, i)
+        return dict.__contains__(self, self.encode_item(i))
     
     def update(self, *E, **F):
         """Updates self in place"""
@@ -55,24 +61,12 @@ class AssignmentMap(dict):
             
     def items(self):
         for k, v in dict.items(self):
-            try:
-                k = json.loads(k)
-            except json.JSONDecodeError:
-                pass
-            yield k, v
+            yield self.decode_item(k), v
     
     def keys(self):
         for k in dict.keys(self):
-            try:
-                k = json.loads(k)
-            except json.JSONDecodeError:
-                pass        
-            yield k
+            yield self.decode_item(k)
     
     def __iter__(self):
         for k in dict.__iter__(self):
-            try:
-                k = json.loads(k)
-            except json.JSONDecodeError:
-                pass        
-            yield k
+            yield self.decode_item(k)

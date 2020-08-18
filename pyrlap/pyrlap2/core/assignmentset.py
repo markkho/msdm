@@ -5,19 +5,27 @@ class AssignmentSet:
     def __init__(self, items=()):
         self._items = set([])
         for i in items:
-            if isinstance(i, dict):
-                i = json.dumps(i, sort_keys=True)
-            self._items.add(i)
-    
-    def add(self, i):
+            self._items.add(self.encode_item(i))
+
+    def encode_item(self, i):
         if isinstance(i, dict):
             i = json.dumps(i, sort_keys=True)
-        self._items.add(i)
+        return i
+
+    def decode_item(self, i):
+        try:
+            i = json.loads(i)
+        except json.JSONDecodeError:
+            pass
+        except TypeError:
+            pass
+        return i
+
+    def add(self, i):
+        self._items.add(self.encode_item(i))
     
     def remove(self, i):
-        if isinstance(i, dict):
-            i = json.dumps(i, sort_keys=True)    
-        self._items.remove(i)
+        self._items.remove(self.encode_item(i))
     
     def __and__(self, other: "AssignmentSet"):
         return AssignmentSet(self._items & other._items)
@@ -29,28 +37,17 @@ class AssignmentSet:
         return AssignmentSet(self._items - other._items)
 
     def __contains__(self, i):
-        if isinstance(i, dict):
-            i = json.dumps(i, sort_keys=True)     
-        return self._items.__contains__(i)
+        return self._items.__contains__(self.encode_item(i))
     
     def __iter__(self):
         for i in self._items:
-            try:
-                i = json.loads(i)
-            except json.JSONDecodeError:
-                pass
-            yield i
+            yield self.decode_item(i)
 
     def __len__(self):
         return len(self._items)
 
     def pop(self):
-        i = self._items.pop()
-        try:
-            i = json.loads(i)
-        except json.JSONDecodeError:
-            pass
-        return i
+        return self.decode_item(self._items.pop())
     
     def __repr__(self):
         return self._items.__repr__()
