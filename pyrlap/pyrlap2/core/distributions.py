@@ -1,13 +1,9 @@
 from abc import ABC, abstractmethod
 from itertools import product, chain
-from copy import deepcopy
-import warnings, logging
-from collections import defaultdict
-import json
+import logging
 import numpy as np
-from scipy.special import softmax, logsumexp#, log_softmax
-from pyrlap.pyrlap2.core.enumerable import Enumerable
-from pyrlap.pyrlap2.core.utils import dict_merge, dict_match, naturaljoin
+from scipy.special import softmax, logsumexp
+from pyrlap.pyrlap2.core.utils import dict_merge, dict_match
 
 np.seterr(divide='ignore')
 logger = logging.getLogger(__name__)
@@ -30,7 +26,7 @@ class Distribution(ABC):
     def __and__(self, other):
         pass
 
-class Multinomial(Enumerable, Distribution):
+class Multinomial(Distribution):
     def __init__(self, support, logits=None, probs=None):
         if (probs is None) and (logits is None):
             logits = np.zeros(len(support))
@@ -86,11 +82,6 @@ class Multinomial(Enumerable, Distribution):
 
     def keys(self):
         return [e for e in self.support]
-
-    def asMatrix(self, rep="logits"):
-        if rep == 'logits':
-            return np.array(self._logits)
-        return np.array(self._probs)
 
     def __len__(self):
         return len(self.support)
@@ -198,7 +189,7 @@ class Multinomial(Enumerable, Distribution):
         return Multinomial(support=self.support, logits=mlogits)
 
     def __rmul__(self, num):
-        return self.__mul__(self, num)
+        return self.__mul__(num)
 
     def __truediv__(self, num):
         mlogits = [logit - np.log(num) for logit in self.logits]
@@ -209,7 +200,6 @@ class Multinomial(Enumerable, Distribution):
         return np.exp(logsumexp(self.logits))
 
     def normalize(self):
-        # return Multinomial(support=self.support, logits=log_softmax(self.logits))
         return self/self.Z
         
     def __sub__(self, other):
