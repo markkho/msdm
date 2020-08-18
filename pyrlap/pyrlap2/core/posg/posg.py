@@ -1,4 +1,4 @@
-from typing import Iterable, Mapping, Hashable
+from typing import Mapping, Hashable
 from abc import ABC, abstractmethod
 
 from pyrlap.pyrlap2.core.distributions import Distribution
@@ -6,18 +6,17 @@ from pyrlap.pyrlap2.core.distributions import Distribution
 class PartiallyObservableStochasticGame(ABC):
     """
     POSGs are defined by:
-    - variables, which determine states, observations, and actions
     - action distributions, which bias actions at each state
     - initial state distributions
     - next state, observation distributions
     """
 
-    def __init__(self, agentList):
-        self._agentList = agentList
+    def __init__(self, agentNames):
+        self._agentNames = agentNames
 
     @property
-    def agents(self):
-        return self._agentList
+    def agentNames(self):
+        return self._agentNames
 
     @abstractmethod
     def getInitialStateDist(self) -> Distribution:
@@ -50,9 +49,7 @@ class PartiallyObservableStochasticGame(ABC):
 
     def __and__(self, other: "PartiallyObservableStochasticGame"):
         """
-        This is not strictly an abstract base class method, but it
-        should be overwritten by derived abstract base classes
-        so that AND-composed POSGs can inherit from them.
+        This should be overwritten for specific implementations
         """
         return ANDPartiallyObservableStochasticGame(self, other)
 
