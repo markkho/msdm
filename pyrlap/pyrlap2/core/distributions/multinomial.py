@@ -1,30 +1,15 @@
-from abc import ABC, abstractmethod
-from itertools import product, chain
 import logging
+from itertools import product
 import numpy as np
 from scipy.special import softmax, logsumexp
-from pyrlap.pyrlap2.core.utils import dict_merge, dict_match
 
 np.seterr(divide='ignore')
 logger = logging.getLogger(__name__)
 logger.info("Ignoring division by zero errors")
 
-class Distribution(ABC):
-    @abstractmethod
-    def sample(self):
-        pass
+from pyrlap.pyrlap2.core.utils import dict_merge, dict_match
+from pyrlap.pyrlap2.core.distributions.distributions import Distribution
 
-    @abstractmethod
-    def prob(self, e):
-        pass
-
-    @abstractmethod
-    def logit(self, e):
-        pass
-
-    @abstractmethod
-    def __and__(self, other):
-        pass
 
 class Multinomial(Distribution):
     def __init__(self, support, logits=None, probs=None):
@@ -64,7 +49,7 @@ class Multinomial(Distribution):
         try:
             return self._logits[self.support.index(e)]
         except ValueError:
-            return default 
+            return default
 
     @property
     def logits(self):
@@ -89,11 +74,11 @@ class Multinomial(Distribution):
     def __and__(self, other: "Multinomial"):
         """
         Distribution conjunction:
-        Multiplies two multinomial distributions (adds their log probabilities) 
+        Multiplies two multinomial distributions (adds their log probabilities)
         with optionally factored variables.
         If the support of both are dictionaries, each nested key functions
         as a variable name. If there are shared variables, these are combined
-        by adding the energies of support elements where their assignments match, 
+        by adding the energies of support elements where their assignments match,
         effectively making each distribution a factor in a factor graph.
         """
 
@@ -107,7 +92,7 @@ class Multinomial(Distribution):
         # i.e., dictionary keys interact in a weird way
         for si, oi in product(self.support, other.support):
             if isinstance(si, dict) and isinstance(oi, dict):
-                if dict_match(si, oi): #not efficient if the cartesian product is large 
+                if dict_match(si, oi): #not efficient if the cartesian product is large
                     soi = dict_merge(si, oi)
                     if soi in jsupport:
                         continue
@@ -127,19 +112,19 @@ class Multinomial(Distribution):
         """
         Mixture of experts
 
-        A mixture of experts energy can be calculated from primitive 
+        A mixture of experts energy can be calculated from primitive
         energy functions p and q by taking log(exp(p(x)) + exp(q(x))).
 
         This handles dictionaries as rows of factor tables. Care should be taken
         to ensure that each dictionary contains the relevant keys since
-        otherwise the energies will be combined in unexpected ways. 
+        otherwise the energies will be combined in unexpected ways.
 
         Note that the logits will not be normalized.
 
         Example:
 
-        pqequalmix = p | q 
-        pqunequalmix = p*.2 | q*.8 
+        pqequalmix = p | q
+        pqunequalmix = p*.2 | q*.8
         pqunequalmix = p*.1 | q*.8 | p*.1
         """
         if (len(self.support) == 0):
@@ -157,14 +142,14 @@ class Multinomial(Distribution):
         #first get inner join rows, tracking ones that don't match
         for si, oi in product(self.support, other.support):
             if isinstance(si, dict) and isinstance(oi, dict):
-                if dict_match(si, oi): #not efficient if the cartesian product is large 
+                if dict_match(si, oi): #not efficient if the cartesian product is large
                     matchedrows.extend([si, oi])
                     soi = dict_merge(si, oi)
                     if soi in jsupport:
                         continue
                     logit = self.logit(si) + other.logit(oi)
                     if logit == -np.inf:
-                        continue    
+                        continue
                     jsupport.append(soi)
                     jlogits.append(logit)
                 else:
@@ -201,7 +186,7 @@ class Multinomial(Distribution):
 
     def normalize(self):
         return self/self.Z
-        
+
     def __sub__(self, other):
         """
         Distribution subtraction / negation
