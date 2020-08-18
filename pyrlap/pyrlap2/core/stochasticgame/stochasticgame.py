@@ -7,7 +7,6 @@ from pyrlap.pyrlap2.core.assignment.assignmentcache import AssignmentCache
 class StochasticGame(ABC):
     """
     SGs are defined by:
-    - variables, which determine states and joint actions
     - action distributions, which bias actions at each state
     - initial state distributions
     - next state distributions
