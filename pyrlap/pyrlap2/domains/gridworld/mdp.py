@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import json
-from pyrlap.pyrlap2.domains.gridworld.parsing import stringToElementArray
+from pyrlap.pyrlap2.core.utils.gridstringutils import  stringToElementArray
 
 from pyrlap.pyrlap2.core import \
     TabularMarkovDecisionProcess, \
