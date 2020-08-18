@@ -29,7 +29,7 @@ class VectorizedValueIteration:
                 v = self.temp * logsumexp((1 / self.temp) * q + np.log(am),
                                           axis=-1) * nt
             else:
-                v = np.max(q, axis=-1)
+                v = np.max(q, axis=-1) * nt
         if self.entreg:
             pi = softmax((1 / self.temp) * q, axis=-1)
         else:
