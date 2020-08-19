@@ -1,9 +1,11 @@
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 
+from pyrlap.pyrlap2.core.problemclasses.problemclass import ProblemClass
 from pyrlap.pyrlap2.core.distributions import Distribution
 from pyrlap.pyrlap2.core.assignment.assignmentcache import AssignmentCache
 
-class MarkovDecisionProcess(ABC):
+
+class MarkovDecisionProcess(ProblemClass):
     """
     MDPs are defined by:
     - action distributions, which bias actions at each state
@@ -122,6 +124,7 @@ class ORMarkovDecisionProcess(MarkovDecisionProcess):
         s1 = self.mdp1.getInitialStateDist()
         s2 = self.mdp2.getInitialStateDist()
         return s1 | s2
+
 
 def ScaledMarkovDecisionProcess(MarkovDecisionProcess):
     """
