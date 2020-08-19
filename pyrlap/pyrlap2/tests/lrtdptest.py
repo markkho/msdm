@@ -21,12 +21,12 @@ class LAOStarTestCase(unittest.TestCase):
         m.planOn(mdp)
 
         vi = VectorizedValueIteration()
-        vi.planOn(mdp)
+        res = vi.planOn(mdp)
 
         # Ensure our VI Q values are a lower bound to the LRTDP ones.
         for s in mdp.states:
             for a in mdp.actions:
-                assert vi.Q[s][a] <= m.Q(mdp, s, a)
+                assert res.Q[s][a] <= m.Q(mdp, s, a)
 
         s = deterministic(mdp.getInitialStateDist())
         reachable = [s]
@@ -38,9 +38,9 @@ class LAOStarTestCase(unittest.TestCase):
 
             # For reachable states under our policy, ensure:
             # Value is the same
-            assert m.V[s] == vi.V[s]
+            assert m.V[s] == res.V[s]
             # Policy is the same
-            assert m.policy(mdp, s) == deterministic(vi.policy.getActionDist(s))
+            assert m.policy(mdp, s) == deterministic(res.policy.getActionDist(s))
         
         
 if __name__ == '__main__':

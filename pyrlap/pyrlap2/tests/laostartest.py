@@ -31,13 +31,13 @@ class LAOStarTestCase(unittest.TestCase):
                 return 0.0
             return -np.sum(np.abs(np.array(s['x']) - np.array(goal['x'])))
 
-        lao = LAOStar()
-        R = lao.planOn(mdp, 
-                       heuristic, 
-                       maxLAOIters=100,
-                       policyEvaluationIters=40,
-                       seed=6066253173235511770
-                      )
+        lao = LAOStar(
+            heuristic,
+            maxLAOIters=100,
+            policyEvaluationIters=40,
+            seed=6066253173235511770
+        )
+        R = lao.planOn(mdp)
         
 if __name__ == '__main__':
     unittest.main()

@@ -31,8 +31,8 @@ class DomainTestCase(unittest.TestCase):
             entropyRegularization=False,
             temperature=0.0
         )
-        vi.planOn(sagw)
-        saTraj = vi.policy.runOn(sagw)['stateTraj']
+        res = vi.planOn(sagw)
+        saTraj = res.policy.runOn(sagw)['stateTraj']
         self.assertTrue(saTraj[0] == {'curAction': {'dx': 0, 'dy': 0}, 'groundState': {'x': 8, 'y': 0}})
 
     def test_gridgame_initialization(self):

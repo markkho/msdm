@@ -1,11 +1,10 @@
-import warnings
 from scipy.special import softmax, logsumexp
-from typing import Mapping
 import numpy as np
 from pyrlap.pyrlap2.core import TabularPolicy, \
-    TabularMarkovDecisionProcess, Multinomial, AssignmentMap
+    TabularMarkovDecisionProcess, Multinomial, AssignmentMap, \
+    Plans, Result
 
-class VectorizedValueIteration:
+class VectorizedValueIteration(Plans):
     def __init__(self,
                  iterations=50,
                  discountRate=1.0,
@@ -46,48 +45,57 @@ class VectorizedValueIteration:
             pi = np.log(np.zeros_like(q))
             pi[q == np.max(q, axis=-1, keepdims=True)] = 1
             pi = softmax(pi, axis=-1)
-        self._policy = TabularPolicy(mdp.states, mdp.actions, policymatrix=pi)
-        self.states = mdp.states
-        self.actions = mdp.actions
-        self._valuevec = v
-        self._qvaluemat = q
 
-    def getSoftPolicy(self, temp=1.0):
-        return TabularPolicy(
-            self.states, 
-            self.actions, 
-            policymatrix=softmax(self._qvaluemat/temp, axis=-1)
-        )
-
-    @property
-    def valuefunc(self) -> Mapping:
-        vf = AssignmentMap()
-        for s, v in zip(self.states, self._valuevec):
-            vf[s] = v
-        return vf
-
-    @property
-    def actionvaluefunc(self) -> Mapping:
+        # create result object
+        res = Result()
+        res.mdp = mdp
+        res.policy = res.pi = TabularPolicy(mdp.states, mdp.actions, policymatrix=pi)
+        res._valuevec = v
+        vf = AssignmentMap([(s, vi) for s, vi in zip(mdp.states, v)])
+        res.valuefunc = res.V = vf
+        res._qvaluemat = q
         qf = AssignmentMap()
-        for si, s in enumerate(self.states):
+        for si, s in enumerate(mdp.states):
             qf[s] = AssignmentMap()
-            for ai, a in enumerate(self.actions):
-                qf[s][a] = self._qvaluemat[si, ai]
-        return qf
+            for ai, a in enumerate(mdp.actions):
+                qf[s][a] = q[si, ai]
+        res.actionvaluefunc = res.Q = qf
+        return res
 
-    @property
-    def policy(self) -> TabularPolicy:
-        return self._policy
-
-    #shortcuts
-    @property
-    def V(self):
-        return self.valuefunc
-
-    @property
-    def Q(self):
-        return self.actionvaluefunc
- 
-    @property
-    def pi(self):
-        return self.policy
+    # def getSoftPolicy(self, temp=1.0):
+    #     return TabularPolicy(
+    #         self.states,
+    #         self.actions,
+    #         policymatrix=softmax(self._qvaluemat/temp, axis=-1)
+    #     )
+    # @property
+    # def valuefunc(self) -> Mapping:
+    #     vf = AssignmentMap()
+    #     for s, v in zip(self.states, self._valuevec):
+    #         vf[s] = v
+    #     return vf
+    #
+    # @property
+    # def actionvaluefunc(self) -> Mapping:
+    #     qf = AssignmentMap()
+    #     for si, s in enumerate(self.states):
+    #         qf[s] = AssignmentMap()
+    #         for ai, a in enumerate(self.actions):
+    #             qf[s][a] = self._qvaluemat[si, ai]
+    #     return qf
+    # @property
+    # def policy(self) -> TabularPolicy:
+    #     return self._policy
+    #
+    # #shortcuts
+    # @property
+    # def V(self):
+    #     return self.valuefunc
+    #
+    # @property
+    # def Q(self):
+    #     return self.actionvaluefunc
+    #
+    # @property
+    # def pi(self):
+    #     return self.policy

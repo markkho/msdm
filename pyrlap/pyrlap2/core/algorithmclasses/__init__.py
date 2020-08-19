@@ -5,12 +5,16 @@ class Algorithm(ABC):
     """Abstract superclass for all algorithms"""
     pass
 
+class Result(ABC):
+    """Abstract superclass for all result objects"""
+    pass
+
 class Plans(Algorithm):
     @abstractmethod
-    def planOn(self, problem: ProblemClass):
+    def planOn(self, problem: ProblemClass) -> Result:
         pass
 
 class Learns(Algorithm):
     @abstractmethod
-    def trainOn(self, problem: ProblemClass):
+    def trainOn(self, problem: ProblemClass) -> Result:
         pass

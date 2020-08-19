@@ -1,4 +1,4 @@
-from pyrlap.pyrlap2.core.mdp import MarkovDecisionProcess
+from pyrlap.pyrlap2.core import MarkovDecisionProcess
 from pyrlap.pyrlap2.core import DefaultAssignmentMap
 
 def iter_dist_prob(dist):
