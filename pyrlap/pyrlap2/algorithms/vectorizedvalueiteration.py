@@ -28,6 +28,7 @@ class VectorizedValueIteration:
         aa = am.copy()
         aa[np.nonzero(aa)] = 1
         aa = np.log(aa)
+        terminal_sidx = np.where(1 - nt)[0]
 
         v = np.zeros(len(ss))
         for i in range(self.iters):
@@ -36,7 +37,8 @@ class VectorizedValueIteration:
                 v = self.temp * logsumexp((1 / self.temp) * q + np.log(am),
                                           axis=-1) * nt
             else:
-                v = np.max(q + aa, axis=-1) * nt
+                v = np.max(q + aa, axis=-1)
+                v[terminal_sidx] = 0 #terminal states are always 0 reward
         if self.entreg:
             pi = softmax((1 / self.temp) * q, axis=-1)
         else:
