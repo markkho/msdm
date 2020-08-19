@@ -1,4 +1,19 @@
 import json
+import inspect
+
+def encode_item(i):
+    if isinstance(i, (dict, list)):
+        i = json.dumps(i, sort_keys=True)
+    return i
+
+def decode_item(i):
+    try:
+        i = json.loads(i)
+    except json.JSONDecodeError:
+        pass
+    except TypeError:
+        pass
+    return i
 
 class AssignmentMap(dict):
     """Dictionary that supports simple dictionaries as keys"""
@@ -10,36 +25,22 @@ class AssignmentMap(dict):
         if len(kwargs) > 0:
             for k, v in kwargs.items():
                 self[k] = v
-    
-    def encode_item(self, i):
-        if isinstance(i, dict):
-            i = json.dumps(i, sort_keys=True)
-        return i
-
-    def decode_item(self, i):
-        try:
-            i = json.loads(i)
-        except json.JSONDecodeError:
-            pass
-        except TypeError:
-            pass
-        return i
 
     def __getitem__(self, key):
-        return dict.__getitem__(self, self.encode_item(key))
+        return dict.__getitem__(self, encode_item(key))
     
     def get(self, key, default=None):
-        return dict.get(self, self.encode_item(key), default)
+        return dict.get(self, encode_item(key), default)
     
     def __setitem__(self, key, val):
-        dict.__setitem__(self, self.encode_item(key), val)
+        dict.__setitem__(self, encode_item(key), val)
     
     def __repr__(self):
         dictrepr = dict.__repr__(self)
         return '%s(%s)' % (type(self).__name__, dictrepr)
 
     def __contains__(self, i):
-        return dict.__contains__(self, self.encode_item(i))
+        return dict.__contains__(self, encode_item(i))
     
     def update(self, *E, **F):
         """Updates self in place"""
@@ -61,12 +62,36 @@ class AssignmentMap(dict):
             
     def items(self):
         for k, v in dict.items(self):
-            yield self.decode_item(k), v
+            yield decode_item(k), v
     
     def keys(self):
         for k in dict.keys(self):
-            yield self.decode_item(k)
+            yield decode_item(k)
     
     def __iter__(self):
         for k in dict.__iter__(self):
-            yield self.decode_item(k)
+            yield decode_item(k)
+
+class DefaultAssignmentMap(AssignmentMap):
+    '''
+    DefaultAssignmentMap extends AssignmentMap to support a default value for unset items,
+    akin to collections.defaultdict. Notably, this implementation does not store default values
+    after access, a departure from defaultdict.
+
+    The first parameter to DefaultAssignmentMap is the function used to generate values
+    returned when the AssignmentMap has no set value for a key.
+
+    The defaultvalue function can either take no arguments or one argument, which corresponds
+    to the key passed to AssignmentMap.__getitem__.
+    '''
+    def __init__(self, defaultvalue, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        arity = len(inspect.getfullargspec(defaultvalue).args)
+        assert arity in (0, 1), 'Default value function must take either 0 or 1 arguments.'
+        self.defaultvalue = defaultvalue if arity == 1 else lambda _: defaultvalue()
+
+    def __getitem__(self, key):
+        if key not in self:
+            return self.defaultvalue(key)
+        return super().__getitem__(key)
