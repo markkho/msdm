@@ -35,7 +35,8 @@ class VectorizedValueIteration:
             q = np.einsum("san,san->sa", tf, rf + self.dr * v)
             if self.entreg:
                 v = self.temp * logsumexp((1 / self.temp) * q + np.log(am),
-                                          axis=-1) * nt
+                                          axis=-1)
+                v[terminal_sidx] = 0 #terminal states are always 0 reward
             else:
                 v = np.max(q + aa, axis=-1)
                 v[terminal_sidx] = 0 #terminal states are always 0 reward
