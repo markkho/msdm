@@ -8,9 +8,11 @@ from matplotlib.path import Path
 import matplotlib.patches as patches
 import matplotlib.colors as colors
 import matplotlib.cm as cmx
+import matplotlib.patheffects as path_effects
 
 from pyrlap.pyrlap2.core import TabularPolicy
 from pyrlap.pyrlap2.domains.gridworld.mdp import GridWorld
+
 
 DISTINCT_COLORS = [
     '#A9A9A9', '#e6194b', '#3cb44b',
@@ -310,7 +312,8 @@ class GridWorldPlotter:
         self.ax.set_title(title, **kwargs)
         return self
 
-    def annotate(self, s, a=None, text="", 
+    def annotate(self, s, a=None, text="",
+                 outlinewidth=0, outlinecolor='black',
       fontsize=10, ha='center', va='center', **kwargs):
         kwargs = {
             'fontsize': fontsize,
@@ -318,7 +321,13 @@ class GridWorldPlotter:
             'va': va,
             **kwargs
         }
-        self.ax.text(s['x'] + .5, s['y'] + .5, text, **kwargs)
+        text = self.ax.text(s['x'] + .5, s['y'] + .5, text, **kwargs)
+        if outlinewidth > 0:
+            text.set_path_effects([
+                path_effects.Stroke(linewidth=outlinewidth,
+                                    foreground=outlinecolor),
+                path_effects.Normal()
+            ])
 
     #shortcuts
     def pSA(self, *args, **kwargs):
