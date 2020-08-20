@@ -99,7 +99,7 @@ class LAOStar(Plans):
                     break
                 if iPE == (A.policyEvaluationIters - 1) and A.showWarning:
                     #Note: whenever backtracking occurs, this will fail to converge
-                    warnings.warn(f"Policy evaluation did not converge after {policyEvaluationIters} iterations")
+                    warnings.warn(f"Policy evaluation did not converge after {A.policyEvaluationIters} iterations")
 
         def updateDP(graph, eGraph):
             #run policy iteration on all the states in the subgraph graph
