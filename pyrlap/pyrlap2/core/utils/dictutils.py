@@ -11,7 +11,7 @@ def dict_merge(dct, merge_dct, res=None):
         res = deepcopy(dct)
     for k, v in merge_dct.items():
         if (k in dct and isinstance(dct[k], dict)
-                and isinstance(merge_dct[k], collections.Mapping)):
+                and isinstance(merge_dct[k], collections.abc.Mapping)):
             dict_merge(dct[k], merge_dct[k], res[k])
         else:
             res[k] = deepcopy(merge_dct[k])

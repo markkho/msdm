@@ -208,7 +208,7 @@ class GridGame(StochasticGame):
     def getJointRewards(self, s, ja, ns):
         jr = {an: 0 for an in self.agentNames}
         
-        for goal in goals:
+        for goal in self.goals:
             for agentName in goal['owners']:
                 agent = ns[agentName]
                 if self.sameLoc(goal, agent):

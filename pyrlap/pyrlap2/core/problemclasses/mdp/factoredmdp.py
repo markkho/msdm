@@ -1,4 +1,4 @@
-from pyrlap.pyrlap2.core.mdp.mdp import ANDMarkovDecisionProcess, \
+from pyrlap.pyrlap2.core.problemclasses.mdp.mdp import ANDMarkovDecisionProcess, \
     MarkovDecisionProcess
 
 class FactoredMarkovDecisionProcess(MarkovDecisionProcess):

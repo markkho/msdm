@@ -1,10 +1,11 @@
 from typing import Mapping
 import numpy as np
 
-from pyrlap.pyrlap2.core.mdp.policy import Policy
+from pyrlap.pyrlap2.core.problemclasses.mdp.policy.policy import Policy
+from pyrlap.pyrlap2.core.problemclasses.mdp.mdp import MarkovDecisionProcess
+
 from pyrlap.pyrlap2.core.assignment.assignmentmap import AssignmentMap
 from pyrlap.pyrlap2.core.distributions import Multinomial, Distribution
-from pyrlap.pyrlap2.core.mdp.mdp import MarkovDecisionProcess
 class TabularPolicy(Policy):
     def __init__(self, states, actions, policymatrix=None, policydict=None):
         self._states = states

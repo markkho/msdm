@@ -1,6 +1,6 @@
 import json, logging
 import numpy as np
-from pyrlap.pyrlap2.core.mdp import ANDMarkovDecisionProcess, \
+from pyrlap.pyrlap2.core.problemclasses.mdp import ANDMarkovDecisionProcess, \
     MarkovDecisionProcess
 
 from pyrlap.pyrlap2.core.assignment.assignmentset import AssignmentSet as Set

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from pyrlap.pyrlap2.core.mdp.mdp import MarkovDecisionProcess
+from pyrlap.pyrlap2.core.problemclasses.mdp.mdp import MarkovDecisionProcess
 from pyrlap.pyrlap2.core.distributions import Distribution
 
 class Policy(ABC):

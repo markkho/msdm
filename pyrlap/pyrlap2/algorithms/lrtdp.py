@@ -1,5 +1,5 @@
-from pyrlap.pyrlap2.core.mdp import MarkovDecisionProcess
-from pyrlap.pyrlap2.core import DefaultAssignmentMap
+from pyrlap.pyrlap2.core import MarkovDecisionProcess, DefaultAssignmentMap, \
+    AssignmentMap, Plans, Result
 
 def iter_dist_prob(dist):
     '''
@@ -9,17 +9,38 @@ def iter_dist_prob(dist):
     for e in dist.support:
         yield e, dist.prob(e)
 
-class LRTDP(object):
+class LRTDP(Plans):
     '''
     Labeled Real-Time Dynamic Programming (Bonet & Geffner 2003)
 
     Implementation mixes names from Bonet & Geffner 2003 and Ghallab, Nau, Traverso.
     '''
-    def __init__(self, error_margin=1e-2):
+    def __init__(self,
+                 error_margin=1e-2,
+                 heuristic=None,
+                 iterations=int(2**30)
+                 ):
         self.error_margin = error_margin
+        self.heuristic = heuristic
+        self.iterations = iterations
 
-    def planOn(self, mdp: MarkovDecisionProcess, heuristic=None, iterations=int(2**30)):
-        return self.lrtdp(mdp, heuristic=heuristic, iterations=iterations)
+    def planOn(self, mdp: MarkovDecisionProcess):
+        self.res = Result()
+        self.lrtdp(
+            mdp, heuristic=self.heuristic, iterations=self.iterations
+        )
+        res = self.res
+        res.policy = AssignmentMap()
+        res.Q = AssignmentMap()
+        for s in mdp.states:
+            res.policy[s] = self.policy(mdp, s)
+            res.Q[s] = AssignmentMap()
+            for a in mdp.actions:
+                res.Q[s][a] = self.Q(mdp, s, a)
+
+        #clear result
+        self.res = None
+        return res
 
     def _bellman_update(self, mdp, s):
         '''
@@ -27,14 +48,14 @@ class LRTDP(object):
         and compute Q values and the policy from it, important in computing
         the residual in _check_solved().
         '''
-        self.V[s] = max(self.Q(mdp, s, a) for a in mdp.actions)
+        self.res.V[s] = max(self.Q(mdp, s, a) for a in mdp.actions)
 
     def Q(self, mdp, s, a):
         q = 0
         for ns, prob in iter_dist_prob(mdp.getNextStateDist(s, a)):
             future = 0
             if not mdp.isTerminal(ns):
-                future = self.V[ns]
+                future = self.res.V[ns]
             q += prob * (mdp.getReward(s, a, ns) + future)
         return q
 
@@ -59,24 +80,24 @@ class LRTDP(object):
         if heuristic is None:
             heuristic = lambda s: 0
 
-        self.V = DefaultAssignmentMap(heuristic)
+        self.res.V = DefaultAssignmentMap(heuristic)
 
         # Keeping track of "labels": which states have been solved
-        self.solved = DefaultAssignmentMap(lambda: False)
+        self.res.solved = DefaultAssignmentMap(lambda: False)
         for s in mdp.states:
             # Terminal states are solved.
             if mdp.isTerminal(s):
-                self.solved[s] = True
+                self.res.solved[s] = True
 
         for _ in range(iterations):
-            if all(self.solved[s] for s in mdp.getInitialStateDist().support):
+            if all(self.res.solved[s] for s in mdp.getInitialStateDist().support):
                 return
             self.lrtdp_trial(mdp, mdp.getInitialStateDist().sample())
 
     def lrtdp_trial(self, mdp, s):
         # Ghallab, Nau, Traverso: Algorithm 6.17
         visited = []
-        while not self.solved[s]:
+        while not self.res.solved[s]:
             visited.append(s)
             self._bellman_update(mdp, s)
             s = mdp.getNextStateDist(s, self.policy(mdp, s)).sample()
@@ -89,21 +110,21 @@ class LRTDP(object):
         flag = True
         open = []
         closed = []
-        if not self.solved[s]:
+        if not self.res.solved[s]:
             open.append(s)
         while open:
             s = open.pop()
             closed.append(s)
-            residual = self.V[s] - self.Q(mdp, s, self.policy(mdp, s))
+            residual = self.res.V[s] - self.Q(mdp, s, self.policy(mdp, s))
             if abs(residual) > self.error_margin:
                 flag = False
             else:
                 for ns in mdp.getNextStateDist(s, self.policy(mdp, s)).support:
-                    if not self.solved[ns] and ns not in open and ns not in closed:
+                    if not self.res.solved[ns] and ns not in open and ns not in closed:
                         open.append(ns)
         if flag:
             for ns in closed:
-                self.solved[ns] = True
+                self.res.solved[ns] = True
         else:
             while closed:
                 s = closed.pop()

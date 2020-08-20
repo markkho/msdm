@@ -4,41 +4,43 @@ import json
 import random
 import numpy as np
 
-from pyrlap.pyrlap2.core.assignment.assignmentmap import AssignmentMap as Dict
+from pyrlap.pyrlap2.core import AssignmentMap as Dict, Plans, Result
 
 def _hash(x):
     if isinstance(x, dict):
         return json.dumps(x, sort_keys=True)
     return x
 
-class LAOStar:
+class LAOStar(Plans):
     """
     Hansen, E. A., & Zilberstein, S. (2001). LAO*: 
     A heuristic search algorithm that finds solutions 
     with loops. Artificial Intelligence, 129(1-2), 35-62.
     """
-    def __init__(self):
-        pass
+    def __init__(self,
+                 heuristic: "Function over states",
+                 eGraph=None,
+                 showWarning=False,
+                 showProgress=True,
+                 maxLAOIters=100,
+                 policyEvaluationIters=100,
+                 policyIterationIters=100,
+                 seed=None):
+        A = SimpleNamespace(**{n: a for n, a in locals().items() if n != "self"})
+        self.A = A
 
-    def planOn(self, 
-               mdp, 
-               heuristic: "Function over states", 
-               eGraph=None,
-               showWarning=False,
-               showProgress=True,
-               maxLAOIters=100,
-               policyEvaluationIters=100,
-               policyIterationIters=100,
-               seed=None
-              ):
-        if seed is None:
+    def planOn(self, mdp) -> Result:
+        A = self.A
+        if A.seed is None:
             seed = random.randint(1, 1e20)
+        else:
+            seed = A.seed
         random.seed(seed)
         
         discountRate = 1 - mdp.terminationProb
         
         #initialize explicit graph
-        if eGraph is None:
+        if A.eGraph is None:
             eGraph = {} #explicit graph
         initStates = mdp.getInitialStateDist().support
         for s0 in initStates:
@@ -48,7 +50,7 @@ class LAOStar:
                 "parents": [], 
                 "actionchildren": Dict(),
                 "state": s0, 
-                "value": heuristic(s0),
+                "value": A.heuristic(s0),
                 "bestaction": actionorder[0],
                 "actionorder": actionorder,
                 "visitorder": len(eGraph),
@@ -80,7 +82,7 @@ class LAOStar:
         def policyEvaluation(graph, eGraph):
             #NOTE: this can fail to converge if the current policy is stuck in a loop
             #TODO: do policy evaluation with matrix inversion / linear equation solving
-            for iPE in range(policyEvaluationIters):
+            for iPE in range(A.policyEvaluationIters):
                 endPE = False
                 valchange = -np.inf
                 for n in graph.values():
@@ -95,7 +97,7 @@ class LAOStar:
                     n["value"] = expval
                 if valchange < 1e-6:
                     break
-                if iPE == (policyEvaluationIters - 1) and showWarning:
+                if iPE == (A.policyEvaluationIters - 1) and A.showWarning:
                     #Note: whenever backtracking occurs, this will fail to converge
                     warnings.warn(f"Policy evaluation did not converge after {policyEvaluationIters} iterations")
 
@@ -103,7 +105,7 @@ class LAOStar:
             #run policy iteration on all the states in the subgraph graph
             # it is assumed that all of the nodes in graph are expanded
             policyImprovement(graph, eGraph)
-            for iDP in range(policyIterationIters):
+            for iDP in range(A.policyIterationIters):
                 policyEvaluation(graph, eGraph)
                 pichange = policyImprovement(graph, eGraph)
                 if not pichange:
@@ -146,7 +148,7 @@ class LAOStar:
                         random.shuffle(actionorder)
                         nextnode = {
                             "state": ns,
-                            "value": heuristic(ns),
+                            "value": A.heuristic(ns),
                             "bestaction": actionorder[0],
                             "actionorder": actionorder,
                             "visitorder": len(eGraph),
@@ -178,7 +180,7 @@ class LAOStar:
             return ans
 
 
-        if showProgress:
+        if A.showProgress:
             pbar = tqdm.tqdm()
         nExpanded = 0
         for s0 in initStates:
@@ -188,8 +190,8 @@ class LAOStar:
             z = getAncestors(eGraph, n0)
             updateDP(z, eGraph)
         sGraph = getSolutionGraph(eGraph, initStates)
-        for laoIter in range(maxLAOIters):
-            if showProgress:
+        for laoIter in range(A.maxLAOIters):
+            if A.showProgress:
                 pbar.update(1)
                 pbar.set_description(f"|eGraph|: {len(eGraph)}; |sGraph| = {len(sGraph)}")
             
@@ -203,10 +205,10 @@ class LAOStar:
             updateDP(z, eGraph)
             sGraph = getSolutionGraph(eGraph, initStates)
             
-        if showProgress:
+        if A.showProgress:
             pbar.close()
             
-        return SimpleNamespace(
+        return Result(
             eGraph=eGraph,
             sGraph=sGraph,
             laoIter=laoIter,

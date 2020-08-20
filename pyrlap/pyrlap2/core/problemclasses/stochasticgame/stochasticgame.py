@@ -1,19 +1,27 @@
 from typing import Mapping, Hashable
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 
+from pyrlap.pyrlap2.core.problemclasses.problemclass import ProblemClass
 from pyrlap.pyrlap2.core.distributions import Distribution
+from pyrlap.pyrlap2.core.assignment.assignmentcache import AssignmentCache
 
-class PartiallyObservableStochasticGame(ABC):
+class StochasticGame(ProblemClass):
     """
-    POSGs are defined by:
+    SGs are defined by:
     - action distributions, which bias actions at each state
     - initial state distributions
-    - next state, observation distributions
+    - next state distributions
     """
 
-    def __init__(self, agentNames):
+    def __init__(self, agentNames, memoize=True):
         self._agentNames = agentNames
-
+        if memoize:
+            self.getNextStateDist = AssignmentCache(self.getNextStateDist)
+            self.getJointRewards = AssignmentCache(self.getJointRewards)
+            self.getJointActionDist = AssignmentCache(self.getJointActionDist)
+            self.getInitialStateDist = AssignmentCache(self.getInitialStateDist)
+            self.isTerminal = AssignmentCache(self.isTerminal)
+        
     @property
     def agentNames(self):
         return self._agentNames
@@ -23,19 +31,16 @@ class PartiallyObservableStochasticGame(ABC):
         pass
 
     @abstractmethod
-    def getJointActionDist(self, s) -> Distribution:
+    def getJointActionDist(self, s: "state") -> Distribution:
+        pass
+
+    @abstractmethod
+    def isTerminal(self, s) -> bool:
         pass
 
     @abstractmethod
     def getNextStateDist(self, s: "state", ja: "jointaction") -> Distribution:
-        pass
-
-    @abstractmethod
-    def getJointObservationDist(self, 
-            s: "state", 
-            ja: "jointaction", 
-            ns: "nextstate"
-        ) -> Distribution:
+        """Joint action should be dictionary with agent names as keys"""
         pass
 
     @abstractmethod
@@ -43,21 +48,21 @@ class PartiallyObservableStochasticGame(ABC):
             s: "state", 
             ja: "jointaction",
             ns: "nextstate",
-            jo: "jointobservation"
         ) -> Mapping[Hashable, float]:
+        """This should return a mapping from agent names to rewards"""
         pass
 
-    def __and__(self, other: "PartiallyObservableStochasticGame"):
+    def __and__(self, other: "StochasticGame"):
         """
-        This should be overwritten for specific implementations
+        Specific implementations may want to overwrite this.
         """
-        return ANDPartiallyObservableStochasticGame(self, other)
+        return ANDStochasticGame(self, other)
 
 
-class ANDPartiallyObservableStochasticGame(PartiallyObservableStochasticGame):
-    """Simplest AND POSG - only assumes function calls can be combined"""
+class ANDStochasticGame(StochasticGame):
+    """Simplest AND SG - only assumes function calls can be combined"""
 
-    def __init__(self, posg1, posg2):
+    def __init__(self, sg1, sg2):
         raise NotImplementedError
     #     self.mdp1 = mdp1
     #     self.mdp2 = mdp2
