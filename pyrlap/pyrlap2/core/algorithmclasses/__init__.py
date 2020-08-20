@@ -7,7 +7,9 @@ class Algorithm(ABC):
 
 class Result(ABC):
     """Abstract superclass for all result objects"""
-    pass
+    def __init__(self, **kwargs):
+        for k, v in kwargs.items():
+            self.__setattr__(k, v)
 
 class Plans(Algorithm):
     @abstractmethod

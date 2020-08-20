@@ -29,7 +29,7 @@ class LAOStar(Plans):
         A = SimpleNamespace(**{n: a for n, a in locals().items() if n != "self"})
         self.A = A
 
-    def planOn(self, mdp):
+    def planOn(self, mdp) -> Result:
         A = self.A
         if A.seed is None:
             seed = random.randint(1, 1e20)
@@ -208,7 +208,7 @@ class LAOStar(Plans):
         if A.showProgress:
             pbar.close()
             
-        return SimpleNamespace(
+        return Result(
             eGraph=eGraph,
             sGraph=sGraph,
             laoIter=laoIter,
