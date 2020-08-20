@@ -18,7 +18,7 @@ class LAOStar(Plans):
     with loops. Artificial Intelligence, 129(1-2), 35-62.
     """
     def __init__(self,
-                 heuristic: "Function over states",
+                 heuristic, # Function over states
                  eGraph=None,
                  showWarning=False,
                  showProgress=True,

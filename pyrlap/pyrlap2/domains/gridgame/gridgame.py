@@ -116,7 +116,7 @@ class GridGame(StochasticGame):
     def getInitialStateDist(self):
         return Pr([self._initState,])
    
-    def getJointActionDist(self, s: "state"):
+    def getJointActionDist(self, s):
         actions = [
             {'x': 0, 'y': 0},
             {'x': 1, 'y': 0},
@@ -141,7 +141,7 @@ class GridGame(StochasticGame):
     def isTerminal(self, s):
         return s.get('isTerminal', False)
 
-    def getNextStateDist(self, s: "state", ja: "jointaction"):
+    def getNextStateDist(self, s, ja):
         if self.isAbsorbing(s):
             return Pr([TERMINALSTATE,])
         
@@ -233,4 +233,3 @@ if __name__ == "__main__":
     nsdist = gg.getNextStateDist(s, a)
     ns = nsdist.sample()
     r = gg.getJointRewards(s, a, ns)
-
