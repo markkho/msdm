@@ -29,23 +29,26 @@ class PartiallyObservableStochasticGame(ProblemClass):
         pass
 
     @abstractmethod
-    def getNextStateDist(self, s: "state", ja: "jointaction") -> Distribution:
+    def getNextStateDist(self,
+            s, # state
+            ja, # jointaction
+        ) -> Distribution:
         pass
 
     @abstractmethod
     def getJointObservationDist(self, 
-            s: "state", 
-            ja: "jointaction", 
-            ns: "nextstate"
+            s, # state
+            ja, # jointaction
+            ns, # nextstate
         ) -> Distribution:
         pass
 
     @abstractmethod
     def getJointRewards(self, 
-            s: "state", 
-            ja: "jointaction",
-            ns: "nextstate",
-            jo: "jointobservation"
+            s, # state
+            ja, # jointaction
+            ns, # nextstate
+            jo # jointobservation
         ) -> Mapping[Hashable, float]:
         pass
 

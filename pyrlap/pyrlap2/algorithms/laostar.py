@@ -18,7 +18,7 @@ class LAOStar(Plans):
     with loops. Artificial Intelligence, 129(1-2), 35-62.
     """
     def __init__(self,
-                 heuristic: "Function over states",
+                 heuristic, # Function over states
                  eGraph=None,
                  showWarning=False,
                  showProgress=True,
@@ -99,7 +99,7 @@ class LAOStar(Plans):
                     break
                 if iPE == (A.policyEvaluationIters - 1) and A.showWarning:
                     #Note: whenever backtracking occurs, this will fail to converge
-                    warnings.warn(f"Policy evaluation did not converge after {policyEvaluationIters} iterations")
+                    warnings.warn(f"Policy evaluation did not converge after {A.policyEvaluationIters} iterations")
 
         def updateDP(graph, eGraph):
             #run policy iteration on all the states in the subgraph graph

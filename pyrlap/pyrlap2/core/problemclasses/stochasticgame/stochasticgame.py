@@ -31,7 +31,7 @@ class StochasticGame(ProblemClass):
         pass
 
     @abstractmethod
-    def getJointActionDist(self, s: "state") -> Distribution:
+    def getJointActionDist(self, s) -> Distribution:
         pass
 
     @abstractmethod
@@ -39,15 +39,15 @@ class StochasticGame(ProblemClass):
         pass
 
     @abstractmethod
-    def getNextStateDist(self, s: "state", ja: "jointaction") -> Distribution:
+    def getNextStateDist(self, s, ja) -> Distribution:
         """Joint action should be dictionary with agent names as keys"""
         pass
 
     @abstractmethod
     def getJointRewards(self, 
-            s: "state", 
-            ja: "jointaction",
-            ns: "nextstate",
+            s, # state
+            ja, # jointaction
+            ns, # nextstate
         ) -> Mapping[Hashable, float]:
         """This should return a mapping from agent names to rewards"""
         pass
