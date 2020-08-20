@@ -5,9 +5,9 @@ name: Python package
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, pyrlap2_dev ]
   pull_request:
-    branches: [ master ]
+    branches: [ master, pyrlap2_dev ]
 
 jobs:
   build:
@@ -31,9 +31,11 @@ jobs:
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 pyrlap2 --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        flake8 pyrlap2 --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with pytest
       run: |
-        pytest
+        # Running with `python -m ...` since that adds current dir to path.
+        # Eventually, may want to actually install package: https://github.com/pytest-dev/pytest/issues/2287
+        python -m pytest
