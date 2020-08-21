@@ -2,7 +2,7 @@ from abc import abstractmethod
 from typing import Iterable
 
 from msdm.core.problemclasses.problemclass import ProblemClass
-from msdm.core.distributions import Distribution
+from msdm.core.distributions import Distribution, DiscreteFactorTable
 from msdm.core.assignment.assignmentcache import AssignmentCache
 
 
@@ -78,15 +78,11 @@ class ANDMarkovDecisionProcess(MarkovDecisionProcess):
         return r1 + r2
 
     def getActions(self, state) -> Iterable:
-        a1 = self.mdp1.getActions(state)
-        a2 = self.mdp2.getActions(state)
-        #HACK: need standardized way of handling combination of actions
-        for a in a1:
-            assert a in a2, "Actions must match"
-        for a in a2:
-            assert a in a1, "Actions must match"
-        return a1
-
+        #HACK: ideally this wouldn't need to convert to a distribution
+        a1 = DiscreteFactorTable(self.mdp1.getActions(state))
+        a2 = DiscreteFactorTable(self.mdp2.getActions(state))
+        aa = a1 & a2
+        return aa.support
 
     def getInitialStateDist(self) -> Distribution:
         s1 = self.mdp1.getInitialStateDist()
@@ -123,14 +119,11 @@ class ORMarkovDecisionProcess(MarkovDecisionProcess):
         return r1
 
     def getActions(self, state) -> Distribution:
-        a1 = self.mdp1.getActions(state)
-        a2 = self.mdp2.getActions(state)
-        #HACK: need standardized way of handling combination of actions
-        for a in a1:
-            assert a in a2, "Actions must match"
-        for a in a2:
-            assert a in a1, "Actions must match"
-        return a1
+        #HACK: ideally this wouldn't need to convert to a distribution
+        a1 = DiscreteFactorTable(self.mdp1.getActions(state))
+        a2 = DiscreteFactorTable(self.mdp2.getActions(state))
+        aa = a1 | a2
+        return aa.support
 
     def getInitialStateDist(self) -> Distribution:
         s1 = self.mdp1.getInitialStateDist()
