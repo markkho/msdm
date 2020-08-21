@@ -129,7 +129,7 @@ class GridGame(StochasticGame):
             adists.append(adist)
         return reduce(lambda a, b: a & b, adists)
     
-    def isAbsorbing(self, s):
+    def is_absorbing(self, s):
         for an in self.agent_names:
             ag = s[an]
             for g in self.goals:
@@ -141,7 +141,7 @@ class GridGame(StochasticGame):
         return s.get('isTerminal', False)
 
     def next_state_dist(self, s, ja):
-        if self.isAbsorbing(s):
+        if self.is_absorbing(s):
             return Pr([TERMINALSTATE,])
         
         #agent-based transitions
@@ -220,13 +220,13 @@ class GridGame(StochasticGame):
 
 if __name__ == "__main__":
     #example usage
-    gameString = """
+    gamestring = """
         #  # # #  G0 #  # # # 
         G0 . . A0 .  A1 . . G1
         #  # # #  G1 #  # # #
     """.strip()
 
-    gg = GridGame(gameString)
+    gg = GridGame(gamestring)
     s = gg.initial_state_dist().sample()
     a = {'A0': {'x': 1, 'y': 0}, 'A1': {'x': -1, 'y': 0}}
     nsdist = gg.next_state_dist(s, a)

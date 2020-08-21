@@ -69,15 +69,14 @@ class GridWorld(TabularMarkovDecisionProcess):
         self._absorbingStates = sorted(list(absorbingStates), key=dictToStr)
         self._walls = sorted(list(walls), key=dictToStr)
         self._locFeatures = locFeatures
-        self.successProb = success_prob
+        self.success_prob = success_prob
         if feature_rewards is None:
             feature_rewards = {'g': 0}
         self._featureRewards = feature_rewards
-        self.stepCost = step_cost
-        self.terminationProb = termination_prob #basically discount rate
+        self.step_cost = step_cost
+        self.termination_prob = termination_prob #basically discount rate
         self._height = len(elementArray)
         self._width = len(elementArray[0])
-
 
     @property
     def height(self):
@@ -90,10 +89,6 @@ class GridWorld(TabularMarkovDecisionProcess):
     @property
     def walls(self):
         return list(self._walls)
-
-    @property
-    def wall_features(self):
-        return self._wallFeatures
 
     @property
     def initial_states(self):
@@ -132,15 +127,15 @@ class GridWorld(TabularMarkovDecisionProcess):
         elif ns == s:
             bdist = DiscreteFactorTable([s,])
         else:
-            bdist = DiscreteFactorTable(support=[s, ns], probs=[1 - self.successProb, self.successProb])
+            bdist = DiscreteFactorTable(support=[s, ns], probs=[1 - self.success_prob, self.success_prob])
         
-        return bdist*(1 - self.terminationProb) | TERMINALDIST*self.terminationProb
+        return bdist * (1 - self.termination_prob) | TERMINALDIST * self.termination_prob
 
-    def reward(self, state, action, nextstate) -> float:
-        if self.is_terminal(state) or self.is_terminal(nextstate):
+    def reward(self, s, a, ns) -> float:
+        if self.is_terminal(s) or self.is_terminal(ns):
             return 0.0
-        f = self._locFeatures.get(nextstate, "")
-        return self._featureRewards.get(f, 0.0) + self.stepCost
+        f = self._locFeatures.get(ns, "")
+        return self._featureRewards.get(f, 0.0) + self.step_cost
 
     def actions(self, state) -> Iterable:
         if self.is_terminal(state):
