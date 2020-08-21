@@ -26,7 +26,7 @@ class LRTDP(Plans):
         self.heuristic = heuristic
         self.iterations = iterations
 
-    def planOn(self, mdp: MarkovDecisionProcess):
+    def plan_on(self, mdp: MarkovDecisionProcess):
         self.res = Result()
         self.lrtdp(
             mdp, heuristic=self.heuristic, iterations=self.iterations
@@ -34,10 +34,10 @@ class LRTDP(Plans):
         res = self.res
         res.policy = AssignmentMap()
         res.Q = AssignmentMap()
-        for s in mdp.states:
+        for s in mdp.state_list:
             res.policy[s] = self.policy(mdp, s)
             res.Q[s] = AssignmentMap()
-            for a in mdp.actions:
+            for a in mdp.action_list:
                 res.Q[s][a] = self.Q(mdp, s, a)
 
         #clear result
@@ -50,31 +50,31 @@ class LRTDP(Plans):
         and compute Q values and the policy from it, important in computing
         the residual in _check_solved().
         '''
-        self.res.V[s] = max(self.Q(mdp, s, a) for a in mdp.actions)
+        self.res.V[s] = max(self.Q(mdp, s, a) for a in mdp.action_list)
 
     def Q(self, mdp, s, a):
         q = 0
-        for ns, prob in iter_dist_prob(mdp.getNextStateDist(s, a)):
+        for ns, prob in iter_dist_prob(mdp.next_state_dist(s, a)):
             future = 0
-            if not mdp.isTerminal(ns):
+            if not mdp.is_terminal(ns):
                 future = self.res.V[ns]
-            q += prob * (mdp.getReward(s, a, ns) + future)
+            q += prob * (mdp.reward(s, a, ns) + future)
         return q
 
     def policy(self, mdp, s):
-        return max(mdp.actions, key=lambda a: self.Q(mdp, s, a))
+        return max(mdp.action_list, key=lambda a: self.Q(mdp, s, a))
 
     def expected_one_step_reward_heuristic(self, mdp):
         '''
         This admissible heuristic is a generally applicable one.
         The heuristic value for a state is the best one-step reward.
         '''
-        return lambda s: 0 if mdp.isTerminal(s) else max(
+        return lambda s: 0 if mdp.is_terminal(s) else max(
             sum(
-                prob * mdp.getReward(s, a, ns)
-                for ns, prob in iter_dist_prob(mdp.getNextStateDist(s, a))
+                prob * mdp.reward(s, a, ns)
+                for ns, prob in iter_dist_prob(mdp.next_state_dist(s, a))
             )
-            for a in mdp.getActionDist(s).support
+            for a in mdp.action_dist(s).support
         )
 
     def lrtdp(self, mdp, heuristic=None, iterations=None):
@@ -86,15 +86,15 @@ class LRTDP(Plans):
 
         # Keeping track of "labels": which states have been solved
         self.res.solved = DefaultAssignmentMap(lambda: False)
-        for s in mdp.states:
+        for s in mdp.state_list:
             # Terminal states are solved.
-            if mdp.isTerminal(s):
+            if mdp.is_terminal(s):
                 self.res.solved[s] = True
 
         for _ in range(iterations):
-            if all(self.res.solved[s] for s in mdp.getInitialStateDist().support):
+            if all(self.res.solved[s] for s in mdp.initial_state_dist().support):
                 return
-            self.lrtdp_trial(mdp, mdp.getInitialStateDist().sample())
+            self.lrtdp_trial(mdp, mdp.initial_state_dist().sample())
 
     def lrtdp_trial(self, mdp, s):
         # Ghallab, Nau, Traverso: Algorithm 6.17
@@ -102,7 +102,7 @@ class LRTDP(Plans):
         while not self.res.solved[s]:
             visited.append(s)
             self._bellman_update(mdp, s)
-            s = mdp.getNextStateDist(s, self.policy(mdp, s)).sample()
+            s = mdp.next_state_dist(s, self.policy(mdp, s)).sample()
         s = visited.pop()
         while self._check_solved(mdp, s) and visited:
             s = visited.pop()
@@ -121,7 +121,7 @@ class LRTDP(Plans):
             if abs(residual) > self.error_margin:
                 flag = False
             else:
-                for ns in mdp.getNextStateDist(s, self.policy(mdp, s)).support:
+                for ns in mdp.next_state_dist(s, self.policy(mdp, s)).support:
                     if not self.res.solved[ns] and ns not in open and ns not in closed:
                         open.append(ns)
         if flag:

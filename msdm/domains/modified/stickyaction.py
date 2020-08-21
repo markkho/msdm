@@ -9,32 +9,32 @@ class StickyActionMDP(TabularMarkovDecisionProcess):
         self.switchCost = switchCost
         self.initAction = initAction
     
-    def isTerminal(self, s):
-        return self.mdp.isTerminal(s['groundState'])
+    def is_terminal(self, s):
+        return self.mdp.is_terminal(s['groundState'])
     
-    def getNextStateDist(self, s, a) -> DiscreteFactorTable:
-        nsDist = self.mdp.getNextStateDist(s['groundState'], a)
+    def next_state_dist(self, s, a) -> DiscreteFactorTable:
+        nsDist = self.mdp.next_state_dist(s['groundState'], a)
         nsDist = DiscreteFactorTable(
             [{'groundState': ns, 'curAction': a} for ns in nsDist.support],
             logits=nsDist.logits
         )
         return nsDist
     
-    def getReward(self, s, a, ns) -> float:
-        r = self.mdp.getReward(s['groundState'], a, ns['groundState'])
+    def reward(self, s, a, ns) -> float:
+        r = self.mdp.reward(s['groundState'], a, ns['groundState'])
         if s['curAction'] != a:
             r += self.switchCost
         return r
 
-    def getActions(self, state) -> Iterable:
-        return self.mdp.getActions(state['groundState'])
+    def actions(self, s) -> Iterable:
+        return self.mdp.actions(s['groundState'])
 
-    def getInitialStateDist(self) -> DiscreteFactorTable:
-        S0 = self.mdp.getInitialStateDist()
+    def initial_state_dist(self) -> DiscreteFactorTable:
+        S0 = self.mdp.initial_state_dist()
         if self.initAction is None:
             SA0 = DiscreteFactorTable([])
             for s0 in S0.support:
-                s0actions = self.mdp.getActions(s0) #actions for initial state
+                s0actions = self.mdp.actions(s0) #actions for initial state
                 s0A0 = DiscreteFactorTable(
                     [{'groundState': s0, 'curAction': a} for a in s0actions]
                 )

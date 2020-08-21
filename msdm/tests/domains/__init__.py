@@ -27,47 +27,47 @@ class GNTFig6_6(TabularMarkovDecisionProcess):
     '''
     Acyclic MDP from Ghallab, Nau, Traverso Figure 6.6
     '''
-    def getInitialStateDist(self) -> Distribution:
+    def initial_state_dist(self) -> Distribution:
         return DiscreteFactorTable([0])
 
-    def isTerminal(self, s):
+    def is_terminal(self, s):
         return s in (12, 15, 16)
 
-    def getActions(self, s) -> Iterable:
+    def actions(self, s) -> Iterable:
         dests = GNTFig6_6.T[s]
         return [a for a in range(len(dests)) if dests[a][0]]
 
-    def getNextStateDist(self, s, a):
+    def next_state_dist(self, s, a):
         if a < len(GNTFig6_6.T[s]):
             ns = GNTFig6_6.T[s][a][0]
         else:
             ns = [s]
         return DiscreteFactorTable(ns)
 
-    def getReward(self, s, a, ns) -> float:
+    def reward(self, s, a, ns) -> float:
         if a < len(GNTFig6_6.T[s]):
             return -GNTFig6_6.T[s][a][1]
         return -100 # HACK
 
 class CountToTen(TabularMarkovDecisionProcess):
-    def isTerminal(self, s):
+    def is_terminal(self, s):
         return s == 10
 
-    def getNextStateDist(self, s, a):
+    def next_state_dist(self, s, a):
         if s == 10:
             return DiscreteFactorTable([])
         return DiscreteFactorTable([s+a])
 
-    def getActionDist(self, s):
+    def actions(self, s):
         if s < 0:
             return DiscreteFactorTable([1])
         if s < 5:
             return DiscreteFactorTable([1, -1])
         return DiscreteFactorTable([1])
 
-    def getInitialStateDist(self):
+    def initial_state_dist(self):
         return DiscreteFactorTable([0,])
 
-    def getReward(self, s, a, ns):
+    def reward(self, s, a, ns):
         return -1
 

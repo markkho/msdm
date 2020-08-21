@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import json
 from typing import Iterable
-from msdm.core.utils.gridstringutils import  stringToElementArray
+from msdm.core.utils.gridstringutils import  string_to_element_array
 
 from msdm.core.problemclasses.mdp import \
     TabularMarkovDecisionProcess, \
@@ -18,22 +18,21 @@ TERMINALDIST = DiscreteFactorTable([TERMINALSTATE,])
 
 class GridWorld(TabularMarkovDecisionProcess):
     def __init__(self,
-                 tileArray,
-                 tileArrayFormat=None,
-                 featureRewards=None,
-                 absorbingFeatures=("g",),
-                 wallFeatures=("#",),
-                 defaultFeatures=(".",),
-                 initFeatures=("s",),
-                 stepCost=-1,
-                 successProb=1.0,
-                 terminationProb=0.0
+                 tile_array,
+                 feature_rewards=None,
+                 absorbing_features=("g",),
+                 wall_features=("#",),
+                 default_features=(".",),
+                 initial_features=("s",),
+                 step_cost=-1,
+                 success_prob=1.0,
+                 termination_prob=0.0
                  ):
         super().__init__()
         parseParams = {"colsep": "", "rowsep": "\n", "elementsep": "."}
-        if not isinstance(tileArray, str):
-            tileArray = "\n".join(tileArray)
-        elementArray = stringToElementArray(tileArray, **parseParams)
+        if not isinstance(tile_array, str):
+            tile_array = "\n".join(tile_array)
+        elementArray = string_to_element_array(tile_array, **parseParams)
         states = []
         walls = Set()
         absorbingStates = Set()
@@ -47,13 +46,13 @@ class GridWorld(TabularMarkovDecisionProcess):
                 if len(elements) > 0:
                     f = elements[0]
                     locFeatures[s] = f
-                    if f in initFeatures:
+                    if f in initial_features:
                         # initStates[s] = None
                         initStates.add(s)
-                    if f in absorbingFeatures:
+                    if f in absorbing_features:
                         # absorbingStates[s] = None
                         absorbingStates.add(s)
-                    if f in wallFeatures:
+                    if f in wall_features:
                         # walls[s] = None
                         walls.add(s)
         states.append(TERMINALSTATE)
@@ -70,12 +69,12 @@ class GridWorld(TabularMarkovDecisionProcess):
         self._absorbingStates = sorted(list(absorbingStates), key=dictToStr)
         self._walls = sorted(list(walls), key=dictToStr)
         self._locFeatures = locFeatures
-        self.successProb = successProb
-        if featureRewards is None:
-            featureRewards = {'g': 0}
-        self._featureRewards = featureRewards
-        self.stepCost = stepCost
-        self.terminationProb = terminationProb #basically discount rate
+        self.successProb = success_prob
+        if feature_rewards is None:
+            feature_rewards = {'g': 0}
+        self._featureRewards = feature_rewards
+        self.stepCost = step_cost
+        self.terminationProb = termination_prob #basically discount rate
         self._height = len(elementArray)
         self._width = len(elementArray[0])
 
@@ -93,15 +92,15 @@ class GridWorld(TabularMarkovDecisionProcess):
         return list(self._walls)
 
     @property
-    def wallFeatures(self):
+    def wall_features(self):
         return self._wallFeatures
 
     @property
-    def initStates(self):
+    def initial_states(self):
         return list(self._initStates)
 
     @property
-    def absorbingStates(self):
+    def absorbing_states(self):
         """
         Absorbing states are those that lead to the terminal state always
         (excluding the terminal state).
@@ -109,16 +108,16 @@ class GridWorld(TabularMarkovDecisionProcess):
         return list(self._absorbingStates)
 
     @property
-    def locationFeatures(self):
+    def location_features(self):
         return self._locFeatures
 
-    def isTerminal(self, s):
+    def is_terminal(self, s):
         return s == TERMINALSTATE
 
-    def getNextStateDist(self, s, a) -> DiscreteFactorTable:
-        if self.isTerminal(s):
+    def next_state_dist(self, s, a) -> DiscreteFactorTable:
+        if self.is_terminal(s):
             return TERMINALDIST
-        if s in self.absorbingStates:
+        if s in self.absorbing_states:
             return TERMINALDIST
 
         x, y = s['x'], s['y']
@@ -126,7 +125,7 @@ class GridWorld(TabularMarkovDecisionProcess):
         nx, ny = x + ax, y + ay
         ns = {'x': nx, 'y': ny}
 
-        if ns not in self.states:
+        if ns not in self.state_list:
             bdist = DiscreteFactorTable([s,])
         elif ns in self.walls:
             bdist = DiscreteFactorTable([s,])
@@ -137,57 +136,57 @@ class GridWorld(TabularMarkovDecisionProcess):
         
         return bdist*(1 - self.terminationProb) | TERMINALDIST*self.terminationProb
 
-    def getReward(self, state, action, nextstate) -> float:
-        if self.isTerminal(state) or self.isTerminal(nextstate):
+    def reward(self, state, action, nextstate) -> float:
+        if self.is_terminal(state) or self.is_terminal(nextstate):
             return 0.0
         f = self._locFeatures.get(nextstate, "")
         return self._featureRewards.get(f, 0.0) + self.stepCost
 
-    def getActions(self, state) -> Iterable:
-        if self.isTerminal(state):
+    def actions(self, state) -> Iterable:
+        if self.is_terminal(state):
             return [{'dx': 0, 'dy': 0}, ]
         return [a for a in self._actions]
 
-    def getInitialStateDist(self) -> DiscreteFactorTable:
-        return DiscreteFactorTable([s for s in self.initStates])
+    def initial_state_dist(self) -> DiscreteFactorTable:
+        return DiscreteFactorTable([s for s in self.initial_states])
 
     def __and__(self, other):
         return ANDGridWorld(self, other)
 
     def plot(self,
-             allElements=False,
+             all_elements=False,
              ax=None,
              figsize=None,
-             figsizeMult=1,
-             featureColors=None,
-             plotWalls=True,
-             plotInitStates=True,
-             plotAbsorbingStates=True
+             figsize_multiplier=1,
+             featurecolors=None,
+             plot_walls=True,
+             plot_initial_states=True,
+             plot_absorbing_states=True
              ):
-        if allElements:
-            plotInitStates = True
-            plotAbsorbingStates = True
+        if all_elements:
+            plot_initial_states = True
+            plot_absorbing_states = True
         from msdm.domains.gridworld.plotting import GridWorldPlotter
-        if featureColors is None:
-            featureColors = {
+        if featurecolors is None:
+            featurecolors = {
                 'g': 'yellow',
                 'x': 'red',
             }
         if ax is None:
             if figsize is None:
-                figsize = (self.width * figsizeMult,
-                           self.height * figsizeMult)
+                figsize = (self.width * figsize_multiplier,
+                           self.height * figsize_multiplier)
             _, ax = plt.subplots(1, 1, figsize=figsize)
 
         gwp = GridWorldPlotter(gw=self, ax=ax)
-        gwp.plotFeatures(featureColors=featureColors)
-        if plotWalls:
-            gwp.plotWalls()
-        if plotInitStates:
-            gwp.plotInitStates()
-        if plotAbsorbingStates:
-            gwp.plotAbsorbingStates()
-        gwp.plotOuterBox()
+        gwp.plot_features(featurecolors=featurecolors)
+        if plot_walls:
+            gwp.plot_walls()
+        if plot_initial_states:
+            gwp.plot_initial_states()
+        if plot_absorbing_states:
+            gwp.plot_absorbing_states()
+        gwp.plot_outer_box()
 
         return gwp
 
@@ -195,7 +194,7 @@ class GridWorld(TabularMarkovDecisionProcess):
 class ANDGridWorld(ANDMarkovDecisionProcess, GridWorld):
     def __init__(self, mdp1, mdp2):
         assert (mdp1.height == mdp2.height) and (mdp1.width == mdp2.width)
-        assert (mdp1.actions == mdp2.actions)
+        assert (mdp1.action_list == mdp2.action_list)
         ANDMarkovDecisionProcess.__init__(self, mdp1, mdp2)
 
         # this is mostly for plotting

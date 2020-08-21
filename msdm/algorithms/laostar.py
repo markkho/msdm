@@ -30,7 +30,7 @@ class LAOStar(Plans):
         A = SimpleNamespace(**{n: a for n, a in locals().items() if n != "self"})
         self.A = A
 
-    def planOn(self, mdp) -> Result:
+    def plan_on(self, mdp) -> Result:
         A = self.A
         if A.seed is None:
             seed = random.randint(1, 1e20)
@@ -43,9 +43,9 @@ class LAOStar(Plans):
         #initialize explicit graph
         if A.eGraph is None:
             eGraph = {} #explicit graph
-        initStates = mdp.getInitialStateDist().support
+        initStates = mdp.initial_state_dist().support
         for s0 in initStates:
-            actionorder = list(mdp.getActions(s0))
+            actionorder = list(mdp.actions(s0))
             random.shuffle(actionorder)
             node = {
                 "parents": [], 
@@ -60,7 +60,7 @@ class LAOStar(Plans):
             }
             eGraph[_hash(s0)] = node
 
-        def policyImprovement(graph, eGraph):
+        def policy_improvement(graph, eGraph):
             pichange = False
             for n in graph.values():
                 s = n["state"]
@@ -70,8 +70,8 @@ class LAOStar(Plans):
                 maxav = -np.inf
                 for a in aa:
                     aval = 0
-                    for ns, p in mdp.getNextStateDist(s, a).items(probs=True):
-                        aval += p*(mdp.getReward(s, a, ns)+discountRate*eGraph[_hash(ns)]["value"])
+                    for ns, p in mdp.next_state_dist(s, a).items(probs=True):
+                        aval += p*(mdp.reward(s, a, ns) + discountRate * eGraph[_hash(ns)]["value"])
                     if aval > maxav:
                         maxav = aval
                         maxa = a
@@ -80,7 +80,7 @@ class LAOStar(Plans):
                 n["bestaction"] = maxa
             return pichange
 
-        def policyEvaluation(graph, eGraph):
+        def policy_evaluation(graph, eGraph):
             #NOTE: this can fail to converge if the current policy is stuck in a loop
             #TODO: do policy evaluation with matrix inversion / linear equation solving
             for iPE in range(A.policyEvaluationIters):
@@ -89,11 +89,11 @@ class LAOStar(Plans):
                 for n in graph.values():
                     assert n['expanded']
                     s, a = n["state"], n["bestaction"]
-                    nsdist = mdp.getNextStateDist(s, a).items(probs=True)
+                    nsdist = mdp.next_state_dist(s, a).items(probs=True)
                     expval = 0
                     for ns, p in nsdist:
                         nextnode = eGraph[_hash(ns)]
-                        expval += p*(mdp.getReward(s, a, ns) + discountRate*nextnode["value"])
+                        expval += p*(mdp.reward(s, a, ns) + discountRate * nextnode["value"])
                     valchange = np.max([np.abs(n["value"] - expval), valchange])
                     n["value"] = expval
                 if valchange < 1e-6:
@@ -102,24 +102,24 @@ class LAOStar(Plans):
                     #Note: whenever backtracking occurs, this will fail to converge
                     warnings.warn(f"Policy evaluation did not converge after {A.policyEvaluationIters} iterations")
 
-        def updateDP(graph, eGraph):
+        def update_dynamic_programming(graph, eGraph):
             #run policy iteration on all the states in the subgraph graph
             # it is assumed that all of the nodes in graph are expanded
-            policyImprovement(graph, eGraph)
+            policy_improvement(graph, eGraph)
             for iDP in range(A.policyIterationIters):
-                policyEvaluation(graph, eGraph)
-                pichange = policyImprovement(graph, eGraph)
+                policy_evaluation(graph, eGraph)
+                pichange = policy_improvement(graph, eGraph)
                 if not pichange:
                     break
 
-        def getNonterminalTips(sGraph):
+        def get_nonterminal_tips(sGraph):
             ntt = []
             for n in sGraph.values():
-                if (not n['expanded']) and (not mdp.isTerminal(n['state'])):
+                if (not n['expanded']) and (not mdp.is_terminal(n['state'])):
                     ntt.append(n)
             return ntt
 
-        def getSolutionGraph(eGraph, initStates):
+        def get_solution_graph(eGraph, initStates):
             sGraph = {}
             for s0 in initStates:
                 toget = [s0, ]
@@ -134,18 +134,18 @@ class LAOStar(Plans):
                     toget.extend(bestchildrenstates)
             return sGraph
 
-        def expandGraph(eGraph, n, nExpanded):
+        def expand_graph(eGraph, n, nExpanded):
             s = n['state']
             n['expanded'] = True
             n['expandedorder'] = nExpanded
             aa = n['actionorder']
             for a in aa:
                 children = []
-                nextstates = list(mdp.getNextStateDist(s, a).support)
+                nextstates = list(mdp.next_state_dist(s, a).support)
                 random.shuffle(nextstates)
                 for ns in nextstates:
                     if _hash(ns) not in eGraph:
-                        actionorder = list(mdp.getActions(ns))
+                        actionorder = list(mdp.actions(ns))
                         random.shuffle(actionorder)
                         nextnode = {
                             "state": ns,
@@ -165,7 +165,7 @@ class LAOStar(Plans):
                     children.append(nextnode)
                 n['actionchildren'][_hash(a)] = children
 
-        def getAncestors(eGraph, tip):
+        def get_ancestors(eGraph, tip):
             ans = {}
             toget = [tip,]
             while len(toget) > 0:
@@ -186,25 +186,25 @@ class LAOStar(Plans):
         nExpanded = 0
         for s0 in initStates:
             n0 = eGraph[_hash(s0)]
-            expandGraph(eGraph, n0, nExpanded)
+            expand_graph(eGraph, n0, nExpanded)
             nExpanded += 1
-            z = getAncestors(eGraph, n0)
-            updateDP(z, eGraph)
-        sGraph = getSolutionGraph(eGraph, initStates)
+            z = get_ancestors(eGraph, n0)
+            update_dynamic_programming(z, eGraph)
+        sGraph = get_solution_graph(eGraph, initStates)
         for laoIter in range(A.maxLAOIters):
             if A.showProgress:
                 pbar.update(1)
                 pbar.set_description(f"|eGraph|: {len(eGraph)}; |sGraph| = {len(sGraph)}")
             
-            ntt = getNonterminalTips(sGraph)
+            ntt = get_nonterminal_tips(sGraph)
             if len(ntt) == 0:
                 break
             nonterm = max(ntt, key=lambda n: (n["value"], -n["visitorder"]))
-            expandGraph(eGraph, nonterm, nExpanded)
+            expand_graph(eGraph, nonterm, nExpanded)
             nExpanded += 1
-            z = getAncestors(eGraph, nonterm)
-            updateDP(z, eGraph)
-            sGraph = getSolutionGraph(eGraph, initStates)
+            z = get_ancestors(eGraph, nonterm)
+            update_dynamic_programming(z, eGraph)
+            sGraph = get_solution_graph(eGraph, initStates)
             
         if A.showProgress:
             pbar.close()

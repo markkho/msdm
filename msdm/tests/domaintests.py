@@ -10,18 +10,18 @@ np.seterr(divide='ignore')
 class DomainTestCase(unittest.TestCase):
     def test_stickyactiongridworld(self):
         gw = GridWorld(
-            tileArray=[
+            tile_array=[
                 'g.......#',
                 '.........',
                 '.........',
                 '.........',
                 '........s'
             ], 
-            successProb=1.0,
-            featureRewards={
+            success_prob=1.0,
+            feature_rewards={
                 'g': 0,
             },
-            stepCost=-1
+            step_cost=-1
         )
 
         sagw = StickyActionMDP(gw, initAction={'dx': 0, 'dy': 0})
@@ -31,8 +31,8 @@ class DomainTestCase(unittest.TestCase):
             entropyRegularization=False,
             temperature=0.0
         )
-        res = vi.planOn(sagw)
-        saTraj = res.policy.runOn(sagw)['stateTraj']
+        res = vi.plan_on(sagw)
+        saTraj = res.policy.run_on(sagw)['stateTraj']
         self.assertTrue(saTraj[0] == {'curAction': {'dx': 0, 'dy': 0}, 'groundState': {'x': 8, 'y': 0}})
 
     def test_gridgame_initialization(self):
@@ -44,11 +44,11 @@ class DomainTestCase(unittest.TestCase):
         """.strip()
 
         gg = GridGame(gameString)
-        s = gg.getInitialStateDist().sample()
+        s = gg.initial_state_dist().sample()
         a = {'A0': {'x': 1, 'y': 0}, 'A1': {'x': -1, 'y': 0}}
-        nsdist = gg.getNextStateDist(s, a)
+        nsdist = gg.next_state_dist(s, a)
         ns = nsdist.sample()
-        r = gg.getJointRewards(s, a, ns)
+        r = gg.joint_rewards(s, a, ns)
         self.assertTrue(True)
         
 if __name__ == '__main__':

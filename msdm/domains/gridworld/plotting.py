@@ -26,7 +26,7 @@ DISTINCT_COLORS = [
 ]
 
 
-def getContrastColor(color):
+def get_contrast_color(color):
     r, g, b = colors.to_rgb(color)
     luminance = (0.299 * r ** 2 + 0.587 * g ** 2 + 0.114 * b ** 2) ** .5
     if luminance < .7:
@@ -43,15 +43,15 @@ class GridWorldPlotter:
         self.ax.set_ylim(-0.1, self.gw.height + .1)
         self.ax.axis('scaled')
 
-    def plotFeatures(self, featureColors, edgecolor='darkgrey') -> "GridWorldPlotter":
+    def plot_features(self, featurecolors, edgecolor='darkgrey') -> "GridWorldPlotter":
         """Plot gridworld features"""
-        ss = self.gw.states
+        ss = self.gw.state_list
         for s in ss:
-            if self.gw.isTerminal(s):
+            if self.gw.is_terminal(s):
                 continue
             xy = (s['x'], s['y'])
             f = self.gw._locFeatures.get(s, '.')[0]
-            color = featureColors.get(f, 'w')
+            color = featurecolors.get(f, 'w')
             square = Rectangle(xy, 1, 1,
                                facecolor=color,
                                edgecolor=edgecolor,
@@ -59,14 +59,14 @@ class GridWorldPlotter:
             self.ax.add_patch(square)
         return self
 
-    def plotOuterBox(self):
+    def plot_outer_box(self):
         outerbox = Rectangle((0, 0), self.gw.width, self.gw.height,
                              fill=False, edgecolor='black',
                              linewidth=2)
         self.ax.add_patch(outerbox)
         return self
 
-    def plotWalls(self, facecolor='k', edgecolor='darkgrey'):
+    def plot_walls(self, facecolor='k', edgecolor='darkgrey'):
         for ws in self.gw.walls:
             xy = (ws['x'], ws['y'])
             square = Rectangle(xy, 1, 1,
@@ -76,45 +76,45 @@ class GridWorldPlotter:
             self.ax.add_patch(square)
         return self
 
-    def plotInitStates(self, markerSize=15):
-        for s in self.gw.initStates:
+    def plot_initial_states(self, markersize=15):
+        for s in self.gw.initial_states:
             x, y = s['x'], s['y']
             self.ax.plot(x + .5, y + .5,
                          markeredgecolor='cornflowerblue',
                          marker='o',
-                         markersize=markerSize,
+                         markersize=markersize,
                          markeredgewidth=2,
                          fillstyle='none')
         return self
 
-    def plotAbsorbingStates(self, markerSize=15):
-        for s in self.gw.absorbingStates:
+    def plot_absorbing_states(self, markersize=15):
+        for s in self.gw.absorbing_states:
             # sdict = dict(zip([v.name for v in s.variables], s.values))
             # x, y = sdict['x'], sdict['y']
             x, y = s['x'], s['y']
             self.ax.plot(x + .5, y + .5,
                          markeredgecolor='cornflowerblue',
                          marker='x',
-                         markersize=markerSize,
+                         markersize=markersize,
                          markeredgewidth=2)
 
-    def plotTrajectory(self,
-                       stateTraj,
-                       actionTraj=None,  # not implemented yet
-                       color='k',
-                       outline=False,
-                       outlineColor='w',
-                       jitterMean=0,
-                       jitterVar=.1,
-                       endJitter=False,
-                       linewidth=1,
-                       **kwargs) -> "GridWorldPlotter":
+    def plot_trajectory(self,
+                        stateTraj,
+                        actionTraj=None,  # not implemented yet
+                        color='k',
+                        outline=False,
+                        outlineColor='w',
+                        jitterMean=0,
+                        jitterVar=.1,
+                        endJitter=False,
+                        linewidth=1,
+                        **kwargs) -> "GridWorldPlotter":
         if actionTraj is not None:
             assert len(stateTraj) == len(actionTraj)
 
         xys = []
         for s in stateTraj:
-            if self.gw.isTerminal(s):
+            if self.gw.is_terminal(s):
                 break
             if isinstance(s, tuple):
                 xys.append(s)
@@ -194,15 +194,15 @@ class GridWorldPlotter:
             self.ax.add_patch(patch)
         return self
 
-    def plotStateMap(self,
-                     stateMap: Mapping,
-                     plotOverWalls=False,
-                     fontsize=10,
-                     showNumbers=True,
-                     valueRange=None,
-                     showColors=True,
-                     isCategorical=False,
-                     colorValueFunc="bwr_r") -> "GridWorldPlotter":
+    def plot_state_map(self,
+                       stateMap: Mapping,
+                       plotOverWalls=False,
+                       fontsize=10,
+                       showNumbers=True,
+                       valueRange=None,
+                       showColors=True,
+                       isCategorical=False,
+                       colorValueFunc="bwr_r") -> "GridWorldPlotter":
         if len(stateMap) == 0:
             return self
         # state map - colors / numbers
@@ -220,7 +220,7 @@ class GridWorldPlotter:
                                                 cmap=colorrange)
             colorValueFunc = lambda v: colorvalue_map.to_rgba(v)
         for s, v in stateMap.items():
-            if self.gw.isTerminal(s):
+            if self.gw.is_terminal(s):
                 continue
             if (not plotOverWalls) and (s in self.gw.walls):
                 continue
@@ -242,18 +242,18 @@ class GridWorldPlotter:
                 self.ax.text(xy[0] + .5, xy[1] + .5,
                              f"{v : .2f}",
                              fontsize=fontsize,
-                             color=getContrastColor(color),
+                             color=get_contrast_color(color),
                              horizontalalignment='center',
                              verticalalignment='center')
         return self
 
-    def plotStateActionMap(self,
-                           stateActionMap: Mapping[
+    def plot_state_action_map(self,
+                              stateActionMap: Mapping[
                                Hashable, Mapping[Hashable, Number]],
-                           plotOverWalls=False,
-                           valueRange=None,
-                           colorvalue_func: Union[Callable, str]="bwr_r",
-                           arrowWidth=.1) -> "GridWorldPlotter":
+                              plotOverWalls=False,
+                              valueRange=None,
+                              colorvalue_func: Union[Callable, str]="bwr_r",
+                              arrowWidth=.1) -> "GridWorldPlotter":
         allvals = sum([list(av.values()) for s, av in stateActionMap.items()],
                       [])
         absvals = [abs(v) for v in allvals]
@@ -272,7 +272,7 @@ class GridWorldPlotter:
             colorvalue_func = lambda v: colorvalue_map.to_rgba(v)
 
         for s, av in stateActionMap.items():
-            if self.gw.isTerminal(s):
+            if self.gw.is_terminal(s):
                 continue
             if (not plotOverWalls) and (s in self.gw.walls):
                 continue
@@ -298,10 +298,10 @@ class GridWorldPlotter:
                 self.ax.add_patch(patch)
         return self
 
-    def plotPolicy(self, policy: Union[TabularPolicy, dict]) -> "GridWorldPlotter":
+    def plot_policy(self, policy: Union[TabularPolicy, dict]) -> "GridWorldPlotter":
         if isinstance(policy, TabularPolicy):
-            policy = policy.policydict
-        return self.plotStateActionMap(
+            policy = policy.policy_dict
+        return self.plot_state_action_map(
             stateActionMap=policy,
             plotOverWalls=False,
             valueRange=[0, 1],
@@ -331,16 +331,16 @@ class GridWorldPlotter:
 
     #shortcuts
     def pSA(self, *args, **kwargs):
-        return self.plotStateActionMap(*args, **kwargs)
+        return self.plot_state_action_map(*args, **kwargs)
 
     def pS(self, *args, **kwargs):
-        return self.plotStateMap(*args, **kwargs)
+        return self.plot_state_map(*args, **kwargs)
 
     def pT(self, *args, **kwargs):
-        return self.plotTrajectory(*args, **kwargs)
+        return self.plot_trajectory(*args, **kwargs)
 
     def pPi(self, *args, **kwargs):
-        return self.plotPolicy(*args, **kwargs)
+        return self.plot_policy(*args, **kwargs)
 
     def t(self, *args, **kwargs):
         return self.title(*args, **kwargs)

@@ -9,33 +9,33 @@ np.seterr(divide='ignore')
 class CoreTestCase(unittest.TestCase):
     def test_tabularMDP_ANDcomposition(self):
         gw1 = GridWorld(
-            tileArray=[
+            tile_array=[
                 '...g',
                 '....',
                 '.###',
                 's..s'
             ],
-            stepCost=-1,
-            successProb=.99,
-            terminationProb=1e-5
+            step_cost=-1,
+            success_prob=.99,
+            termination_prob=1e-5
         )
 
         gw2 = GridWorld(
-            tileArray=[
+            tile_array=[
                 '##..',
                 's..g',
                 '....',
                 's...'
             ],
-            stepCost=0,
-            successProb=.99,
-            terminationProb=1e-5
+            step_cost=0,
+            success_prob=.99,
+            termination_prob=1e-5
         )
         gw3 = gw1 & gw2
 
         #test state, aciton, variable composition is consistent
-        self.assertTrue(all(s3 == s2 for s3, s2 in zip(gw3.states, gw2.states)))
-        self.assertTrue(all(a3 == a2 for a3, a2 in zip(gw3.actions, gw2.actions)))
+        self.assertTrue(all(s3 == s2 for s3, s2 in zip(gw3.state_list, gw2.state_list)))
+        self.assertTrue(all(a3 == a2 for a3, a2 in zip(gw3.action_list, gw2.action_list)))
 
         #test that mdp distributions are consistent
         s0 = gw1.initialstatevec * gw2.initialstatevec
@@ -62,21 +62,21 @@ class CoreTestCase(unittest.TestCase):
 
     def test_runningAgentOnMDP(self):
         gw1 = GridWorld(
-            tileArray=[
+            tile_array=[
                 '...g',
                 '....',
                 '.###',
                 's..s'
             ],
-            stepCost=-1,
+            step_cost=-1,
         )
         vi = VectorizedValueIteration(temperature=.1,
                                       entropyRegularization=True)
-        res = vi.planOn(gw1)
-        stateTraj = res.policy.runOn(gw1)['stateTraj']
-        self.assertTrue(stateTraj[-2] in gw1.absorbingStates)
-        self.assertTrue(gw1.isTerminal(stateTraj[-1]))
-        self.assertTrue(stateTraj[0] in gw1.initStates)
+        res = vi.plan_on(gw1)
+        stateTraj = res.policy.run_on(gw1)['stateTraj']
+        self.assertTrue(stateTraj[-2] in gw1.absorbing_states)
+        self.assertTrue(gw1.is_terminal(stateTraj[-1]))
+        self.assertTrue(stateTraj[0] in gw1.initial_states)
 
     def test_AssignmentMap_encode(self):
         m = AssignmentMap()

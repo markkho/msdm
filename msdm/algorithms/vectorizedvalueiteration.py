@@ -17,8 +17,8 @@ class VectorizedValueIteration(Plans):
         self.temp = temperature
         self._policy = None
 
-    def planOn(self, mdp: TabularMarkovDecisionProcess):
-        ss = mdp.states
+    def plan_on(self, mdp: TabularMarkovDecisionProcess):
+        ss = mdp.state_list
         tf = mdp.transitionmatrix
         rf = mdp.rewardmatrix
         nt = mdp.nonterminalstatevec
@@ -50,15 +50,15 @@ class VectorizedValueIteration(Plans):
         # create result object
         res = Result()
         res.mdp = mdp
-        res.policy = res.pi = TabularPolicy(mdp.states, mdp.actions, policymatrix=pi)
+        res.policy = res.pi = TabularPolicy(mdp.state_list, mdp.action_list, policymatrix=pi)
         res._valuevec = v
-        vf = AssignmentMap([(s, vi) for s, vi in zip(mdp.states, v)])
+        vf = AssignmentMap([(s, vi) for s, vi in zip(mdp.state_list, v)])
         res.valuefunc = res.V = vf
         res._qvaluemat = q
         qf = AssignmentMap()
-        for si, s in enumerate(mdp.states):
+        for si, s in enumerate(mdp.state_list):
             qf[s] = AssignmentMap()
-            for ai, a in enumerate(mdp.actions):
+            for ai, a in enumerate(mdp.action_list):
                 qf[s][a] = q[si, ai]
         res.actionvaluefunc = res.Q = qf
         return res
