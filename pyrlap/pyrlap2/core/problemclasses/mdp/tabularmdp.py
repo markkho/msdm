@@ -43,7 +43,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         logger.info("Action space unspecified; performing reachability analysis.")
         actions = Set([])
         for s in self.states:
-            for a in self.getActionDist(s).support:
+            for a in self.getActions(s):
                 actions.add(a)
         self._actions = sorted(actions, 
                 key=lambda d: json.dumps(d, sort_keys=True) if isinstance(d, dict) else d
@@ -78,7 +78,10 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         am = np.zeros((len(ss), len(aa)))
         for (si, ai), _ in np.ndenumerate(am):
             s, a = ss[si], aa[ai]
-            p = self.getActionDist(s).prob(a)
+            if a in self.getActions(s):
+                p = 1
+            else:
+                p = 0
             am[si, ai] = p
         self._actmatrix = am
         return self._actmatrix
@@ -152,7 +155,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         except AttributeError:
             pass
         def isAbsorbing(s):
-            actions = self.getActionDist(s).support
+            actions = self.getActions(s)
             for a in actions:
                 nextstates = self.getNextStateDist(s, a).support
                 for ns in nextstates:
@@ -170,7 +173,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         visited = Set(S0)
         while len(frontier) > 0:
             s = frontier.pop()
-            for a in self.getActionDist(s).support:
+            for a in self.getActions(s):
                 for ns in self.getNextStateDist(s, a).support:
                     if ns not in visited:
                         frontier.add(ns)

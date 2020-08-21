@@ -1,3 +1,4 @@
+from typing import Iterable
 from pyrlap.pyrlap2.core.problemclasses.mdp import TabularMarkovDecisionProcess
 from pyrlap.pyrlap2.core.distributions import Multinomial
 
@@ -24,8 +25,8 @@ class StickyActionMDP(TabularMarkovDecisionProcess):
             r += self.switchCost
         return r
 
-    def getActionDist(self, state) -> Multinomial:
-        return self.mdp.getActionDist(state['groundState'])
+    def getActions(self, state) -> Iterable:
+        return self.mdp.getActions(state['groundState'])
 
     def getInitialStateDist(self) -> Multinomial:
         S0 = self.mdp.getInitialStateDist()

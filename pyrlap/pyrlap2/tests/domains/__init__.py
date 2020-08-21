@@ -1,3 +1,5 @@
+from typing import Iterable
+
 from pyrlap.pyrlap2.core.problemclasses.mdp import TabularMarkovDecisionProcess
 from pyrlap.pyrlap2.core.distributions import Multinomial, Distribution
 
@@ -31,10 +33,9 @@ class GNTFig6_6(TabularMarkovDecisionProcess):
     def isTerminal(self, s):
         return s in (12, 15, 16)
 
-    def getActionDist(self, s) -> Distribution:
+    def getActions(self, s) -> Iterable:
         dests = GNTFig6_6.T[s]
-        return Multinomial([
-            a for a in range(len(dests)) if dests[a][0]])
+        return [a for a in range(len(dests)) if dests[a][0]]
 
     def getNextStateDist(self, s, a):
         if a < len(GNTFig6_6.T[s]):

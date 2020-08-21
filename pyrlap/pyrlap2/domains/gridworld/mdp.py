@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import json
+from typing import Iterable
 from pyrlap.pyrlap2.core.utils.gridstringutils import  stringToElementArray
 
 from pyrlap.pyrlap2.core.problemclasses.mdp import \
@@ -142,10 +143,10 @@ class GridWorld(TabularMarkovDecisionProcess):
         f = self._locFeatures.get(nextstate, "")
         return self._featureRewards.get(f, 0.0) + self.stepCost
 
-    def getActionDist(self, state) -> Multinomial:
+    def getActions(self, state) -> Iterable:
         if self.isTerminal(state):
-            return Multinomial([{'dx': 0, 'dy': 0}])
-        return Multinomial([a for a in self._actions])
+            return [{'dx': 0, 'dy': 0}, ]
+        return [a for a in self._actions]
 
     def getInitialStateDist(self) -> Multinomial:
         return Multinomial([s for s in self.initStates])

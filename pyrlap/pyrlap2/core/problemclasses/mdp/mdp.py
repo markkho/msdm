@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from typing import Iterable
 
 from pyrlap.pyrlap2.core.problemclasses.problemclass import ProblemClass
 from pyrlap.pyrlap2.core.distributions import Distribution
@@ -17,7 +18,7 @@ class MarkovDecisionProcess(ProblemClass):
         if memoize:
             self.getNextStateDist = AssignmentCache(self.getNextStateDist)
             self.getReward = AssignmentCache(self.getReward)
-            self.getActionDist = AssignmentCache(self.getActionDist)
+            self.getActions = AssignmentCache(self.getActions)
             self.getInitialStateDist = AssignmentCache(self.getInitialStateDist)
 
     @abstractmethod
@@ -28,8 +29,11 @@ class MarkovDecisionProcess(ProblemClass):
     def getReward(self, s, a, ns) -> float:
         pass
 
+    # @abstractmethod
+    # def getActionDist(self, s) -> Distribution:
+    #     pass
     @abstractmethod
-    def getActionDist(self, s) -> Distribution:
+    def getActions(self, s) -> Iterable:
         pass
 
     @abstractmethod

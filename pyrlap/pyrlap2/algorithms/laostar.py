@@ -45,7 +45,7 @@ class LAOStar(Plans):
             eGraph = {} #explicit graph
         initStates = mdp.getInitialStateDist().support
         for s0 in initStates:
-            actionorder = list(mdp.getActionDist(s0).support)
+            actionorder = list(mdp.getActions(s0))
             random.shuffle(actionorder)
             node = {
                 "parents": [], 
@@ -145,7 +145,7 @@ class LAOStar(Plans):
                 random.shuffle(nextstates)
                 for ns in nextstates:
                     if _hash(ns) not in eGraph:
-                        actionorder = list(mdp.getActionDist(ns).support)
+                        actionorder = list(mdp.getActions(ns))
                         random.shuffle(actionorder)
                         nextnode = {
                             "state": ns,
