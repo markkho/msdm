@@ -167,7 +167,7 @@ class GridWorld(TabularMarkovDecisionProcess):
         if allElements:
             plotInitStates = True
             plotAbsorbingStates = True
-        from pyrlap_old.pyrlap2.domains.gridworld.plotting import GridWorldPlotter
+        from pyrlap.domains.gridworld.plotting import GridWorldPlotter
         if featureColors is None:
             featureColors = {
                 'g': 'yellow',
