@@ -1,7 +1,7 @@
 from typing import Iterable
 
 from pyrlap.pyrlap2.core.problemclasses.mdp import TabularMarkovDecisionProcess
-from pyrlap.pyrlap2.core.distributions import Multinomial, Distribution
+from pyrlap.pyrlap2.core.distributions import DiscreteFactorTable, Distribution
 
 class GNTFig6_6(TabularMarkovDecisionProcess):
     T = [
@@ -28,7 +28,7 @@ class GNTFig6_6(TabularMarkovDecisionProcess):
     Acyclic MDP from Ghallab, Nau, Traverso Figure 6.6
     '''
     def getInitialStateDist(self) -> Distribution:
-        return Multinomial([0])
+        return DiscreteFactorTable([0])
 
     def isTerminal(self, s):
         return s in (12, 15, 16)
@@ -42,7 +42,7 @@ class GNTFig6_6(TabularMarkovDecisionProcess):
             ns = GNTFig6_6.T[s][a][0]
         else:
             ns = [s]
-        return Multinomial(ns)
+        return DiscreteFactorTable(ns)
 
     def getReward(self, s, a, ns) -> float:
         if a < len(GNTFig6_6.T[s]):
@@ -55,18 +55,18 @@ class CountToTen(TabularMarkovDecisionProcess):
 
     def getNextStateDist(self, s, a):
         if s == 10:
-            return Multinomial([])
-        return Multinomial([s+a])
+            return DiscreteFactorTable([])
+        return DiscreteFactorTable([s+a])
 
     def getActionDist(self, s):
         if s < 0:
-            return Multinomial([1])
+            return DiscreteFactorTable([1])
         if s < 5:
-            return Multinomial([1, -1])
-        return Multinomial([1])
+            return DiscreteFactorTable([1, -1])
+        return DiscreteFactorTable([1])
 
     def getInitialStateDist(self):
-        return Multinomial([0,])
+        return DiscreteFactorTable([0,])
 
     def getReward(self, s, a, ns):
         return -1

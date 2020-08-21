@@ -1,22 +1,23 @@
 from typing import Iterable
 from pyrlap.pyrlap2.core.problemclasses.mdp import TabularMarkovDecisionProcess
-from pyrlap.pyrlap2.core.distributions import Multinomial
+from pyrlap.pyrlap2.core.distributions import DiscreteFactorTable
 
 class StickyActionMDP(TabularMarkovDecisionProcess):
-    def __init__(self, basemdp, initAction=None, initActionDist=None, switchCost=-1):
+    def __init__(self, basemdp, initAction=None, switchCost=-1):
         super().__init__()
         self.mdp = basemdp
         self.switchCost = switchCost
-        if initAction is not None:
-            initActionDist = Multinomial([{'curAction': initAction}, ])
-        self.initActionDist = initActionDist
+        self.initAction = initAction
     
     def isTerminal(self, s):
         return self.mdp.isTerminal(s['groundState'])
     
-    def getNextStateDist(self, s, a) -> Multinomial:
+    def getNextStateDist(self, s, a) -> DiscreteFactorTable:
         nsDist = self.mdp.getNextStateDist(s['groundState'], a)
-        nsDist = Multinomial([{'groundState': ns, 'curAction': a} for ns in nsDist.support], logits=nsDist.logits)
+        nsDist = DiscreteFactorTable(
+            [{'groundState': ns, 'curAction': a} for ns in nsDist.support],
+            logits=nsDist.logits
+        )
         return nsDist
     
     def getReward(self, s, a, ns) -> float:
@@ -28,15 +29,20 @@ class StickyActionMDP(TabularMarkovDecisionProcess):
     def getActions(self, state) -> Iterable:
         return self.mdp.getActions(state['groundState'])
 
-    def getInitialStateDist(self) -> Multinomial:
+    def getInitialStateDist(self) -> DiscreteFactorTable:
         S0 = self.mdp.getInitialStateDist()
-        if self.initActionDist is None:
-            SA0 = Multinomial([])
+        if self.initAction is None:
+            SA0 = DiscreteFactorTable([])
             for s0 in S0.support:
-                s0A0 = self.mdp.getActionDist(s0) #action distribution for this initial state
-                s0A0 = Multinomial([{'groundState': s0, 'curAction': a} for a in s0A0.support], logits=s0A0.logits)
+                s0actions = self.mdp.getActions(s0) #actions for initial state
+                s0A0 = DiscreteFactorTable(
+                    [{'groundState': s0, 'curAction': a} for a in s0actions]
+                )
                 SA0 = SA0 | s0A0
         else:
-            SA0 = self.initActionDist
-        S0 = Multinomial(support=[{'groundState': s} for s in S0.support], logits=S0.logits)
+            SA0 = DiscreteFactorTable([{'curAction':self.initAction},])
+        S0 = DiscreteFactorTable(
+            support=[{'groundState': s} for s in S0.support],
+            logits=S0.logits
+        )
         return SA0 & S0

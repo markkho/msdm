@@ -6,7 +6,7 @@ from pyrlap.pyrlap2.core.utils.gridstringutils import  stringToElementArray
 from pyrlap.pyrlap2.core.problemclasses.mdp import \
     TabularMarkovDecisionProcess, \
     ANDMarkovDecisionProcess
-from pyrlap.pyrlap2.core.distributions import Multinomial
+from pyrlap.pyrlap2.core.distributions import DiscreteFactorTable
 from pyrlap.pyrlap2.core.assignment import \
     AssignmentMap as Dict, AssignmentSet as Set
 
@@ -14,7 +14,7 @@ def dictToStr(d):
     return json.dumps(d, sort_keys=True)
 
 TERMINALSTATE = {'x': -1, 'y': -1}
-TERMINALDIST = Multinomial([TERMINALSTATE,])
+TERMINALDIST = DiscreteFactorTable([TERMINALSTATE,])
 
 class GridWorld(TabularMarkovDecisionProcess):
     def __init__(self,
@@ -115,7 +115,7 @@ class GridWorld(TabularMarkovDecisionProcess):
     def isTerminal(self, s):
         return s == TERMINALSTATE
 
-    def getNextStateDist(self, s, a) -> Multinomial:
+    def getNextStateDist(self, s, a) -> DiscreteFactorTable:
         if self.isTerminal(s):
             return TERMINALDIST
         if s in self.absorbingStates:
@@ -127,13 +127,13 @@ class GridWorld(TabularMarkovDecisionProcess):
         ns = {'x': nx, 'y': ny}
 
         if ns not in self.states:
-            bdist = Multinomial([s,])
+            bdist = DiscreteFactorTable([s,])
         elif ns in self.walls:
-            bdist = Multinomial([s,])
+            bdist = DiscreteFactorTable([s,])
         elif ns == s:
-            bdist = Multinomial([s,])
+            bdist = DiscreteFactorTable([s,])
         else:
-            bdist = Multinomial(support=[s, ns], probs=[1 - self.successProb, self.successProb])
+            bdist = DiscreteFactorTable(support=[s, ns], probs=[1 - self.successProb, self.successProb])
         
         return bdist*(1 - self.terminationProb) | TERMINALDIST*self.terminationProb
 
@@ -148,8 +148,8 @@ class GridWorld(TabularMarkovDecisionProcess):
             return [{'dx': 0, 'dy': 0}, ]
         return [a for a in self._actions]
 
-    def getInitialStateDist(self) -> Multinomial:
-        return Multinomial([s for s in self.initStates])
+    def getInitialStateDist(self) -> DiscreteFactorTable:
+        return DiscreteFactorTable([s for s in self.initStates])
 
     def __and__(self, other):
         return ANDGridWorld(self, other)

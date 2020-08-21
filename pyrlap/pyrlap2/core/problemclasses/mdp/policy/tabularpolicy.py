@@ -5,7 +5,7 @@ from pyrlap.pyrlap2.core.problemclasses.mdp.policy.policy import Policy
 from pyrlap.pyrlap2.core.problemclasses.mdp.mdp import MarkovDecisionProcess
 
 from pyrlap.pyrlap2.core.assignment.assignmentmap import AssignmentMap
-from pyrlap.pyrlap2.core.distributions import Multinomial, Distribution
+from pyrlap.pyrlap2.core.distributions import DiscreteFactorTable, Distribution
 class TabularPolicy(Policy):
     def __init__(self, states, actions, policymatrix=None, policydict=None):
         self._states = states
@@ -26,7 +26,7 @@ class TabularPolicy(Policy):
     def getActionDist(self, s) -> Distribution:
         adist = self._policydict[s]
         a, p = zip(*adist.items())
-        return Multinomial(support=a, probs=p)
+        return DiscreteFactorTable(support=a, probs=p)
 
     @property
     def states(self):
@@ -54,10 +54,3 @@ class TabularPolicy(Policy):
         self._policymat = pi
         return self._policymat
 
-    # @property
-    # def qvaluemat(self):
-    #     return self._qvaluemat
-    #
-    # @property
-    # def valuevec(self):
-    #     return self._valuevec

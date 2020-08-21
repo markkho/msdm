@@ -1,5 +1,5 @@
 import logging
-from itertools import product
+from collections import defaultdict
 import numpy as np
 from scipy.special import softmax, logsumexp
 
@@ -7,7 +7,6 @@ np.seterr(divide='ignore')
 logger = logging.getLogger(__name__)
 logger.info("Ignoring division by zero errors")
 
-from pyrlap.pyrlap2.core.utils.dictutils import dict_merge, dict_match
 from pyrlap.pyrlap2.core.distributions.distributions import Distribution
 
 class Multinomial(Distribution):
@@ -76,103 +75,33 @@ class Multinomial(Distribution):
     def __len__(self):
         return len(self.support)
 
+    def __str__(self):
+        e_l = ", ".join([f"{e}: {l:.2f}" for e, l in self.items()])
+        return f"{self.__class__.__name__}{{{e_l}}}"
+
+    def __repr__(self):
+        return str(self)
+
     def __and__(self, other: "Multinomial"):
-        """
-        Distribution conjunction:
-        Multiplies two multinomial distributions (adds their log probabilities)
-        with optionally factored variables.
-        If the support of both are dictionaries, each nested key functions
-        as a variable name. If there are shared variables, these are combined
-        by adding the energies of support elements where their assignments match,
-        effectively making each distribution a factor in a factor graph.
-        """
+        """Conjunction"""
+        newdist = defaultdict(float)
+        for e in self.support:
+            newdist[e] += self.score(e)
+        for e in other.support:
+            newdist[e] += other.score(e)
+        sup, scores = zip(*newdist.items())
+        return Multinomial(support=sup, logits=scores)
 
-        #Conjunction with null distribution is null distribution
-        if (len(self.support) == 0) or (len(other.support) == 0):
-            return Multinomial([])
-
-        jsupport = []
-        jlogits = []
-        # HACK: this should throw a warning or something if the distributions have different headers
-        # i.e., dictionary keys interact in a weird way
-        for si, oi in product(self.support, other.support):
-            if isinstance(si, dict) and isinstance(oi, dict):
-                if dict_match(si, oi): #not efficient if the cartesian product is large
-                    soi = dict_merge(si, oi)
-                    if soi in jsupport:
-                        continue
-                    logit = self.logit(si) + other.logit(oi)
-                    if logit == -np.inf:
-                        continue
-                    jsupport.append(soi)
-                    jlogits.append(logit)
-            else:
-                jsupport.append((si, oi))
-                jlogits.append(self.logit(si) + other.logit(oi))
-        if len(jlogits) > 0:
-            logger.debug("Product distribution has no non-zero support")
-        return Multinomial(support=jsupport, logits=jlogits)
-
-    def __or__(self, other):
-        """
-        Mixture of experts
-
-        A mixture of experts energy can be calculated from primitive
-        energy functions p and q by taking log(exp(p(x)) + exp(q(x))).
-
-        This handles dictionaries as rows of factor tables. Care should be taken
-        to ensure that each dictionary contains the relevant keys since
-        otherwise the energies will be combined in unexpected ways.
-
-        Note that the logits will not be normalized.
-
-        Example:
-
-        pqequalmix = p | q
-        pqunequalmix = p*.2 | q*.8
-        pqunequalmix = p*.1 | q*.8 | p*.1
-        """
-        if (len(self.support) == 0):
-            return other
-        if (len(other.support) == 0):
-            return self
-
-        jsupport = []
-        jlogits = []
-        matchedrows = []
-        unmatchedrows = []
-        # HACK: this should throw a warning or something if the distributions have different headers
-        # i.e., dictionary keys interact in a weird way
-
-        #first get inner join rows, tracking ones that don't match
-        for si, oi in product(self.support, other.support):
-            if isinstance(si, dict) and isinstance(oi, dict):
-                if dict_match(si, oi): #not efficient if the cartesian product is large
-                    matchedrows.extend([si, oi])
-                    soi = dict_merge(si, oi)
-                    if soi in jsupport:
-                        continue
-                    logit = self.logit(si) + other.logit(oi)
-                    if logit == -np.inf:
-                        continue
-                    jsupport.append(soi)
-                    jlogits.append(logit)
-                else:
-                    unmatchedrows.extend([si, oi])
-            else:
-                jsupport.append((si, oi))
-                jlogits.append(self.logit(si) + other.logit(oi))
-
-        #add in the left and right outer join rows, ensuring that they were never matched
-        for i in unmatchedrows:
-            if (i in matchedrows) or (i in jsupport):
-                continue
-            logit = np.log(np.exp(self.logit(i)) + np.exp(other.logit(i)))
-            if (logit == -np.inf):
-                continue
-            jsupport.append(i)
-            jlogits.append(logit)
-        return Multinomial(support=jsupport, logits=jlogits)
+    def __or__(self, other: "Multinomial"):
+        """Disjunction/Mixture"""
+        newdist = defaultdict(float)
+        for e in self.support:
+            newdist[e] += np.exp(self.score(e))
+        for e in other.support:
+            newdist[e] += np.exp(other.score(e))
+        sup, scores = zip(*newdist.items())
+        scores = [logsumexp(s) for s in scores]
+        return Multinomial(support=sup, logits=scores)
 
     def __mul__(self, num):
         mlogits = [logit + np.log(num) for logit in self.logits]
@@ -198,9 +127,3 @@ class Multinomial(Distribution):
         """
         raise NotImplementedError
 
-    def __str__(self):
-        e_l = ", ".join([f"{e}: {l:.2f}" for e, l in self.items()])
-        return f"{self.__class__.__name__}{{{e_l}}}"
-
-    def __repr__(self):
-        return str(self)
