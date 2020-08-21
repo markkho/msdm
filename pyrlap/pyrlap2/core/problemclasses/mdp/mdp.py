@@ -29,9 +29,6 @@ class MarkovDecisionProcess(ProblemClass):
     def getReward(self, s, a, ns) -> float:
         pass
 
-    # @abstractmethod
-    # def getActionDist(self, s) -> Distribution:
-    #     pass
     @abstractmethod
     def getActions(self, s) -> Iterable:
         pass
@@ -80,10 +77,16 @@ class ANDMarkovDecisionProcess(MarkovDecisionProcess):
         r2 = self.mdp2.getReward(state, action, nextstate)
         return r1 + r2
 
-    def getActionDist(self, state) -> Distribution:
-        a1 = self.mdp1.getActionDist(state)
-        a2 = self.mdp2.getActionDist(state)
-        return a1 & a2
+    def getActions(self, state) -> Iterable:
+        a1 = self.mdp1.getActions(state)
+        a2 = self.mdp2.getActions(state)
+        #HACK: need standardized way of handling combination of actions
+        for a in a1:
+            assert a in a2, "Actions must match"
+        for a in a2:
+            assert a in a1, "Actions must match"
+        return a1
+
 
     def getInitialStateDist(self) -> Distribution:
         s1 = self.mdp1.getInitialStateDist()
@@ -119,10 +122,15 @@ class ORMarkovDecisionProcess(MarkovDecisionProcess):
         assert r1 == r2, "Mixture of MDPs must have equivalent rewards" #may need to change
         return r1
 
-    def getActionDist(self, state) -> Distribution:
-        a1 = self.mdp1.getActionDist(state)
-        a2 = self.mdp2.getActionDist(state)
-        return a1 | a2
+    def getActions(self, state) -> Distribution:
+        a1 = self.mdp1.getActions(state)
+        a2 = self.mdp2.getActions(state)
+        #HACK: need standardized way of handling combination of actions
+        for a in a1:
+            assert a in a2, "Actions must match"
+        for a in a2:
+            assert a in a1, "Actions must match"
+        return a1
 
     def getInitialStateDist(self) -> Distribution:
         s1 = self.mdp1.getInitialStateDist()
