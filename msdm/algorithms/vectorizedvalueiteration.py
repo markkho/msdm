@@ -8,12 +8,12 @@ from msdm.core.assignment import AssignmentMap
 class VectorizedValueIteration(Plans):
     def __init__(self,
                  iterations=50,
-                 discountRate=1.0,
-                 entropyRegularization=False,
+                 discount_rate=1.0,
+                 entropy_regularization=False,
                  temperature=1.0):
         self.iters = iterations
-        self.dr = discountRate
-        self.entreg = entropyRegularization
+        self.dr = discount_rate
+        self.entreg = entropy_regularization
         self.temp = temperature
         self._policy = None
 

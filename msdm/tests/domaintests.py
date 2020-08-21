@@ -27,8 +27,8 @@ class DomainTestCase(unittest.TestCase):
         sagw = StickyActionMDP(gw, initAction={'dx': 0, 'dy': 0})
         vi = VectorizedValueIteration(
             iterations=50,
-            discountRate=1.0,
-            entropyRegularization=False,
+            discount_rate=1.0,
+            entropy_regularization=False,
             temperature=0.0
         )
         res = vi.plan_on(sagw)

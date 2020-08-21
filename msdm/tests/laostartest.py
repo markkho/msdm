@@ -32,8 +32,8 @@ class LAOStarTestCase(unittest.TestCase):
 
         lao = LAOStar(
             heuristic,
-            maxLAOIters=100,
-            policyEvaluationIters=40,
+            max_lao_iters=100,
+            policy_evaluation_iters=40,
             seed=6066253173235511770
         )
         R = lao.plan_on(mdp)
