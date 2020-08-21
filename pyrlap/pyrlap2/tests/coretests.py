@@ -2,7 +2,7 @@ import unittest
 import numpy as np
 from pyrlap.pyrlap2.domains import GridWorld
 from pyrlap.pyrlap2.algorithms import VectorizedValueIteration
-from pyrlap.pyrlap2.core import DefaultAssignmentMap, AssignmentMap
+from pyrlap.pyrlap2.core.assignment import DefaultAssignmentMap, AssignmentMap
 
 np.seterr(divide='ignore')
 

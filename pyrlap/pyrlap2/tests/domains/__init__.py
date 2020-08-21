@@ -1,4 +1,5 @@
-from pyrlap.pyrlap2.core import TabularMarkovDecisionProcess, Multinomial, Distribution
+from pyrlap.pyrlap2.core.problemclasses.mdp import TabularMarkovDecisionProcess
+from pyrlap.pyrlap2.core.distributions import Multinomial, Distribution
 
 class GNTFig6_6(TabularMarkovDecisionProcess):
     T = [

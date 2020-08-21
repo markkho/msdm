@@ -10,7 +10,7 @@ import matplotlib.colors as colors
 import matplotlib.cm as cmx
 import matplotlib.patheffects as path_effects
 
-from pyrlap.pyrlap2.core import TabularPolicy
+from pyrlap.pyrlap2.core.problemclasses.mdp import TabularPolicy
 from pyrlap.pyrlap2.domains.gridworld.mdp import GridWorld
 
 

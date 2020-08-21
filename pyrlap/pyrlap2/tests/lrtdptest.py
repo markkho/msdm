@@ -1,7 +1,6 @@
 import unittest
 
-from pyrlap.pyrlap2.algorithms.lrtdp import LRTDP
-from pyrlap.pyrlap2.algorithms import VectorizedValueIteration
+from pyrlap.pyrlap2.algorithms import VectorizedValueIteration, LRTDP
 from pyrlap.pyrlap2.tests.domains import GNTFig6_6
 
 def deterministic(dist):

@@ -3,7 +3,6 @@ import numpy as np
 
 from pyrlap.pyrlap2.algorithms.laostar import LAOStar
 from pyrlap.pyrlap2.domains import GridWorld
-from pyrlap.pyrlap2.core import MarkovDecisionProcess
 
 
 np.seterr(divide='ignore')

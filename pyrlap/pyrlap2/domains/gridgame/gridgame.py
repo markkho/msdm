@@ -4,9 +4,8 @@ import json, copy
 import numpy as np
 
 from pyrlap.pyrlap2.core.utils.gridstringutils import stringToElementArray
-from pyrlap.pyrlap2.core import StochasticGame 
-from pyrlap.pyrlap2.core import Multinomial as Pr
-from pyrlap.pyrlap2.core import AssignmentMap as Dict
+from pyrlap.pyrlap2.core.problemclasses.stochasticgame import StochasticGame
+from pyrlap.pyrlap2.core.distributions import Multinomial as Pr
 
 TERMINALSTATE = {"isTerminal": True}
 

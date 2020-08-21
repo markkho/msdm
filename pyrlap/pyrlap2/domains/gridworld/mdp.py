@@ -2,12 +2,13 @@ import matplotlib.pyplot as plt
 import json
 from pyrlap.pyrlap2.core.utils.gridstringutils import  stringToElementArray
 
-from pyrlap.pyrlap2.core import \
+from pyrlap.pyrlap2.core.problemclasses.mdp import \
     TabularMarkovDecisionProcess, \
-    ANDMarkovDecisionProcess, Multinomial
+    ANDMarkovDecisionProcess
+from pyrlap.pyrlap2.core.distributions import Multinomial
+from pyrlap.pyrlap2.core.assignment import \
+    AssignmentMap as Dict, AssignmentSet as Set
 
-from pyrlap.pyrlap2.core import AssignmentMap as Dict
-from pyrlap.pyrlap2.core import AssignmentSet as Set
 def dictToStr(d):
     return json.dumps(d, sort_keys=True)
 

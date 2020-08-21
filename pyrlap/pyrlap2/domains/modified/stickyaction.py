@@ -1,5 +1,5 @@
-from pyrlap.pyrlap2.core import TabularMarkovDecisionProcess
-from pyrlap.pyrlap2.core import Multinomial
+from pyrlap.pyrlap2.core.problemclasses.mdp import TabularMarkovDecisionProcess
+from pyrlap.pyrlap2.core.distributions import Multinomial
 
 class StickyActionMDP(TabularMarkovDecisionProcess):
     def __init__(self, basemdp, initAction=None, initActionDist=None, switchCost=-1):

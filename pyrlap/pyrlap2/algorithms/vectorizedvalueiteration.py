@@ -1,8 +1,9 @@
 from scipy.special import softmax, logsumexp
 import numpy as np
-from pyrlap.pyrlap2.core import TabularPolicy, \
-    TabularMarkovDecisionProcess, Multinomial, AssignmentMap, \
-    Plans, Result
+from pyrlap.pyrlap2.core.problemclasses.mdp import TabularPolicy, \
+    TabularMarkovDecisionProcess
+from pyrlap.pyrlap2.core.algorithmclasses import Plans, Result
+from pyrlap.pyrlap2.core.assignment import AssignmentMap
 
 class VectorizedValueIteration(Plans):
     def __init__(self,
