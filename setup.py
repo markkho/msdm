@@ -1,14 +1,13 @@
 from setuptools import setup, find_packages
 
 def readme():
-    with open('README.rst') as f:
+    with open('README.md') as f:
         return f.read()
 
-setup(name='pyrlap',
+setup(name='msdm',
       version='0.4',
-      description='Library for combining MDPs and solving them for cognitive '+
-                  'science research',
-      url='https://github.com/markkho/pyrlap',
+      description='Models of sequential decision making',
+      url='https://github.com/markkho/msdm',
       author="Mark Ho",
       author_email='mark.ho.cs@gmail.com',
       license='MIT',
