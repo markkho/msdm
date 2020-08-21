@@ -12,3 +12,7 @@ class Distribution(ABC):
     @abstractmethod
     def prob(self, e):
         pass
+
+    @abstractmethod
+    def score(self, e):
+        pass

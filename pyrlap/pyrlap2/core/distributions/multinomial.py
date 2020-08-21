@@ -54,6 +54,12 @@ class Multinomial(Distribution):
     def logits(self):
         return self._logits
 
+    def score(self, e):
+        try:
+            return self._logits[self.support.index(e)]
+        except ValueError:
+            return -np.inf
+
     def sample(self):
         if len(self.support) == 0:
             return
