@@ -47,3 +47,26 @@ class GNTFig6_6(TabularMarkovDecisionProcess):
         if a < len(GNTFig6_6.T[s]):
             return -GNTFig6_6.T[s][a][1]
         return -100 # HACK
+
+class CountToTen(TabularMarkovDecisionProcess):
+    def isTerminal(self, s):
+        return s == 10
+
+    def getNextStateDist(self, s, a):
+        if s == 10:
+            return Multinomial([])
+        return Multinomial([s+a])
+
+    def getActionDist(self, s):
+        if s < 0:
+            return Multinomial([1])
+        if s < 5:
+            return Multinomial([1, -1])
+        return Multinomial([1])
+
+    def getInitialStateDist(self):
+        return Multinomial([0,])
+
+    def getReward(self, s, a, ns):
+        return -1
+
