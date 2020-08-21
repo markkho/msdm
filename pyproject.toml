@@ -1,6 +1,6 @@
 [tool.pytest.ini_options]
 python_files = "*test*.py"
 testpaths = [
-    "pyrlap/tests",
+    "msdm/tests",
 ]
 
