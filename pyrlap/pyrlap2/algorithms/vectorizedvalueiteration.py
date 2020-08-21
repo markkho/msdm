@@ -68,34 +68,3 @@ class VectorizedValueIteration(Plans):
     #         self.actions,
     #         policymatrix=softmax(self._qvaluemat/temp, axis=-1)
     #     )
-    # @property
-    # def valuefunc(self) -> Mapping:
-    #     vf = AssignmentMap()
-    #     for s, v in zip(self.states, self._valuevec):
-    #         vf[s] = v
-    #     return vf
-    #
-    # @property
-    # def actionvaluefunc(self) -> Mapping:
-    #     qf = AssignmentMap()
-    #     for si, s in enumerate(self.states):
-    #         qf[s] = AssignmentMap()
-    #         for ai, a in enumerate(self.actions):
-    #             qf[s][a] = self._qvaluemat[si, ai]
-    #     return qf
-    # @property
-    # def policy(self) -> TabularPolicy:
-    #     return self._policy
-    #
-    # #shortcuts
-    # @property
-    # def V(self):
-    #     return self.valuefunc
-    #
-    # @property
-    # def Q(self):
-    #     return self.actionvaluefunc
-    #
-    # @property
-    # def pi(self):
-    #     return self.policy
