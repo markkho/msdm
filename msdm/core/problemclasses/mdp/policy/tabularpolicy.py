@@ -19,37 +19,37 @@ class TabularPolicy(Policy):
                         policydict[s][a] = policymatrix[si, ai]
         self._policydict = policydict
 
-    def evaluateOn(self, mdp: MarkovDecisionProcess) -> Mapping:
+    def evaluate_on(self, mdp: MarkovDecisionProcess) -> Mapping:
         # do policy evaluation
         raise NotImplementedError
 
-    def getActionDist(self, s) -> Distribution:
+    def action_dist(self, s) -> Distribution:
         adist = self._policydict[s]
         a, p = zip(*adist.items())
         return DiscreteFactorTable(support=a, probs=p)
 
     @property
-    def states(self):
+    def state_list(self):
         return self._states
 
     @property
-    def actions(self):
+    def action_list(self):
         return self._actions
 
     @property
-    def policydict(self) -> Mapping:
+    def policy_dict(self) -> Mapping:
         return self._policydict
 
     @property
-    def policymat(self):
+    def policy_matrix(self):
         try:
             return self._policymat
         except AttributeError:
             pass
-        pi = np.zeros((len(self.states), len(self.actions)))
-        for si, s in enumerate(self.states):
-            adist = self.getActionDist(s)
-            for ai, a in enumerate(self.actions):
+        pi = np.zeros((len(self.state_list), len(self.action_list)))
+        for si, s in enumerate(self.state_list):
+            adist = self.action_dist(s)
+            for ai, a in enumerate(self.action_list):
                 pi[si, ai] = adist.prob(a)
         self._policymat = pi
         return self._policymat

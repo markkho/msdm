@@ -10,7 +10,7 @@ np.seterr(divide='ignore')
 class LAOStarTestCase(unittest.TestCase):
     def test_DeterministicLAOStarGridWorld(self):
         gw = GridWorld(
-            tileArray=[
+            tile_array=[
                 '......g',
                 '...####',
                 '.###...',
@@ -18,25 +18,25 @@ class LAOStarTestCase(unittest.TestCase):
                 '..####.',
                 '..s....',
             ],
-            featureRewards={'g': 0},
-            stepCost=-1,
-            terminationProb=.0
+            feature_rewards={'g': 0},
+            step_cost=-1,
+            termination_prob=.0
         )
         mdp = gw
 
-        goal = mdp.absorbingStates[0]
+        goal = mdp.absorbing_states[0]
         def heuristic(s):
-            if mdp.isTerminal(s):
+            if mdp.is_terminal(s):
                 return 0.0
             return -np.sum(np.abs(np.array(s['x']) - np.array(goal['x'])))
 
         lao = LAOStar(
             heuristic,
-            maxLAOIters=100,
-            policyEvaluationIters=40,
+            max_lao_iters=100,
+            policy_evaluation_iters=40,
             seed=6066253173235511770
         )
-        R = lao.planOn(mdp)
+        R = lao.plan_on(mdp)
         
 if __name__ == '__main__':
     unittest.main()

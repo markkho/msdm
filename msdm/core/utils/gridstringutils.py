@@ -1,6 +1,6 @@
 import numpy as np
 
-def stringToElementArray(gwstr, colsep=" ", rowsep="\n", elementsep="."):
+def string_to_element_array(gwstr, colsep=" ", rowsep="\n", elementsep="."):
     arr = []
     gwstr = gwstr.strip()
     for row in gwstr.split(rowsep):
@@ -13,7 +13,7 @@ def stringToElementArray(gwstr, colsep=" ", rowsep="\n", elementsep="."):
             arr[-1].append([e for e in cell.split(elementsep) if e != ""])
     return arr
 
-def elementArrayToString(ta, colsep=" ", rowsep="\n", elementsep="."):
+def element_array_to_string(ta, colsep=" ", rowsep="\n", elementsep="."):
     # format the elements in a location
     ta = [[elementsep.join(sorted(c)) if len(c) > 0 else elementsep for c in r] for r in ta]
     

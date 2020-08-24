@@ -13,42 +13,42 @@ class StochasticGame(ProblemClass):
     - next state distributions
     """
 
-    def __init__(self, agentNames, memoize=True):
-        self._agentNames = agentNames
+    def __init__(self, agent_names, memoize=True):
+        self._agentNames = agent_names
         if memoize:
-            self.getNextStateDist = AssignmentCache(self.getNextStateDist)
-            self.getJointRewards = AssignmentCache(self.getJointRewards)
-            self.getJointActionDist = AssignmentCache(self.getJointActionDist)
-            self.getInitialStateDist = AssignmentCache(self.getInitialStateDist)
-            self.isTerminal = AssignmentCache(self.isTerminal)
+            self.next_state_dist = AssignmentCache(self.next_state_dist)
+            self.joint_rewards = AssignmentCache(self.joint_rewards)
+            self.joint_action_dist = AssignmentCache(self.joint_action_dist)
+            self.initial_state_dist = AssignmentCache(self.initial_state_dist)
+            self.is_terminal = AssignmentCache(self.is_terminal)
         
     @property
-    def agentNames(self):
+    def agent_names(self):
         return self._agentNames
 
     @abstractmethod
-    def getInitialStateDist(self) -> Distribution:
+    def initial_state_dist(self) -> Distribution:
         pass
 
     @abstractmethod
-    def getJointActionDist(self, s) -> Distribution:
+    def joint_action_dist(self, s) -> Distribution:
         pass
 
     @abstractmethod
-    def isTerminal(self, s) -> bool:
+    def is_terminal(self, s) -> bool:
         pass
 
     @abstractmethod
-    def getNextStateDist(self, s, ja) -> Distribution:
+    def next_state_dist(self, s, ja) -> Distribution:
         """Joint action should be dictionary with agent names as keys"""
         pass
 
     @abstractmethod
-    def getJointRewards(self, 
-            s, # state
-            ja, # jointaction
-            ns, # nextstate
-        ) -> Mapping[Hashable, float]:
+    def joint_rewards(self,
+                      s,  # state
+                      ja,  # jointaction
+                      ns,  # nextstate
+                      ) -> Mapping[Hashable, float]:
         """This should return a mapping from agent names to rewards"""
         pass
 

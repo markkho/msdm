@@ -17,39 +17,39 @@ class PartiallyObservableStochasticGame(ProblemClass):
         self._agentNames = agentNames
 
     @property
-    def agentNames(self):
+    def agent_names(self):
         return self._agentNames
 
     @abstractmethod
-    def getInitialStateDist(self) -> Distribution:
+    def initial_state_dist(self) -> Distribution:
         pass
 
     @abstractmethod
-    def getJointActionDist(self, s) -> Distribution:
+    def joint_action_dist(self, s) -> Distribution:
         pass
 
     @abstractmethod
-    def getNextStateDist(self,
-            s, # state
-            ja, # jointaction
-        ) -> Distribution:
+    def next_state_dist(self,
+                        s,  # state
+                        ja,  # jointaction
+                        ) -> Distribution:
         pass
 
     @abstractmethod
-    def getJointObservationDist(self, 
-            s, # state
-            ja, # jointaction
-            ns, # nextstate
-        ) -> Distribution:
+    def joint_observation_dist(self,
+                               s,  # state
+                               ja,  # jointaction
+                               ns,  # nextstate
+                               ) -> Distribution:
         pass
 
     @abstractmethod
-    def getJointRewards(self, 
-            s, # state
-            ja, # jointaction
-            ns, # nextstate
-            jo # jointobservation
-        ) -> Mapping[Hashable, float]:
+    def joint_rewards(self,
+                      s,  # state
+                      ja,  # jointaction
+                      ns,  # nextstate
+                      jo  # jointobservation
+                      ) -> Mapping[Hashable, float]:
         pass
 
     def __and__(self, other: "PartiallyObservableStochasticGame"):

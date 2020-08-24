@@ -16,29 +16,29 @@ class MarkovDecisionProcess(ProblemClass):
 
     def __init__(self, memoize=True):
         if memoize:
-            self.getNextStateDist = AssignmentCache(self.getNextStateDist)
-            self.getReward = AssignmentCache(self.getReward)
-            self.getActions = AssignmentCache(self.getActions)
-            self.getInitialStateDist = AssignmentCache(self.getInitialStateDist)
+            self.next_state_dist = AssignmentCache(self.next_state_dist)
+            self.reward = AssignmentCache(self.reward)
+            self.actions = AssignmentCache(self.actions)
+            self.initial_state_dist = AssignmentCache(self.initial_state_dist)
 
     @abstractmethod
-    def getNextStateDist(self, s, a) -> Distribution:
+    def next_state_dist(self, s, a) -> Distribution:
         pass
 
     @abstractmethod
-    def getReward(self, s, a, ns) -> float:
+    def reward(self, s, a, ns) -> float:
         pass
 
     @abstractmethod
-    def getActions(self, s) -> Iterable:
+    def actions(self, s) -> Iterable:
         pass
 
     @abstractmethod
-    def getInitialStateDist(self) -> Distribution:
+    def initial_state_dist(self) -> Distribution:
         pass
 
     @abstractmethod
-    def isTerminal(self, s):
+    def is_terminal(self, s):
         pass
 
     def __and__(self, other: "MarkovDecisionProcess"):
@@ -67,26 +67,26 @@ class ANDMarkovDecisionProcess(MarkovDecisionProcess):
         self.mdp2 = mdp2
         MarkovDecisionProcess.__init__(self)
 
-    def getNextStateDist(self, state, action) -> Distribution:
-        d1 = self.mdp1.getNextStateDist(state, action)
-        d2 = self.mdp2.getNextStateDist(state, action)
+    def next_state_dist(self, state, action) -> Distribution:
+        d1 = self.mdp1.next_state_dist(state, action)
+        d2 = self.mdp2.next_state_dist(state, action)
         return d1 & d2
 
-    def getReward(self, state, action, nextstate) -> float:
-        r1 = self.mdp1.getReward(state, action, nextstate)
-        r2 = self.mdp2.getReward(state, action, nextstate)
+    def reward(self, state, action, nextstate) -> float:
+        r1 = self.mdp1.reward(state, action, nextstate)
+        r2 = self.mdp2.reward(state, action, nextstate)
         return r1 + r2
 
-    def getActions(self, state) -> Iterable:
+    def actions(self, state) -> Iterable:
         #HACK: ideally this wouldn't need to convert to a distribution
-        a1 = DiscreteFactorTable(self.mdp1.getActions(state))
-        a2 = DiscreteFactorTable(self.mdp2.getActions(state))
+        a1 = DiscreteFactorTable(self.mdp1.actions(state))
+        a2 = DiscreteFactorTable(self.mdp2.actions(state))
         aa = a1 & a2
         return aa.support
 
-    def getInitialStateDist(self) -> Distribution:
-        s1 = self.mdp1.getInitialStateDist()
-        s2 = self.mdp2.getInitialStateDist()
+    def initial_state_dist(self) -> Distribution:
+        s1 = self.mdp1.initial_state_dist()
+        s2 = self.mdp2.initial_state_dist()
         return s1 & s2
 
 class ORMarkovDecisionProcess(MarkovDecisionProcess):
@@ -107,31 +107,31 @@ class ORMarkovDecisionProcess(MarkovDecisionProcess):
         self.mdp2 = mdp2
         MarkovDecisionProcess.__init__(self)
 
-    def getNextStateDist(self, state, action) -> Distribution:
-        d1 = self.mdp1.getNextStateDist(state, action)
-        d2 = self.mdp2.getNextStateDist(state, action)
+    def next_state_dist(self, state, action) -> Distribution:
+        d1 = self.mdp1.next_state_dist(state, action)
+        d2 = self.mdp2.next_state_dist(state, action)
         return d1 | d2
 
-    def getReward(self, state, action, nextstate) -> float:
-        r1 = self.mdp1.getReward(state, action, nextstate)
-        r2 = self.mdp2.getReward(state, action, nextstate)
+    def reward(self, state, action, nextstate) -> float:
+        r1 = self.mdp1.reward(state, action, nextstate)
+        r2 = self.mdp2.reward(state, action, nextstate)
         assert r1 == r2, "Mixture of MDPs must have equivalent rewards" #may need to change
         return r1
 
-    def getActions(self, state) -> Distribution:
+    def actions(self, state) -> Distribution:
         #HACK: ideally this wouldn't need to convert to a distribution
-        a1 = DiscreteFactorTable(self.mdp1.getActions(state))
-        a2 = DiscreteFactorTable(self.mdp2.getActions(state))
+        a1 = DiscreteFactorTable(self.mdp1.actions(state))
+        a2 = DiscreteFactorTable(self.mdp2.actions(state))
         aa = a1 | a2
         return aa.support
 
-    def getInitialStateDist(self) -> Distribution:
-        s1 = self.mdp1.getInitialStateDist()
-        s2 = self.mdp2.getInitialStateDist()
+    def initial_state_dist(self) -> Distribution:
+        s1 = self.mdp1.initial_state_dist()
+        s2 = self.mdp2.initial_state_dist()
         return s1 | s2
 
 
-def ScaledMarkovDecisionProcess(MarkovDecisionProcess):
+class ScaledMarkovDecisionProcess(MarkovDecisionProcess):
     """
     Base Scaled-MDP - only assumes function calls can be combined.
 
@@ -142,15 +142,15 @@ def ScaledMarkovDecisionProcess(MarkovDecisionProcess):
         self.scale = scale
         MarkovDecisionProcess.__init__(self)
 
-    def getNextStateDist(self, state, action) -> Distribution:
-        return self.mdp.getNextStateDist(state, action)*self.scale
+    def next_state_dist(self, s, a) -> Distribution:
+        return self.mdp.next_state_dist(s, a) * self.scale
 
-    def getReward(self, state, action, nextstate) -> float:
+    def reward(self, state, action, nextstate) -> float:
         """rewards are unchanged"""
-        return self.mdp.getReward(state, action, nextstate)
+        return self.mdp.reward(state, action, nextstate)
 
-    def getActionDist(self, state) -> Distribution:
-        return self.mdp.getActionDist(state)*self.scale
+    def actions(self, state) -> Iterable:
+        return self.mdp.actions(state)
 
-    def getInitialStateDist(self) -> Distribution:
-        return self.mdp.getInitialStateDist()*self.scale
+    def initial_state_dist(self) -> Distribution:
+        return self.mdp.initial_state_dist() * self.scale
