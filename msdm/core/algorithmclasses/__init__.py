@@ -13,10 +13,10 @@ class Result(ABC):
 
 class Plans(Algorithm):
     @abstractmethod
-    def planOn(self, problem: ProblemClass) -> Result:
+    def plan_on(self, problem: ProblemClass) -> Result:
         pass
 
 class Learns(Algorithm):
     @abstractmethod
-    def trainOn(self, problem: ProblemClass) -> Result:
+    def train_on(self, problem: ProblemClass) -> Result:
         pass

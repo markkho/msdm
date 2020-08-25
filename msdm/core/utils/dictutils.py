@@ -33,7 +33,7 @@ def dict_match(left, right, res=None):
             break
     return res[0]
 
-def naturaljoin(*Rs):
+def natural_join(*Rs):
     """
     Naively joins lists of nested dictionaries by joining on 
     shared nested keys. Formally, for two lists, this is 

@@ -4,23 +4,23 @@ from msdm.core.distributions import Distribution
 
 class Policy(ABC):
     @abstractmethod
-    def getActionDist(self, s) -> Distribution:
+    def action_dist(self, s) -> Distribution:
         pass
 
-    def runOn(self,
-              mdp: MarkovDecisionProcess,
-              initialState=None,
-              maxSteps=20):
+    def run_on(self,
+               mdp: MarkovDecisionProcess,
+               initialState=None,
+               maxSteps=20):
         if initialState is None:
-            initialState = mdp.getInitialStateDist().sample()
+            initialState = mdp.initial_state_dist().sample()
         traj = []
         s = initialState
         for t in range(maxSteps):
-            a = self.getActionDist(s).sample()
-            ns = mdp.getNextStateDist(s, a).sample()
-            r = mdp.getReward(s, a, ns)
+            a = self.action_dist(s).sample()
+            ns = mdp.next_state_dist(s, a).sample()
+            r = mdp.reward(s, a, ns)
             traj.append((s, a, ns, r))
-            if mdp.isTerminal(s):
+            if mdp.is_terminal(s):
                 break
             s = ns
         states, actions, nextstates, rewards = zip(*traj)

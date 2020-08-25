@@ -8,10 +8,10 @@ logger = logging.getLogger(__name__)
 
 class TabularMarkovDecisionProcess(MarkovDecisionProcess):
     """Tabular MDPs can be fully enumerated (e.g., as matrices)"""
-    def asMatrices(self):
+    def as_matrices(self):
         return {
-            'ss': self.states,
-            'aa': self.actions,
+            'ss': self.state_list,
+            'aa': self.action_list,
             'tf': self.transitionmatrix,
             'rf': self.rewardmatrix,
             'sarf': self.stateactionrewardmatrix,
@@ -22,28 +22,28 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         }
 
     @property
-    def states(self):
+    def state_list(self):
         try:
             return self._states
         except AttributeError:
             pass
         logger.info("State space unspecified; performing reachability analysis.")
         self._states = \
-            sorted(self.getReachableStates(), 
+            sorted(self.reachable_states(),
                 key=lambda d: json.dumps(d, sort_keys=True) if isinstance(d, dict) else d
             )
         return self._states
 
     @property
-    def actions(self):
+    def action_list(self):
         try:
             return self._actions
         except AttributeError:
             pass
         logger.info("Action space unspecified; performing reachability analysis.")
         actions = Set([])
-        for s in self.states:
-            for a in self.getActions(s):
+        for s in self.state_list:
+            for a in self.actions(s):
                 actions.add(a)
         self._actions = sorted(actions, 
                 key=lambda d: json.dumps(d, sort_keys=True) if isinstance(d, dict) else d
@@ -56,12 +56,12 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
             return self._tfmatrix
         except AttributeError:
             pass
-        ss = self.states
-        aa = self.actions
+        ss = self.state_list
+        aa = self.action_list
         tf = np.zeros((len(ss), len(aa), len(ss)))
         for si, s in enumerate(ss):
             for ai, a in enumerate(aa):
-                nsdist = self.getNextStateDist(s, a)
+                nsdist = self.next_state_dist(s, a)
                 for nsi, ns in enumerate(ss):
                     tf[si, ai, nsi] = nsdist.prob(ns)
         self._tfmatrix = tf
@@ -73,12 +73,12 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
             return self._actmatrix
         except AttributeError:
             pass
-        ss = self.states
-        aa = self.actions
+        ss = self.state_list
+        aa = self.action_list
         am = np.zeros((len(ss), len(aa)))
         for (si, ai), _ in np.ndenumerate(am):
             s, a = ss[si], aa[ai]
-            if a in self.getActions(s):
+            if a in self.actions(s):
                 p = 1
             else:
                 p = 0
@@ -93,16 +93,16 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
             return self._rfmatrix
         except AttributeError:
             pass
-        ss = self.states
-        aa = self.actions
+        ss = self.state_list
+        aa = self.action_list
         rf = np.zeros((len(ss), len(aa), len(ss)))
         for si, s in enumerate(ss):
             for ai, a in enumerate(aa):
-                nsdist = self.getNextStateDist(s, a)
+                nsdist = self.next_state_dist(s, a)
                 for nsi, ns in enumerate(ss):
                     if ns not in nsdist.support:
                         continue
-                    r = self.getReward(s, a, ns)
+                    r = self.reward(s, a, ns)
                     rf[si, ai, nsi] = r
         self._rfmatrix = rf
         return self._rfmatrix
@@ -124,8 +124,9 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
             return self._s0vec
         except AttributeError:
             pass
-        s0 = self.getInitialStateDist()
-        return np.array([s0.prob(s) for s in self.states])
+        s0 = self.initial_state_dist()
+        self._s0vec = np.array([s0.prob(s) for s in self.state_list])
+        return self._s0vec
 
     @property
     def nonterminalstatevec(self):
@@ -133,8 +134,8 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
             return self._ntvec
         except AttributeError:
             pass
-        ss = self.states
-        self._ntvec = np.array([0 if self.isTerminal(s) else 1 for s in ss])
+        ss = self.state_list
+        self._ntvec = np.array([0 if self.is_terminal(s) else 1 for s in ss])
         return self._ntvec
 
     @property
@@ -143,9 +144,9 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
             return self._reachablevec
         except AttributeError:
             pass
-        reachable = self.getReachableStates()
+        reachable = self.reachable_states()
         self._reachablevec = np.array \
-            ([1 if s in reachable else 0 for s in self.states])
+            ([1 if s in reachable else 0 for s in self.state_list])
         return self._reachablevec
 
     @property
@@ -154,27 +155,25 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
             return self._absorbingstatevec
         except AttributeError:
             pass
-        def isAbsorbing(s):
-            actions = self.getActions(s)
+        def is_absorbing(s):
+            actions = self.actions(s)
             for a in actions:
-                nextstates = self.getNextStateDist(s, a).support
+                nextstates = self.next_state_dist(s, a).support
                 for ns in nextstates:
-                    if not self.isTerminal(ns):
+                    if not self.is_terminal(ns):
                         return False
             return True
-        self._absorbingstatevec = np.array([isAbsorbing(s) for s in self.states])
+        self._absorbingstatevec = np.array([is_absorbing(s) for s in self.state_list])
         return self._absorbingstatevec
 
-    
-
-    def getReachableStates(self):
-        S0 = self.getInitialStateDist().support
+    def reachable_states(self):
+        S0 = self.initial_state_dist().support
         frontier = Set(S0)
         visited = Set(S0)
         while len(frontier) > 0:
             s = frontier.pop()
-            for a in self.getActions(s):
-                for ns in self.getNextStateDist(s, a).support:
+            for a in self.actions(s):
+                for ns in self.next_state_dist(s, a).support:
                     if ns not in visited:
                         frontier.add(ns)
                     visited.add(ns)
@@ -182,9 +181,9 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
 
     def __and__(self, other: "TabularMarkovDecisionProcess"):
         assert isinstance(other, TabularMarkovDecisionProcess)
-        assert all(s == z for s, z in zip(self.states, other.states)), \
+        assert all(s == z for s, z in zip(self.state_list, other.state_list)), \
             "State spaces not aligned"
-        assert all(a == b for a, b in zip(self.actions, other.actions)), \
+        assert all(a == b for a, b in zip(self.action_list, other.action_list)), \
             "Action spaces not aligned"
         return ANDTabularMarkovDecisionProcess(self, other)
 
