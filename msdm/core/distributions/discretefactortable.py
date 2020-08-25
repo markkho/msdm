@@ -9,30 +9,33 @@ logger.info("Ignoring division by zero errors")
 
 from msdm.core.utils.dictutils import dict_merge, dict_match
 from msdm.core.distributions.distributions import Distribution
+from msdm.core.assignment import DefaultAssignmentMap
 
 class DiscreteFactorTable(Distribution):
     """
-    Discrete factor table assigns a score to variable assignments. If support
-    elements are (nested) mappings, each (nested) key is interpreted as
+    A discrete factor table maps variable assignments to real-valued scores.
+    If support elements are (nested) mappings, each (nested) key is interpreted as
     a variable and corresponding value is an assignment. If the elements are
     non-mappings, then the distribution behaves like a Multinomial.
     """
-    def __init__(self, support, logits=None, probs=None):
-        if (probs is None) and (logits is None):
-            logits = np.zeros(len(support))
+    def __init__(self, support, logits=None, probs=None, scores=None):
+        if scores is None:
+            scores = logits
+        if (probs is None) and (scores is None):
+            scores = np.zeros(len(support))
         if len(support) == 0:
             probs = []
-            logits = []
+            scores = []
         if probs is None:
-            if np.sum(logits) == -np.inf:
+            if np.sum(scores) == -np.inf:
                 probs = np.zeros(len(support))
             else:
-                probs = softmax(logits)
-        if logits is None:
-            logits = np.log(probs)
+                probs = softmax(scores)
+        if scores is None:
+            scores = np.log(probs)
 
         self._probs = tuple(probs)
-        self._logits = tuple(logits)
+        self._scores = tuple(scores)
         self._support = tuple(support)
 
     @property
@@ -52,19 +55,23 @@ class DiscreteFactorTable(Distribution):
 
     def logit(self, e, default=-np.inf):
         try:
-            return self._logits[self.support.index(e)]
+            return self._scores[self.support.index(e)]
         except ValueError:
             return default
 
     @property
     def logits(self):
-        return self._logits
+        return self._scores
 
     def score(self, e):
         try:
-            return self._logits[self.support.index(e)]
+            return self._scores[self.support.index(e)]
         except ValueError:
             return -np.inf
+
+    @property
+    def scores(self):
+        return self._scores
 
     def sample(self):
         if len(self.support) == 0:
@@ -74,7 +81,7 @@ class DiscreteFactorTable(Distribution):
     def items(self, probs=False):
         if probs:
             return zip(self.support, self._probs)
-        return zip(self.support, self._logits)
+        return zip(self.support, self._scores)
 
     def keys(self):
         return [e for e in self.support]
@@ -82,20 +89,29 @@ class DiscreteFactorTable(Distribution):
     def __len__(self):
         return len(self.support)
 
-    def __and__(self, other: "DiscreteFactorTable"):
+    def product(self, other: "DiscreteFactorTable"):
         """
-        Distribution conjunction:
-        Multiplies two multinomial distributions (adds their log probabilities)
-        with optionally factored variables.
-        If the support of both are dictionaries, each nested key functions
-        as a variable name. If there are shared variables, these are combined
-        by adding the energies of support elements where their assignments match,
-        effectively making each distribution a factor in a factor graph.
+        Product of discrete factor tables
+
+        Combines two factor tables by multiplying their probabilities
+        (adding their scores).
+
+        If the support of `self` and `other` are mappings, each (nested) key
+        is treated as a variable name. If there are shared variables, these
+        are combined by adding their scores when assignment of shared variables
+        match. The returned `DiscreteFactorTable` has entries for all
+        joint scores greater than -inf combinations of shared variables.
+
+        If the supports of self and other are not mappings, then this behaves
+        like the `Multinomial` distribution.
         """
 
-        #Conjunction with null distribution is null distribution
+        #Conjunction with null distribution is null table
         if (len(self.support) == 0) or (len(other.support) == 0):
             return DiscreteFactorTable([])
+
+        # NOTE: can this be relaxed?
+        assert type(self.support[0]) == type(other.support[0])
 
         jsupport = []
         jlogits = []
@@ -119,18 +135,23 @@ class DiscreteFactorTable(Distribution):
             logger.debug("Product distribution has no non-zero support")
         return DiscreteFactorTable(support=jsupport, logits=jlogits)
 
-    def __or__(self, other):
+    def mix(self, other: "DiscreteFactorTable"):
         """
-        Mixture of experts
+        Mixture of distributions
 
-        A mixture of experts energy can be calculated from primitive
-        energy functions p and q by taking log(exp(p(x)) + exp(q(x))).
+        Combines two factor tables by summing their probabilities
+        (i.e., taking the logsumexp of their scores)
 
-        This handles dictionaries as rows of factor tables. Care should be taken
-        to ensure that each dictionary contains the relevant keys since
-        otherwise the energies will be combined in unexpected ways.
+        If the support of `self` and `other` are mappings, each (nested) key
+        is treated as a variable name. If there are shared variables, these
+        are combined by adding their scores when assignment of shared variables
+        match. The returned `DiscreteFactorTable` has entries for all
+        joint scores greater than -inf combinations of shared variables.
 
-        Note that the logits will not be normalized.
+        If the supports of self and other are not mappings, then this behaves
+        like the `Multinomial` distribution.
+
+        Note that the scores will not be normalized.
 
         Example:
 
@@ -142,6 +163,9 @@ class DiscreteFactorTable(Distribution):
             return other
         if (len(other.support) == 0):
             return self
+
+        # NOTE: can this be relaxed?
+        assert type(self.support[0]) == type(other.support[0])
 
         jsupport = []
         jlogits = []
@@ -174,11 +198,46 @@ class DiscreteFactorTable(Distribution):
             if (i in matchedrows) or (i in jsupport):
                 continue
             logit = np.log(np.exp(self.logit(i)) + np.exp(other.logit(i)))
-            if (logit == -np.inf):
+            if logit == -np.inf:
                 continue
             jsupport.append(i)
             jlogits.append(logit)
         return DiscreteFactorTable(support=jsupport, logits=jlogits)
+
+    def marginalize(self, projection):
+        """
+        Marginalize a factor table based on a projection
+
+        A projection can be a callable, a python expression as a string,
+        a list, or dictionary key.
+        """
+        mexpscores = DefaultAssignmentMap(lambda _ : 0.0)
+        for ele in self.support:
+            #try to call it, then try to evaluate it, then try other things
+            #could be cleaner...
+            try:
+                margele = projection(ele)
+            except TypeError:
+                try:
+                    margele = eval(projection, ele)
+                except SyntaxError:
+                    if isinstance(projection, list):
+                        margele = {v: ele[v] for v in projection}
+                    else:
+                        margele = ele[projection]
+            mexpscores[margele] += np.exp(self.score(ele))
+        margelements, expscores = zip(*mexpscores.items())
+        scores = np.log(expscores)
+        return DiscreteFactorTable(support=margelements, scores=scores)
+
+    def __and__(self, other: "DiscreteFactorTable"):
+        return self.product(other)
+
+    def __or__(self, other):
+        return self.mix(other)
+
+    def __getitem__(self, projection):
+        return self.marginalize(projection)
 
     def __mul__(self, num):
         mlogits = [logit + np.log(num) for logit in self.logits]
