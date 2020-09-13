@@ -14,21 +14,21 @@ class TabularGridGame(TabularStochasticGame):
                  game_string,
                  agent_symbols=("A0", "A1"),
                  goal_symbols=(
-                     ("G0", ("A0", )), 
-                     ("G1", ("A1", )), 
+                     ("G0", ("A0", )),
+                     ("G1", ("A1", )),
                      ("G", ("A0", "A1"))
                  ),
                  obstacle_symbols=("#",),
                  wall_symbols=(
-                     ('[', 'left'),  
-                     ( ']', 'right'), 
-                     ( '^', 'above'), 
+                     ('[', 'left'),
+                     ( ']', 'right'),
+                     ( '^', 'above'),
                      ( '_', 'below')
                  ),
                  fence_symbols=(
-                     ('{', 'left'),  
-                     ( '}', 'right'), 
-                     ( '~', 'above'), 
+                     ('{', 'left'),
+                     ( '}', 'right'),
+                     ( '~', 'above'),
                      ( 'u', 'below')
                  ),
                  goal_reward=10,
@@ -42,7 +42,7 @@ class TabularGridGame(TabularStochasticGame):
         goal_symbols = dict(goal_symbols) if not isinstance(goal_symbols, dict) else goal_symbols
         wall_symbols = dict(wall_symbols) if not isinstance(wall_symbols, dict) else wall_symbols
         fence_symbols = dict(fence_symbols) if not isinstance(fence_symbols, dict) else fence_symbols
-        
+
         goals, walls, fences, obstacles, agents = [], [], [], [], []
         for y_, row in enumerate(parsed):
             y = h - y_ - 1
@@ -61,7 +61,7 @@ class TabularGridGame(TabularStochasticGame):
                             'type': 'wall',
                             'start': {
                                 'x': x,
-                                'y': y,    
+                                'y': y,
                             },
                             'end': {
                                 'x': x + {'left': -1, 'right': 1}.get(wall_symbols[sym], 0),
@@ -73,7 +73,7 @@ class TabularGridGame(TabularStochasticGame):
                             'type': 'fence',
                             'start': {
                                 'x': x,
-                                'y': y,    
+                                'y': y,
                             },
                             'end': {
                                 'x': x + {'left': -1, 'right': 1}.get(fence_symbols[sym], 0),
@@ -103,18 +103,18 @@ class TabularGridGame(TabularStochasticGame):
         self.walls = sorted(walls, key=lambda g: json.dumps(g, sort_keys=True))
         self.fences = sorted(fences, key=lambda g: json.dumps(g, sort_keys=True))
         self.fenceSuccessProb = fence_success_prob
-       
+
         super().__init__(agent_names=sorted([ag['name'] for ag in agents]))
-        
+
         self._initState = initState
-        
+
         #set up rewards
         self.goalReward = goal_reward
         self.stepCost = step_cost
-        
+
     def initial_state_dist(self):
         return Pr([self._initState,])
-   
+
     def joint_action_dist(self, s):
         actions = [
             {'x': 0, 'y': 0},
@@ -128,7 +128,7 @@ class TabularGridGame(TabularStochasticGame):
             adist = Pr([{agentname: action} for action in actions])
             adists.append(adist)
         return reduce(lambda a, b: a & b, adists)
-    
+
     def is_absorbing(self, s):
         for an in self.agent_names:
             ag = s[an]
@@ -145,12 +145,12 @@ class TabularGridGame(TabularStochasticGame):
             return Pr([TERMINALSTATE,])
         if self.is_absorbing(s):
             return Pr([TERMINALSTATE,])
-        
+
         #agent-based transitions
         agentMoveDists = []
         for an in self.agent_names:
             agent = copy.deepcopy(s[an])
-            
+
             # action effect
             EPS = .00001 # minor hack to handle agent collisions
             agentaction = ja[an]
@@ -162,23 +162,23 @@ class TabularGridGame(TabularStochasticGame):
                 if (self.same_location(s[an], fence['start'])) and self.same_location(agent, fence['end']):
                     fenceEffect = Pr([{an: s[an]}])
                     agentMove = agentMove*self.fenceSuccessProb | fenceEffect*(1 - self.fenceSuccessProb)
-            
+
             #agent-obstacle interactions
             for obs in self.obstacles:
                 if self.same_location(agent, obs):
                     obsConstraint = Pr([{an: s[an]}, {an: agent}], probs=[1, 0])
                     agentMove &= obsConstraint
-                    
+
             #agent-wall interactions
             for wall in self.walls:
                 if self.same_location(s[an], wall['start']) and self.same_location(agent, wall['end']):
                     wallConstraint = Pr([{an: s[an]}, {an: agent}], probs=[1, 0])
                     agentMove &= wallConstraint
-                    
+
             agentMoveDists.append(agentMove)
         #compute joint distribution by combining independent distributions
         agentDist = reduce(lambda a, b: a & b, agentMoveDists)
-        
+
         #calculate agent interactions
         interactions = []
         interactionLogits = []
@@ -192,7 +192,7 @@ class TabularGridGame(TabularStochasticGame):
             interactionLogits.append(logit)
         interactionEffects = Pr(interactions, logits=interactionLogits)
         return agentDist & interactionEffects
-   
+
     def in_goal(self, s, agentname):
         goals = {n: o for n, o in s.items() if 'goal' in n}
         agent = s[agentname]
@@ -200,7 +200,7 @@ class TabularGridGame(TabularStochasticGame):
             if ((agent['x'], agent['y']) == (g['x'], g['y'])) and (agent['name'] in g['owners']):
                 return True
         return False
-    
+
     def same_location(self, a, b):
         return (a['x'], a['y']) == (b['x'], b['y'])
 
@@ -213,23 +213,8 @@ class TabularGridGame(TabularStochasticGame):
                 agent = ns[agentName]
                 if self.same_location(goal, agent):
                     jr[agentName] += self.goalReward
-                    
+
         for agentName, a in ja.items():
             if a != {'x': 0, 'y': 0}:
                 jr[agentName] += self.stepCost
         return jr
-
-if __name__ == "__main__":
-    #example usage
-    gamestring = """
-        #  # # #  G0 #  # # # 
-        G0 . . A0 .  A1 . . G1
-        #  # # #  G1 #  # # #
-    """.strip()
-
-    gg = GridGame(gamestring)
-    s = gg.initial_state_dist().sample()
-    a = {'A0': {'x': 1, 'y': 0}, 'A1': {'x': -1, 'y': 0}}
-    nsdist = gg.next_state_dist(s, a)
-    ns = nsdist.sample()
-    r = gg.joint_rewards(s, a, ns)
