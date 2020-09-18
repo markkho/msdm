@@ -111,6 +111,8 @@ class CoreTestCase(unittest.TestCase):
         assert m[3] == 7
         del m[3]
         assert m[3] == 6
+    
+    # Test for stochastic game class 
 
 if __name__ == '__main__':
     unittest.main()

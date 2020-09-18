@@ -1,8 +1,10 @@
 from msdm.core.algorithmclasses import Learns, Result
-from msdm.core.problemclasses.stochasticgame import StochasticGame
+from msdm.core.problemclasses.stochasticgame.tabularstochasticgame import TabularStochasticGame
+from msdm.core.problemclasses.stochasticgame.policy.tabularpolicy import TabularMultiAgentPolicy, SingleAgentPolicy
 from msdm.core.assignment.assignmentmap import AssignmentMap
 from typing import Iterable
 import numpy as np 
+from scipy.special import softmax
 
 class MultiAgentQLearning(Learns):
     
@@ -15,7 +17,7 @@ class MultiAgentQLearning(Learns):
         self.res = Result()
         self.default_q_value = default_q_value
     
-    def train_on(self, problem: StochasticGame,agent_names: Iterable) -> Result:
+    def train_on(self, problem: TabularStochasticGame,agent_names: Iterable) -> Result:
         """
         TODOS: 
         Decide on what default policy should be for other agents. Currently all agents 
@@ -51,24 +53,24 @@ class MultiAgentQLearning(Learns):
                     - self.res.Q[agent_name][curr_state][actions[agent_name]])
                     self.res.Q[agent_name][curr_state][actions[agent_name]] += q_del
                 curr_state = nxt_st
-#         pi = np.log(np.zeros_like(q))
-#         pi[q == np.max(q, axis=-1, keepdims=True)] = 1
-#         pi = softmax(pi, axis=-1)
-
-#         # create result object
+                
+        q_mat = AssignmentMap()
+        for agent in self.res.Q:
+            q_mat[agent] = np.zeros((len(self.res.Q[agent]),len(problem.joint_action_list)))
+            for si,state in enumerate(problem.state_list):
+                for ai,action in enumerate(problem.joint_action_list):
+                    q_mat[agent][si,ai] = self.res.Q[agent][state][action[agent]]
+        pi = AssignmentMap()
+        for agent in agent_names:
+            pi[agent] = np.log(np.zeros_like(q_mat[agent]))
+            pi[agent][q_mat[agent] == np.max(q_mat[agent],axis=-1,keepdims=True)] = 1
+            pi[agent] = softmax(pi[agent],axis=-1)
+            pi[agent] = SingleAgentPolicy(agent,policy_matrix=pi[agent])
+            
+        # create result object
         
-#         res.problem = problem
-#         res.policy = {}
-#         res.policy = res.pi = TabularPolicy(mdp.state_list, mdp.action_list, policymatrix=pi)
-#         res._valuevec = v
-#         vf = AssignmentMap([(s, vi) for s, vi in zip(mdp.state_list, v)])
-#         res.valuefunc = res.V = vf
-#         res._qvaluemat = q
-#         qf = AssignmentMap()
-#         for si, s in enumerate(mdp.state_list):
-#             qf[s] = AssignmentMap()
-#             for ai, a in enumerate(mdp.action_list):
-#                 qf[s][a] = q[si, ai]
-#         res.actionvaluefunc = res.Q = qf
+        self.res.problem = problem
+        self.res.policy = {}
+        self.res.policy = self.res.pi = TabularMultiAgentPolicy(problem, pi)
         return self.res
     
