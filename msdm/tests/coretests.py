@@ -74,8 +74,8 @@ class CoreTestCase(unittest.TestCase):
                                       entropy_regularization=True)
         res = vi.plan_on(gw1)
         stateTraj = res.policy.run_on(gw1)['stateTraj']
-        self.assertTrue(stateTraj[-2] in gw1.absorbing_states)
-        self.assertTrue(gw1.is_terminal(stateTraj[-1]))
+        self.assertTrue(stateTraj[-1] in gw1.absorbing_states)
+#         self.assertTrue(gw1.is_terminal(stateTraj[-1]))
         self.assertTrue(stateTraj[0] in gw1.initial_states)
 
     def test_AssignmentMap_encode(self):
@@ -111,6 +111,8 @@ class CoreTestCase(unittest.TestCase):
         assert m[3] == 7
         del m[3]
         assert m[3] == 6
+    
+    # Test for stochastic game class 
 
 if __name__ == '__main__':
     unittest.main()

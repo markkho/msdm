@@ -32,7 +32,13 @@ class StochasticGame(ProblemClass):
 
     @abstractmethod
     def joint_action_dist(self, s) -> Distribution:
+        # Deprecated 
         pass
+    
+    @abstractmethod 
+    def joint_actions(self,s):
+        # Dict from agent -> actions 
+        pass 
 
     @abstractmethod
     def is_terminal(self, s) -> bool:
