@@ -62,7 +62,7 @@ class DomainTestCase(unittest.TestCase):
         # G1 . . . G0 . #
         # # # # # # # # 
         """.strip()
-        gg = TabularGridGame(new_gamestring)
+        gg = TabularGridGame(gamestring)
         init_state = gg.init_state_dist().sample()
         action = gg.joint_action_dist(init_state).sample()
         next_state = gg.next_action_dist(init_state,action).sample()
