@@ -129,6 +129,9 @@ class GridGame(StochasticGame):
             adists.append(adist)
         return reduce(lambda a, b: a & b, adists)
     
+    def joint_actions(self,s):
+        pass 
+    
     def is_absorbing(self, s):
         for an in self.agent_names:
             ag = s[an]
