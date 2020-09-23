@@ -40,7 +40,36 @@ class LRTDPTestCase(unittest.TestCase):
             assert lrtdp_res.V[s] == vi_res.V[s]
             # Policy is the same
             assert lrtdp_res.policy[s] == deterministic(vi_res.policy.action_dist(s))
-        
-        
+
+    def test_seed_reproducibility(self):
+        mdp = GNTFig6_6()
+        m = LRTDP(
+            randomize_action_order=True,
+            seed=12345
+        )
+        res1 = m.plan_on(mdp)
+
+        m = LRTDP(
+            randomize_action_order=True,
+            seed=12345
+        )
+        res2 = m.plan_on(mdp)
+
+        for t1, t2 in zip(res1.trials, res2.trials):
+            for s1, s2 in zip(t1, t2):
+                assert s1 == s2
+
+        m = LRTDP(
+            randomize_action_order=True,
+            seed=13
+        )
+        res3 = m.plan_on(mdp)
+
+        notequal = []
+        for t1, t2 in zip(res3.trials, res2.trials):
+            for s1, s2 in zip(t1, t2):
+                notequal.append(s1 != s2)
+        assert any(notequal)
+
 if __name__ == '__main__':
     unittest.main()

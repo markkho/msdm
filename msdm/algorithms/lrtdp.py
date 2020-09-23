@@ -1,3 +1,5 @@
+import numpy as np
+import copy
 from msdm.core.problemclasses.mdp import MarkovDecisionProcess
 from msdm.core.assignment import DefaultAssignmentMap, \
     AssignmentMap
@@ -20,14 +22,23 @@ class LRTDP(Plans):
     def __init__(self,
                  error_margin=1e-2,
                  heuristic=None,
-                 iterations=int(2**30)
+                 iterations=int(2**30),
+                 randomize_action_order=False,
+                 seed=None
                  ):
         self.error_margin = error_margin
         self.heuristic = heuristic
         self.iterations = iterations
+        self.randomize_action_order = randomize_action_order
+        self.seed = seed
 
     def plan_on(self, mdp: MarkovDecisionProcess):
         self.res = Result()
+        if self.seed is None:
+            self.res.seed = np.random.randint(int(2**30))
+        else:
+            self.res.seed = self.seed
+        np.random.seed(self.res.seed)
         self.lrtdp(
             mdp, heuristic=self.heuristic, iterations=self.iterations
         )
@@ -62,7 +73,16 @@ class LRTDP(Plans):
         return q
 
     def policy(self, mdp, s):
-        return max(mdp.action_list, key=lambda a: self.Q(mdp, s, a))
+        if s in self.res.action_orders:
+            action_list = self.res.action_orders[s]
+        else:
+            if self.randomize_action_order:
+                aa = mdp.action_list
+                action_list = [aa[i] for i in np.random.permutation(len(aa))]
+            else:
+                action_list = mdp.action_list
+            self.res.action_orders[s] = action_list
+        return max(action_list, key=lambda a: self.Q(mdp, s, a))
 
     def expected_one_step_reward_heuristic(self, mdp):
         '''
@@ -83,6 +103,8 @@ class LRTDP(Plans):
             heuristic = lambda s: 0
 
         self.res.V = DefaultAssignmentMap(heuristic)
+        self.res.action_orders = AssignmentMap()
+        self.res.trials = []
 
         # Keeping track of "labels": which states have been solved
         self.res.solved = DefaultAssignmentMap(lambda: False)
@@ -103,6 +125,7 @@ class LRTDP(Plans):
             # Terminal states are solved.
             if mdp.is_terminal(s):
                 self.res.solved[s] = True
+        self.res.trials.append(copy.deepcopy(visited))
         s = visited.pop()
         while self._check_solved(mdp, s) and visited:
             s = visited.pop()
