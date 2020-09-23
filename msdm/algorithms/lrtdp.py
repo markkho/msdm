@@ -86,10 +86,6 @@ class LRTDP(Plans):
 
         # Keeping track of "labels": which states have been solved
         self.res.solved = DefaultAssignmentMap(lambda: False)
-        for s in mdp.state_list:
-            # Terminal states are solved.
-            if mdp.is_terminal(s):
-                self.res.solved[s] = True
 
         for _ in range(iterations):
             if all(self.res.solved[s] for s in mdp.initial_state_dist().support):
@@ -103,6 +99,10 @@ class LRTDP(Plans):
             visited.append(s)
             self._bellman_update(mdp, s)
             s = mdp.next_state_dist(s, self.policy(mdp, s)).sample()
+
+            # Terminal states are solved.
+            if mdp.is_terminal(s):
+                self.res.solved[s] = True
         s = visited.pop()
         while self._check_solved(mdp, s) and visited:
             s = visited.pop()
