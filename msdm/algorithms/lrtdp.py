@@ -1,6 +1,7 @@
 import numpy as np
 import copy
 from msdm.core.problemclasses.mdp import MarkovDecisionProcess
+from msdm.core.problemclasses.mdp import TabularPolicy
 from msdm.core.assignment import DefaultAssignmentMap, \
     AssignmentMap
 from msdm.core.algorithmclasses import Plans, Result
@@ -24,6 +25,7 @@ class LRTDP(Plans):
                  heuristic=None,
                  iterations=int(2**30),
                  randomize_action_order=False,
+                 max_trial_length=None,
                  seed=None
                  ):
         self.error_margin = error_margin
@@ -31,6 +33,9 @@ class LRTDP(Plans):
         self.iterations = iterations
         self.randomize_action_order = randomize_action_order
         self.seed = seed
+        if max_trial_length is None:
+            max_trial_length = float('inf')
+        self.max_trial_length = max_trial_length
 
     def plan_on(self, mdp: MarkovDecisionProcess):
         self.res = Result()
@@ -46,10 +51,15 @@ class LRTDP(Plans):
         res.policy = AssignmentMap()
         res.Q = AssignmentMap()
         for s in mdp.state_list:
-            res.policy[s] = self.policy(mdp, s)
+            res.policy[s] = AssignmentMap([(self.policy(mdp, s), 1)])
             res.Q[s] = AssignmentMap()
             for a in mdp.action_list:
                 res.Q[s][a] = self.Q(mdp, s, a)
+        res.policy = TabularPolicy(
+            states=mdp.state_list,
+            actions=mdp.action_list,
+            policydict=res.policy
+        )
 
         #clear result
         self.res = None
@@ -125,6 +135,8 @@ class LRTDP(Plans):
             # Terminal states are solved.
             if mdp.is_terminal(s):
                 self.res.solved[s] = True
+            if len(visited) > self.max_trial_length:
+                break
         self.res.trials.append(copy.deepcopy(visited))
         s = visited.pop()
         while self._check_solved(mdp, s) and visited:

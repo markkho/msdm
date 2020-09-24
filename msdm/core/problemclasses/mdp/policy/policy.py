@@ -10,7 +10,7 @@ class Policy(ABC):
     def run_on(self,
                mdp: MarkovDecisionProcess,
                initialState=None,
-               maxSteps=20):
+               maxSteps=int(2**30)):
         if initialState is None:
             initialState = mdp.initial_state_dist().sample()
         traj = []
