@@ -2,6 +2,23 @@ import unittest
 
 from msdm.algorithms import VectorizedValueIteration, LRTDP
 from msdm.tests.domains import GNTFig6_6
+from msdm.domains import GridWorld
+
+def ensure_uniform(dist):
+    '''
+    Assumes the supplied distribution is uniform and returns values it assigns probability to.
+    '''
+    eps = 1e-4
+    items = []
+    prob = None
+    for s in dist.support:
+        if dist.prob(s) == 0:
+            continue
+        if prob is None:
+            prob = dist.prob(s)
+        assert abs(dist.prob(s) - prob) < eps
+        items.append(s)
+    return items
 
 def deterministic(dist):
     '''
@@ -14,10 +31,37 @@ def deterministic(dist):
         return s
 
 class LRTDPTestCase(unittest.TestCase):
+    def test_gridworld(self):
+        mdp = GridWorld(
+            tile_array=[
+                '......g',
+                '...####',
+                '.###...',
+                '.....##',
+                '..####.',
+                '..s....',
+            ],
+            feature_rewards={'g': 0},
+            step_cost=-1,
+            termination_prob=.0
+        )
+
+        goal = mdp.absorbing_states[0]
+        def heuristic(s):
+            if mdp.is_terminal(s):
+                return 0.0
+            return -(abs(s['x']-goal['x']) + abs(s['y']-goal['y']))
+
+        self.assert_equal_value_iteration(LRTDP(), mdp)
+        self.assert_equal_value_iteration(LRTDP(heuristic=heuristic), mdp)
+
     def test_GNTFig6_6(self):
         mdp = GNTFig6_6()
         m = LRTDP()
-        lrtdp_res = m.plan_on(mdp)
+        self.assert_equal_value_iteration(m, mdp)
+
+    def assert_equal_value_iteration(self, planner, mdp):
+        lrtdp_res = planner.plan_on(mdp)
 
         vi = VectorizedValueIteration()
         vi_res = vi.plan_on(mdp)
@@ -27,19 +71,23 @@ class LRTDPTestCase(unittest.TestCase):
             for a in mdp.action_list:
                 assert vi_res.Q[s][a] <= lrtdp_res.Q[s][a]
 
+        def policy(s):
+            return deterministic(lrtdp_res.policy.action_dist(s))
+
         s = deterministic(mdp.initial_state_dist())
         reachable = [s]
         while reachable:
             s = reachable.pop()
-            for ns in mdp.next_state_dist(s, lrtdp_res.policy[s]).support:
+            for ns in mdp.next_state_dist(s, policy(s)).support:
                 if not mdp.is_terminal(ns):
                     reachable.append(ns)
 
             # For reachable states under our policy, ensure:
             # Value is the same
             assert lrtdp_res.V[s] == vi_res.V[s]
-            # Policy is the same
-            assert lrtdp_res.policy[s] == deterministic(vi_res.policy.action_dist(s))
+            # Policy is the same, or at least our policy is something VI assigns uniform chance to
+            vi_actions = ensure_uniform(vi_res.policy.action_dist(s))
+            assert policy(s) in vi_actions
 
     def test_seed_reproducibility(self):
         mdp = GNTFig6_6()
