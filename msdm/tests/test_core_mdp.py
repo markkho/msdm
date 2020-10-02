@@ -50,7 +50,7 @@ class CoreTestCase(unittest.TestCase):
         #test reward composition
         rs = gw3.reachablestatevec*gw1.reachablestatevec*gw2.reachablestatevec
         ast = gw3.absorbingstatevec*gw1.absorbingstatevec*gw2.absorbingstatevec
-        ignore = rs[None, None, :]*rs[:, None, None]*ast[:, None, None]*ast[None, None, :] 
+        ignore = rs[None, None, :]*rs[:, None, None]*ast[:, None, None]*ast[None, None, :]
         eqRF = (ignore*gw3.rewardmatrix == ignore*(gw1.rewardmatrix + gw2.rewardmatrix)).all()
         self.assertTrue(eqRF)
 
@@ -77,42 +77,6 @@ class CoreTestCase(unittest.TestCase):
         self.assertTrue(stateTraj[-1] in gw1.absorbing_states)
 #         self.assertTrue(gw1.is_terminal(stateTraj[-1]))
         self.assertTrue(stateTraj[0] in gw1.initial_states)
-
-    def test_AssignmentMap_encode(self):
-        m = AssignmentMap()
-        keys = [
-            'ñ',
-            b'hi',
-            [3, 4],
-            (1, 2),
-            {'hi': 3},
-            3,
-        ]
-        for key in keys:
-            # Testing setter
-            m[key] = 1337
-
-        # Making sure we can also list keys
-        assert len(list(m.keys())) == len(keys)
-        for el in m.keys():
-            assert el in keys
-
-    def test_DefaultAssignmentMap(self):
-        m = DefaultAssignmentMap(lambda: 3)
-        assert m['number'] == 3
-        m['number'] = 7
-        assert m['number'] == 7
-        del m['number']
-        assert m['apples'] == 3
-
-        m = DefaultAssignmentMap(lambda key: key * 2)
-        assert m[3] == 6
-        m[3] = 7
-        assert m[3] == 7
-        del m[3]
-        assert m[3] == 6
-    
-    # Test for stochastic game class 
 
 if __name__ == '__main__':
     unittest.main()
