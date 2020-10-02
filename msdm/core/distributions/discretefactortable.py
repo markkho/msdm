@@ -171,8 +171,16 @@ class DiscreteFactorTable(Distribution):
         jlogits = []
         matchedrows = []
         unmatchedrows = []
-        # HACK: this should throw a warning or something if the distributions have different headers
-        # i.e., dictionary keys interact in a weird way
+
+        #check that all entries have same keys
+        if isinstance(self.support[0], dict):
+            s_keys = tuple(self.support[0].keys())
+            for si in self.support:
+                assert tuple(si.keys()) == s_keys
+        if isinstance(other.support[0], dict):
+            o_keys = tuple(other.support[0].keys())
+            for oi in self.support:
+                assert tuple(oi.keys()) == o_keys
 
         #first get inner join rows, tracking ones that don't match
         for si, oi in product(self.support, other.support):
@@ -182,16 +190,21 @@ class DiscreteFactorTable(Distribution):
                     soi = dict_merge(si, oi)
                     if soi in jsupport:
                         continue
-                    logit = self.logit(si) + other.logit(oi)
-                    if logit == -np.inf:
+                    jprob = np.exp(self.logit(si)) + np.exp(other.logit(oi))
+                    jlogit = np.log(jprob)
+
+                    if jlogit == -np.inf:
                         continue
                     jsupport.append(soi)
-                    jlogits.append(logit)
+                    jlogits.append(jlogit)
                 else:
                     unmatchedrows.extend([si, oi])
             else:
-                jsupport.append((si, oi))
-                jlogits.append(self.logit(si) + other.logit(oi))
+                soi = (si, oi)
+                jprob = np.exp(self.logit(si)) + np.exp(other.logit(oi))
+                jlogit = np.log(jprob)
+                jsupport.append(soi)
+                jlogits.append(jlogit)
 
         #add in the left and right outer join rows, ensuring that they were never matched
         for i in unmatchedrows:
