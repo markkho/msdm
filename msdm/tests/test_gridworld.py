@@ -26,7 +26,7 @@ class TestCase(unittest.TestCase):
             step_cost=-1
         )
 
-        sagw = StickyActionMDP(gw, initAction={'dx': 0, 'dy': 0})
+        sagw = StickyActionMDP(gw, init_action={'dx': 0, 'dy': 0})
         vi = VectorizedValueIteration(
             iterations=50,
             discount_rate=1.0,
@@ -34,7 +34,7 @@ class TestCase(unittest.TestCase):
             temperature=0.0
         )
         res = vi.plan_on(sagw)
-        saTraj = res.policy.run_on(sagw)['stateTraj']
+        saTraj = res.policy.run_on(sagw).state_traj
         self.assertTrue(saTraj[0] == {'curAction': {'dx': 0, 'dy': 0},
                                       'groundState': {'x': 8, 'y': 0}})
 

@@ -99,21 +99,21 @@ class GridWorldPlotter:
                          markeredgewidth=2)
 
     def plot_trajectory(self,
-                        stateTraj,
-                        actionTraj=None,  # not implemented yet
+                        state_traj,
+                        action_traj=None,  # not implemented yet
                         color='k',
                         outline=False,
-                        outlineColor='w',
-                        jitterMean=0,
-                        jitterVar=.1,
-                        endJitter=False,
+                        outlinecolor='w',
+                        jitter_mean=0,
+                        jitter_var=.1,
+                        end_jitter=False,
                         linewidth=1,
                         **kwargs) -> "GridWorldPlotter":
-        if actionTraj is not None:
-            assert len(stateTraj) == len(actionTraj)
+        if action_traj is not None:
+            assert len(state_traj) == len(action_traj)
 
         xys = []
-        for s in stateTraj:
+        for s in state_traj:
             if self.gw.is_terminal(s):
                 break
             if isinstance(s, tuple):
@@ -125,23 +125,23 @@ class GridWorldPlotter:
             p0 = tuple(np.array(xys[0]) + .5)
             p2 = tuple(np.array(xys[1]) + .5)
             p1 = np.array([(p0[0] + p2[0]) / 2, (p0[1] + p2[1]) / 2]) \
-                 + np.random.normal(0, jitterVar, 2)
-            if endJitter:
+                 + np.random.normal(0, jitter_var, 2)
+            if end_jitter:
                 p0 = tuple(
-                    np.array(p0) + np.random.normal(jitterMean, jitterVar, 2))
+                    np.array(p0) + np.random.normal(jitter_mean, jitter_var, 2))
                 p1 = tuple(
-                    np.array(p1) + np.random.normal(jitterMean, jitterVar, 2))
+                    np.array(p1) + np.random.normal(jitter_mean, jitter_var, 2))
             segments = [[p0, p1, p2], ]
         elif (len(xys) == 3) and (xys[0] == xys[2]):
             p0 = tuple(np.array(xys[0]) + .5)
             p2 = tuple(np.array(xys[1]) + .5)
             if abs(p0[0] - p2[0]) > 0:  # horizontal
                 jitter = np.array(
-                    [0, np.random.normal(jitterMean, jitterVar * 2)])
+                    [0, np.random.normal(jitter_mean, jitter_var * 2)])
                 p2 = p2 - np.array([.25, 0])
             else:  # vertical
                 jitter = np.array(
-                    [np.random.normal(jitterMean, jitterVar * 2), 0])
+                    [np.random.normal(jitter_mean, jitter_var * 2), 0])
                 p2 = p2 - np.array([0, .25])
             p1 = p2 + jitter
             p3 = p2 - jitter
@@ -149,10 +149,10 @@ class GridWorldPlotter:
         else:
             state_coords = []
             for xy in xys:
-                jitter = np.random.normal(jitterMean, jitterVar, 2)
+                jitter = np.random.normal(jitter_mean, jitter_var, 2)
                 coord = np.array(xy) + .5 + jitter
                 state_coords.append(tuple(coord))
-            if not endJitter:
+            if not end_jitter:
                 state_coords[0] = tuple(np.array(xys[0]) + .5)
                 state_coords[-1] = tuple(np.array(xys[-1]) + .5)
             join_point = state_coords[0]
@@ -177,7 +177,7 @@ class GridWorldPlotter:
                 path = Path(segment, codes)
                 outline_patch = patches.PathPatch(path, facecolor='none',
                                                   capstyle='butt',
-                                                  edgecolor=outlineColor,
+                                                  edgecolor=outlinecolor,
                                                   linewidth=linewidth * 2)
                 self.ax.add_patch(outline_patch)
                 outline_patches.append(outline_patch)
@@ -195,34 +195,34 @@ class GridWorldPlotter:
         return self
 
     def plot_state_map(self,
-                       stateMap: Mapping,
-                       plotOverWalls=False,
+                       state_map: Mapping,
+                       plot_over_walls=False,
                        fontsize=10,
-                       showNumbers=True,
-                       valueRange=None,
-                       showColors=True,
-                       isCategorical=False,
-                       colorValueFunc="bwr_r") -> "GridWorldPlotter":
-        if len(stateMap) == 0:
+                       show_numbers=True,
+                       value_range=None,
+                       show_colors=True,
+                       is_categorical=False,
+                       color_value_func="bwr_r") -> "GridWorldPlotter":
+        if len(state_map) == 0:
             return self
         # state map - colors / numbers
-        vmax_abs = max(abs(v) for k, v in stateMap.items())
-        if valueRange is None:
-            valueRange = [-vmax_abs, vmax_abs]
-        vmin, vmax = valueRange
-        if isCategorical:
-            colorValueFunc = lambda i: DISTINCT_COLORS[
+        vmax_abs = max(abs(v) for k, v in state_map.items())
+        if value_range is None:
+            value_range = [-vmax_abs, vmax_abs]
+        vmin, vmax = value_range
+        if is_categorical:
+            color_value_func = lambda i: DISTINCT_COLORS[
                 int(i) % len(DISTINCT_COLORS)]
-        elif isinstance(colorValueFunc, str):
-            colorrange = plt.get_cmap(colorValueFunc)
+        elif isinstance(color_value_func, str):
+            colorrange = plt.get_cmap(color_value_func)
             color_norm = colors.Normalize(vmin=vmin, vmax=vmax)
-            colorvalue_map = cmx.ScalarMappable(norm=color_norm,
+            color_value_map = cmx.ScalarMappable(norm=color_norm,
                                                 cmap=colorrange)
-            colorValueFunc = lambda v: colorvalue_map.to_rgba(v)
-        for s, v in stateMap.items():
+            color_value_func = lambda v: color_value_map.to_rgba(v)
+        for s, v in state_map.items():
             if self.gw.is_terminal(s):
                 continue
-            if (not plotOverWalls) and (s in self.gw.walls):
+            if (not plot_over_walls) and (s in self.gw.walls):
                 continue
             if isinstance(s, dict):
                 xy = s['x'], s['y']
@@ -232,13 +232,13 @@ class GridWorldPlotter:
                 raise Exception("unknown state representation")
 
             color = 'w'
-            if showColors:
-                color = colorValueFunc(v)
+            if show_colors:
+                color = color_value_func(v)
                 square = Rectangle(xy, 1, 1,
                                    color=color,
                                    ec='k', lw=2)
                 self.ax.add_patch(square)
-            if showNumbers:
+            if show_numbers:
                 self.ax.text(xy[0] + .5, xy[1] + .5,
                              f"{v : .2f}",
                              fontsize=fontsize,
@@ -248,33 +248,32 @@ class GridWorldPlotter:
         return self
 
     def plot_state_action_map(self,
-                              stateActionMap: Mapping[
-                               Hashable, Mapping[Hashable, Number]],
-                              plotOverWalls=False,
-                              valueRange=None,
-                              colorvalue_func: Union[Callable, str]="bwr_r",
-                              arrowWidth=.1) -> "GridWorldPlotter":
-        allvals = sum([list(av.values()) for s, av in stateActionMap.items()],
+                              state_action_map: Mapping,
+                              plot_over_walls=False,
+                              value_range=None,
+                              color_value_func: Union[Callable, str]="bwr_r",
+                              arrow_width=.1) -> "GridWorldPlotter":
+        allvals = sum([list(av.values()) for s, av in state_action_map.items()],
                       [])
         absvals = [abs(v) for v in allvals]
         absvmax = max(absvals)
-        if valueRange is None:
-            valueRange = [-absvmax, absvmax]
+        if value_range is None:
+            value_range = [-absvmax, absvmax]
         else:
-            absvmax = max([abs(v) for v in valueRange])
-        vmin, vmax = valueRange
+            absvmax = max([abs(v) for v in value_range])
+        vmin, vmax = value_range
 
-        if isinstance(colorvalue_func, str):
-            colorrange = plt.get_cmap(colorvalue_func)
+        if isinstance(color_value_func, str):
+            colorrange = plt.get_cmap(color_value_func)
             color_norm = colors.Normalize(vmin=vmin, vmax=vmax)
-            colorvalue_map = cmx.ScalarMappable(norm=color_norm,
+            color_value_map = cmx.ScalarMappable(norm=color_norm,
                                                 cmap=colorrange)
-            colorvalue_func = lambda v: colorvalue_map.to_rgba(v)
+            color_value_func = lambda v: color_value_map.to_rgba(v)
 
-        for s, av in stateActionMap.items():
+        for s, av in state_action_map.items():
             if self.gw.is_terminal(s):
                 continue
-            if (not plotOverWalls) and (s in self.gw.walls):
+            if (not plot_over_walls) and (s in self.gw.walls):
                 continue
             if isinstance(s, dict):
                 x, y = s['x'], s['y']
@@ -285,12 +284,12 @@ class GridWorldPlotter:
 
             for a, v in av.items():
                 dx, dy = a.get('dx', 0.0), a.get('dy', 0.0)
-                arrowColor = colorvalue_func(v)
+                arrowColor = color_value_func(v)
                 mag = abs(v) / absvmax
                 mag *= .5
                 if (dx != 0) or (dy != 0):
                     patch = Arrow(x + .5, y + .5, dx * mag, dy * mag,
-                                  width=arrowWidth,
+                                  width=arrow_width,
                                   color=arrowColor)
                 else:
                     patch = Circle((x + .5, y + .5), radius=mag * .9,
@@ -302,10 +301,10 @@ class GridWorldPlotter:
         if isinstance(policy, TabularPolicy):
             policy = policy.policy_dict
         return self.plot_state_action_map(
-            stateActionMap=policy,
-            plotOverWalls=False,
-            valueRange=[0, 1],
-            colorvalue_func=lambda v: 'k'
+            state_action_map=policy,
+            plot_over_walls=False,
+            value_range=[0, 1],
+            color_value_func=lambda v: 'k'
         )
 
     def title(self, title, **kwargs):

@@ -58,7 +58,7 @@ class LRTDP(Plans):
         res.policy = TabularPolicy(
             states=mdp.state_list,
             actions=mdp.action_list,
-            policydict=res.policy
+            policy_dict=res.policy
         )
 
         #clear result
