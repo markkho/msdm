@@ -115,6 +115,7 @@ class LRTDP(Plans):
         self.res.V = DefaultAssignmentMap(heuristic)
         self.res.action_orders = AssignmentMap()
         self.res.trials = []
+        self.res.trials_solved = []
 
         # Keeping track of "labels": which states have been solved
         self.res.solved = DefaultAssignmentMap(lambda: False)
@@ -126,11 +127,11 @@ class LRTDP(Plans):
 
     def lrtdp_trial(self, mdp, s):
         # Ghallab, Nau, Traverso: Algorithm 6.17
-        visited = []
+        visited = [s, ]
         while not self.res.solved[s]:
-            visited.append(s)
             self._bellman_update(mdp, s)
             s = mdp.next_state_dist(s, self.policy(mdp, s)).sample()
+            visited.append(s)
 
             # Terminal states are solved.
             if mdp.is_terminal(s):
@@ -138,6 +139,7 @@ class LRTDP(Plans):
             if len(visited) > self.max_trial_length:
                 break
         self.res.trials.append(copy.deepcopy(visited))
+        self.res.trials_solved.append(copy.deepcopy(self.res.solved))
         s = visited.pop()
         while self._check_solved(mdp, s) and visited:
             s = visited.pop()
