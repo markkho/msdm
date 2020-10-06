@@ -7,6 +7,8 @@ import numpy as np
 from msdm.core.assignment import AssignmentMap as Dict
 from msdm.core.algorithmclasses import Plans, Result
 from msdm.core.problemclasses.mdp import MarkovDecisionProcess
+from msdm.core.problemclasses.mdp.policy.partialpolicy import PartialPolicy
+from msdm.core.distributions import DiscreteFactorTable, Distribution
 
 def _hash(x):
     if isinstance(x, dict):
@@ -210,9 +212,15 @@ class LAOStar(Plans):
             
         if A.show_progress:
             pbar.close()
+
+        pi = Dict()
+        for n in sGraph.values():
+            pi[n['state']] = DiscreteFactorTable([n['bestaction']])
+        pi = PartialPolicy(pi)
             
         return Result(
             egraph=egraph,
+            policy=pi,
             sGraph=sGraph,
             laoIter=laoIter,
             nonterminaltips=ntt,
