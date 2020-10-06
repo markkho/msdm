@@ -27,6 +27,7 @@ class LAOStar(Plans):
                  max_lao_iters=100,
                  policy_evaluation_iters=100,
                  policy_iteration_iters=100,
+                 discount_rate=1.0,
                  seed=None):
         A = SimpleNamespace(**{n: a for n, a in locals().items() if n != "self"})
         self.A = A
@@ -39,7 +40,8 @@ class LAOStar(Plans):
             seed = A.seed
         random.seed(seed)
         
-        discount_rate = 1 - mdp.termination_prob
+        # discount_rate = 1 - mdp.termination_prob
+        discount_rate = A.discount_rate
         #initialize explicit graph
         if A.egraph is None:
             egraph = {} #explicit graph
