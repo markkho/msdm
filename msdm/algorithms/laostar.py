@@ -215,7 +215,7 @@ class LAOStar(Plans):
 
         pi = Dict()
         for n in sGraph.values():
-            pi[n['state']] = DiscreteFactorTable([n['bestaction']])
+            pi[n['state']] = Dict([[n['bestaction'], 1.0]])
         pi = PartialPolicy(pi)
             
         return Result(

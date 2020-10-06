@@ -14,6 +14,7 @@ class PartialPolicy(Policy):
                 raise Exception("No default action distribution set")
             raise NotImplementedError
         adist = self._policydict[s]
+        assert isinstance(adist, dict)
         a, p = zip(*adist.items())
         return DiscreteFactorTable(support=a, probs=p)
 
