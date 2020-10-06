@@ -22,7 +22,7 @@ class LAOStar(Plans):
     with loops. Artificial Intelligence, 129(1-2), 35-62.
     """
     def __init__(self,
-                 heuristic, # Function over states
+                 heuristic=None, # Function over states
                  egraph=None,
                  show_warning=False,
                  show_progress=True,
@@ -31,6 +31,8 @@ class LAOStar(Plans):
                  policy_iteration_iters=100,
                  discount_rate=1.0,
                  seed=None):
+        if heuristic is None:
+            heuristic = lambda s : 0.0
         A = SimpleNamespace(**{n: a for n, a in locals().items() if n != "self"})
         self.A = A
 
