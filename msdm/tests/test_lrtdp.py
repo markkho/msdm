@@ -57,7 +57,7 @@ class LRTDPTestCase(unittest.TestCase):
 
     def test_GNTFig6_6(self):
         mdp = GNTFig6_6()
-        m = LRTDP()
+        m = LRTDP(seed=12388)
         self.assert_equal_value_iteration(m, mdp)
 
     def assert_equal_value_iteration(self, planner, mdp):
