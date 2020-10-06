@@ -67,8 +67,8 @@ class LRTDPTestCase(unittest.TestCase):
         vi_res = vi.plan_on(mdp)
 
         # Ensure our VI Q values are a lower bound to the LRTDP ones.
-        for s in mdp.state_list:
-            for a in mdp.action_list:
+        for s in lrtdp_res.Q.keys():
+            for a in mdp.actions(s):
                 assert vi_res.Q[s][a] <= lrtdp_res.Q[s][a]
 
         def policy(s):

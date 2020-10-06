@@ -2,6 +2,7 @@ import numpy as np
 import copy
 from msdm.core.problemclasses.mdp import MarkovDecisionProcess
 from msdm.core.problemclasses.mdp import TabularPolicy
+from msdm.core.problemclasses.mdp.policy.partialpolicy import PartialPolicy
 from msdm.core.assignment import DefaultAssignmentMap, \
     AssignmentMap
 from msdm.core.algorithmclasses import Plans, Result
@@ -50,16 +51,14 @@ class LRTDP(Plans):
         res = self.res
         res.policy = AssignmentMap()
         res.Q = AssignmentMap()
-        for s in mdp.state_list:
+        for s in sum(self.res.trials, []):
+            if s in res.policy:
+                continue
             res.policy[s] = AssignmentMap([(self.policy(mdp, s), 1)])
             res.Q[s] = AssignmentMap()
-            for a in mdp.action_list:
+            for a in mdp.actions(s):
                 res.Q[s][a] = self.Q(mdp, s, a)
-        res.policy = TabularPolicy(
-            states=mdp.state_list,
-            actions=mdp.action_list,
-            policy_dict=res.policy
-        )
+        res.policy = PartialPolicy(res.policy)
 
         #clear result
         self.res = None
@@ -71,7 +70,7 @@ class LRTDP(Plans):
         and compute Q values and the policy from it, important in computing
         the residual in _check_solved().
         '''
-        self.res.V[s] = max(self.Q(mdp, s, a) for a in mdp.action_list)
+        self.res.V[s] = max(self.Q(mdp, s, a) for a in mdp.actions(s))
 
     def Q(self, mdp, s, a):
         q = 0
@@ -87,10 +86,10 @@ class LRTDP(Plans):
             action_list = self.res.action_orders[s]
         else:
             if self.randomize_action_order:
-                aa = mdp.action_list
+                aa = mdp.actions(s)
                 action_list = [aa[i] for i in np.random.permutation(len(aa))]
             else:
-                action_list = mdp.action_list
+                action_list = mdp.actions(s)
             self.res.action_orders[s] = action_list
         return max(action_list, key=lambda a: self.Q(mdp, s, a))
 
