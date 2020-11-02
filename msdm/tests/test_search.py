@@ -19,6 +19,8 @@ gw = GridWorld(
         '...',
         '.h.',
         'sxg',
+        '.h.',
+        '...',
     ],
     feature_rewards={'g': 0, 'x': -100, 'h': -5},
     step_cost=-1,
@@ -31,17 +33,25 @@ gw.next_state = lambda s, a: deterministic(gw.next_state_dist(s, a))
 
 class SearchTestCase(unittest.TestCase):
     def test_bfs(self):
-        res = BreadthFirstSearch.plan_on(gw)
-        assert [(s['x'], s['y']) for s in res.path] == [(0, 0), (1, 0), (2, 0), (-1, -1)]
+        res = BreadthFirstSearch().plan_on(gw)
+        assert [(s['x'], s['y']) for s in res.path] == [(0, 2), (1, 2), (2, 2), (-1, -1)]
 
     def test_astarsearch(self):
+        soln1 = [(0, 2), (0, 3), (0, 4), (1, 4), (2, 4), (2, 3), (2, 2), (-1, -1)]
+        soln2 = [(0, 2), (0, 1), (0, 0), (1, 0), (2, 0), (2, 1), (2, 2), (-1, -1)]
         def make_manhattan_distance_heuristic(mdp):
             def manhattan_distance_heuristic(s):
                 if mdp.is_terminal(s):
                     return 0
                 goal = mdp.absorbing_states[0]
-                dist = abs(s['x'] - goal['x']) + abs(s['y'] + goal['y'])
+                dist = abs(s['x'] - goal['x']) + abs(s['y'] - goal['y'])
                 return -dist
             return manhattan_distance_heuristic
-        res = AStarSearch.plan_on(gw, heuristic_value=make_manhattan_distance_heuristic(gw))
-        assert [(s['x'], s['y']) for s in res.path] == [(0, 0), (0, 1), (0, 2), (1, 2), (2, 2), (2, 1), (2, 0), (-1, -1)]
+
+        planner = AStarSearch(heuristic_value=make_manhattan_distance_heuristic(gw), randomize_action_order=False, seed=42)
+        res = planner.plan_on(gw)
+        assert [(s['x'], s['y']) for s in res.path] == soln1
+
+        planner = AStarSearch(heuristic_value=make_manhattan_distance_heuristic(gw), randomize_action_order=True, seed=42)
+        res = planner.plan_on(gw)
+        assert [(s['x'], s['y']) for s in res.path] == soln2

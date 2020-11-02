@@ -26,8 +26,28 @@ def path_to_policy(path):
         for s, ns in zip(path[:-1], path[1:])
     ]))
 
+def make_shuffled(rnd):
+    def shuffled(iterable):
+        '''
+        Since random.shuffle is inplace, this function makes a copy first.
+        '''
+        l = list(iterable)
+        rnd.shuffle(l)
+        return l
+    return shuffled
+
 class BreadthFirstSearch(Plans):
-    def plan_on(mdp: DeterministicShortestPathProblem):
+    def __init__(self, *, seed=None, randomize_action_order=False):
+        self.seed = seed
+        self.randomize_action_order = randomize_action_order
+
+    def plan_on(self, mdp: DeterministicShortestPathProblem):
+        rnd = random.Random(self.seed)
+        if self.randomize_action_order:
+            shuffled = make_shuffled(rnd)
+        else:
+            shuffled = lambda list: list
+
         start = mdp.initial_state()
 
         queue = collections.deque([start])
@@ -48,7 +68,7 @@ class BreadthFirstSearch(Plans):
 
             visited.add(s)
 
-            for a in mdp.actions(s):
+            for a in shuffled(mdp.actions(s)):
                 ns = mdp.next_state(s, a)
                 if ns not in visited and ns not in queue:
                     queue.append(ns)
@@ -62,21 +82,31 @@ class AStarSearch(Plans):
     Here, the heuristic cost is specified by a heuristic _value_ function, so a typical
     search heuristic for the cost should be negated.
     """
-    def plan_on(mdp: DeterministicShortestPathProblem, *, heuristic_value=lambda s: 0, seed=None):
-        rnd = random.Random(seed)
+    def __init__(self, *, heuristic_value=lambda s: 0, seed=None, randomize_action_order=False):
+        self.heuristic_value = heuristic_value
+        self.seed = seed
+        self.randomize_action_order = randomize_action_order
+
+    def plan_on(self, mdp: DeterministicShortestPathProblem):
+        rnd = random.Random(self.seed)
+        if self.randomize_action_order:
+            shuffled = make_shuffled(rnd)
+        else:
+            shuffled = lambda list: list
 
         # Every queue entry is a pair of
         # - a tuple of priorities/costs (the cost-to-go, cost-so-far, and a random tie-breaker)
         # - the state
         queue = []
         start = mdp.initial_state()
-        heapq.heappush(queue, ((-heuristic_value(start), 0, rnd.random()), start))
+        heapq.heappush(queue, ((-self.heuristic_value(start), 0, rnd.random()), start))
 
         visited = AssignmentSet()
         camefrom = AssignmentMap()
 
         while queue:
-            (f, g, _), s = heapq.heappop(queue)
+            (f, g, r), s = heapq.heappop(queue)
+            print('state', (f, g, r), s)
 
             if mdp.is_terminal(s):
                 path = reconstruct_path(camefrom, start, s)
@@ -88,10 +118,10 @@ class AStarSearch(Plans):
 
             visited.add(s)
 
-            for a in mdp.actions(s):
+            for a in shuffled(mdp.actions(s)):
                 ns = mdp.next_state(s, a)
                 if ns not in visited and ns not in [el[-1] for el in queue]:
                     ng = g - mdp.reward(s, a, ns)
-                    nf = ng - heuristic_value(ns)
+                    nf = ng - self.heuristic_value(ns)
                     heapq.heappush(queue, ((nf, ng, rnd.random()), ns))
                     camefrom[ns] = s

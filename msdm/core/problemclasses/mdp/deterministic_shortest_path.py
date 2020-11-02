@@ -4,9 +4,10 @@ from msdm.core.distributions import Distribution, Multinomial
 
 class DeterministicShortestPathProblem(MarkovDecisionProcess):
     """
-    A DeterministicShortestPathProblem is a special case of an MDP, with two small differences:
+    A DeterministicShortestPathProblem is a special case of an MDP, with some small differences:
     - A deterministic transition function.
     - A deterministic initial state.
+    - A negative reward function.
     """
 
     def next_state_dist(self, s, a) -> Distribution:
@@ -22,5 +23,3 @@ class DeterministicShortestPathProblem(MarkovDecisionProcess):
     @abstractmethod
     def initial_state(self):
         pass
-
-
