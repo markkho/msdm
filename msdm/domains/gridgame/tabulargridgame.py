@@ -2,12 +2,14 @@ from functools import reduce
 from itertools import combinations
 import json, copy
 import numpy as np
-
+import matplotlib.pyplot as plt 
 from msdm.core.utils.gridstringutils import string_to_element_array
 from msdm.core.problemclasses.stochasticgame import TabularStochasticGame
 from msdm.core.distributions import DiscreteFactorTable as Pr
 
 TERMINALSTATE = {"isTerminal": True}
+GOAL_COLORS = ["red","green","blue"]
+AGENT_COLORS = ["indigo","gold","yellow"]
 
 class TabularGridGame(TabularStochasticGame):
     def __init__(self,
@@ -103,8 +105,10 @@ class TabularGridGame(TabularStochasticGame):
         self.walls = sorted(walls, key=lambda g: json.dumps(g, sort_keys=True))
         self.fences = sorted(fences, key=lambda g: json.dumps(g, sort_keys=True))
         self.fenceSuccessProb = fence_success_prob
-
-        super().__init__(agent_names=sorted([ag['name'] for ag in agents]))
+        self.height = len(parsed)
+        self.width = len(parsed[0])
+        self.agents = agents 
+        super(TabularStochasticGame,self).__init__(agent_names=sorted([ag['name'] for ag in agents]))
 
         self._initState = initState
 
@@ -114,8 +118,8 @@ class TabularGridGame(TabularStochasticGame):
 
     def initial_state_dist(self):
         return Pr([self._initState,])
-
-    def joint_action_dist(self, s):
+    
+    def joint_actions(self,s):
         actions = [
             {'x': 0, 'y': 0},
             {'x': 1, 'y': 0},
@@ -123,14 +127,10 @@ class TabularGridGame(TabularStochasticGame):
             {'x': 0, 'y': 1},
             {'x': 0, 'y': -1},
         ]
-        adists = []
+        action_dict = {}
         for agentname in self.agent_names:
-            adist = Pr([{agentname: action} for action in actions])
-            adists.append(adist)
-        return reduce(lambda a, b: a & b, adists)
-    
-    def joint_actions(self,s):
-        pass 
+            action_dict[agentname] = (action for action in actions)
+        return action_dict
 
     def is_absorbing(self, s):
         for an in self.agent_names:
@@ -221,3 +221,53 @@ class TabularGridGame(TabularStochasticGame):
             if a != {'x': 0, 'y': 0}:
                 jr[agentName] += self.stepCost
         return jr
+    
+    def plot(self,
+             all_elements=False,
+             ax=None,
+             figsize=None,
+             figsize_multiplier=1,
+             featurecolors=None,
+             plot_walls=True,
+             plot_initial_states=True,
+             plot_fences=True,
+             plot_absorbing_states=True
+             ):
+        if all_elements:
+            plot_initial_states = True
+            plot_absorbing_states = True
+        from msdm.domains.gridgame.plotting import GridGamePlotter
+        if featurecolors is None:
+            
+            featurecolors = {
+                "fence": "brown",
+                "obstacle": "black",
+                "wall": "gray"
+            }
+            for i,goal in enumerate(self.goals):
+                owners = reduce(lambda x,y: x+"_"+y,goal["owners"])
+                name = owners + f"_{i}_goal"
+                featurecolors[name] = GOAL_COLORS[i]
+            
+            for i,agent in enumerate(self.agents):
+                featurecolors[agent["name"]] = AGENT_COLORS[i]
+                
+        if ax is None:
+            if figsize is None:
+                figsize = (self.width * figsize_multiplier,
+                           self.height * figsize_multiplier)
+            _, ax = plt.subplots(1, 1, figsize=figsize)
+
+        gwp = GridGamePlotter(gg=self, ax=ax)
+        gwp.plot_features(featurecolors=featurecolors)
+        if plot_walls:
+            gwp.plot_walls()
+        if plot_initial_states:
+            gwp.plot_initial_states()
+        if plot_absorbing_states:
+            gwp.plot_absorbing_states()
+        if plot_fences:
+            gwp.plot_fences()
+        gwp.plot_outer_box()
+
+        return gwp

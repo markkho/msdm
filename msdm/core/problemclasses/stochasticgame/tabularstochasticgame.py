@@ -1,7 +1,12 @@
 import json, logging
 import numpy as np
+from itertools import product
+from functools import reduce
+import sparse
+from tqdm import tqdm
 from msdm.core.problemclasses.stochasticgame import StochasticGame
 from msdm.core.assignment.assignmentset import AssignmentSet as Set
+from msdm.core.distributions import DiscreteFactorTable as Pr
 logger = logging.getLogger(__name__)
 
 class TabularStochasticGame(StochasticGame):
@@ -22,6 +27,19 @@ class TabularStochasticGame(StochasticGame):
             )
         return self._states
     
+    @property
+    def position_list(self):
+        try:
+            return self._positions
+        except AttributeError:
+            positions = Set()
+            for state in self.state_list:
+                for agent in state:
+                    if state[agent] != True:
+                        positions.add((state[agent]["x"],state[agent]["y"]))
+            self._positions = list(positions)
+            return self._positions
+    
     
     @property
     def joint_action_list(self):
@@ -30,10 +48,13 @@ class TabularStochasticGame(StochasticGame):
         except AttributeError:
             pass
         logger.info("Action space unspecified; performing reachability analysis.")
-        actions = Set([])
+        actions = Set()
         for s in self.state_list:
-            for ja in self.joint_action_dist(s).support:
-                actions.add(ja)
+            joint_actions = self.joint_actions(s)
+            ja_keys,ja_values = zip(*joint_actions.items())
+            all_joint_actions = [dict(zip(ja_keys, list(v))) for v in product(*ja_values)]
+            for action in all_joint_actions:
+                actions.add(action)
         self._joint_actions = sorted(actions, 
                 key=lambda d: json.dumps(d, sort_keys=True) if isinstance(d, dict) else d
             )
@@ -47,12 +68,25 @@ class TabularStochasticGame(StochasticGame):
             pass
         ss = self.state_list
         aa = self.joint_action_list
-        tf = np.zeros((len(ss), len(aa), len(ss)))
-        for si, s in enumerate(ss):
+        scoords = []
+        acoords = []
+        nscoords = []
+        probs = []
+        for si, s in enumerate(tqdm(ss,desc="Generating Sparse Transition Matrix")):
             for ai, a in enumerate(aa):
                 nsdist = self.next_state_dist(s, a)
                 for nsi, ns in enumerate(ss):
-                    tf[si, ai, nsi] = nsdist.prob(ns)
+                    prob = nsdist.prob(ns)
+                    if prob != 0.0:
+                        scoords.append(si)
+                        acoords.append(ai)
+                        nscoords.append(nsi)
+                        probs.append(prob)
+        coords = []
+        coords.append(scoords)
+        coords.append(acoords)
+        coords.append(nscoords)
+        tf = sparse.COO(coords,probs,shape=(len(ss),len(aa),len(ss)))
         self._tfmatrix = tf
         return self._tfmatrix
 
@@ -166,7 +200,13 @@ class TabularStochasticGame(StochasticGame):
             if self.is_terminal(s):
                 continue
             else:
-                for ja in self.joint_action_dist(s).support:
+                actions = self.joint_actions(s)
+                adists = []
+                for agent in actions:
+                    adist = Pr([{agent: action} for action in actions[agent]])
+                    adists.append(adist)
+                total_dist = reduce(lambda a, b: a & b, adists)
+                for ja in total_dist.support:
                     for ns in self.next_state_dist(s, ja).support:
                         if ns not in visited:
                             frontier.add(ns)

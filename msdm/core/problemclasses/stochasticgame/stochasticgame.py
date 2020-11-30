@@ -18,7 +18,7 @@ class StochasticGame(ProblemClass):
         if memoize:
             self.next_state_dist = AssignmentCache(self.next_state_dist)
             self.joint_rewards = AssignmentCache(self.joint_rewards)
-            self.joint_action_dist = AssignmentCache(self.joint_action_dist)
+            self.joint_action_dist = AssignmentCache(self.joint_actions)
             self.initial_state_dist = AssignmentCache(self.initial_state_dist)
             self.is_terminal = AssignmentCache(self.is_terminal)
         
@@ -30,13 +30,8 @@ class StochasticGame(ProblemClass):
     def initial_state_dist(self) -> Distribution:
         pass
 
-    @abstractmethod
-    def joint_action_dist(self, s) -> Distribution:
-        # Deprecated 
-        pass
-    
     @abstractmethod 
-    def joint_actions(self,s):
+    def joint_actions(self,s) -> dict:
         # Dict from agent -> actions 
         pass 
 
