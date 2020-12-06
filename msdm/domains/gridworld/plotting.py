@@ -327,6 +327,7 @@ class GridWorldPlotter:
                                     foreground=outlinecolor),
                 path_effects.Normal()
             ])
+        return self
 
     #shortcuts
     def pSA(self, *args, **kwargs):
