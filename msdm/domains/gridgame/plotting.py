@@ -1,4 +1,5 @@
 import numpy as np
+from functools import reduce
 from typing import Mapping, Union, Callable, Hashable
 from numbers import Number
 from tqdm import tqdm 
@@ -135,24 +136,30 @@ class GridGamePlotter:
         return self
         
 
-    def plot_initial_states(self, markersize=15):
+    def plot_initial_states(self, markersize=15, featurecolors=None):
+        if featurecolors is None:
+            featurecolors = {}
         for agent in self.gg.agents:
             x, y = agent['x'], agent['y']
             self.ax.plot(x + .5, y + .5,
-                         markeredgecolor='cornflowerblue',
+                         markeredgecolor=featurecolors.get(agent['name'], 'cornflowerblue'),
                          marker='o',
                          markersize=markersize,
                          markeredgewidth=2,
                          fillstyle='none')
         return self
 
-    def plot_absorbing_states(self, markersize=15):
-        for goal in self.gg.goals:
+    def plot_absorbing_states(self, markersize=15, featurecolors=None):
+        if featurecolors is None:
+            featurecolors = {}
+        for gi, goal in enumerate(self.gg.goals):
             # sdict = dict(zip([v.name for v in s.variables], s.values))
             # x, y = sdict['x'], sdict['y']
             x, y = goal['x'], goal['y']
+            owners = reduce(lambda x,y: x+"_"+y,goal["owners"])
+            goalname = owners + f"_{gi}_goal"
             self.ax.plot(x + .5, y + .5,
-                         markeredgecolor='cornflowerblue',
+                         markeredgecolor=featurecolors.get(goalname, 'cornflowerblue'),
                          marker='x',
                          markersize=markersize,
                          markeredgewidth=2)
