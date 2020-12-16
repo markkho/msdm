@@ -1,5 +1,5 @@
 from functools import reduce
-from itertools import combinations
+from itertools import combinations, cycle
 import json, copy
 import numpy as np
 import matplotlib.pyplot as plt 
@@ -34,6 +34,7 @@ class TabularGridGame(TabularStochasticGame):
                      ( 'u', 'below')
                  ),
                  goal_reward=10,
+                 collision_cost=0,
                  step_cost=-1,
                  fence_success_prob=.5
                  ):
@@ -115,6 +116,7 @@ class TabularGridGame(TabularStochasticGame):
         #set up rewards
         self.goalReward = goal_reward
         self.stepCost = step_cost
+        self.collision_cost = collision_cost
 
     def initial_state_dist(self):
         return Pr([self._initState,])
@@ -157,8 +159,11 @@ class TabularGridGame(TabularStochasticGame):
             # action effect
             EPS = .00001 # minor hack to handle agent collisions
             agentaction = ja[an]
-            agent['x'] += agentaction['x']
-            agent['y'] += agentaction['y']
+
+            # assumes you can't leave the grid
+            agent['x'] = max(min(agent['x'] + agentaction['x'], self.width-1), 0)
+            agent['y'] = max(min(agent['y'] + agentaction['y'], self.height-1), 0)
+
             agentMove = Pr([{an:s[an]}, {an: agent}], probs=[EPS, 1-EPS])
             #fence-agent effects
             for fence in self.fences:
@@ -220,6 +225,16 @@ class TabularGridGame(TabularStochasticGame):
         for agentName, a in ja.items():
             if a != {'x': 0, 'y': 0}:
                 jr[agentName] += self.stepCost
+
+        # collision cost
+        # HACK semantics are subtle - this simply looks at pairwise actions
+        for name1, name2 in combinations(self.agent_names, 2):
+            nloc1 = (s[name1]['x'] + ja[name1]['x'], s[name1]['y'] + ja[name1]['y'])
+            nloc2 = (s[name2]['x'] + ja[name2]['x'], s[name2]['y'] + ja[name2]['y'])
+            if nloc1 == nloc2:
+                jr[name1] += self.collision_cost
+                jr[name2] += self.collision_cost
+
         return jr
     
     def plot(self,
@@ -244,14 +259,15 @@ class TabularGridGame(TabularStochasticGame):
                 "obstacle": "black",
                 "wall": "gray"
             }
-            for i,goal in enumerate(self.goals):
+            for i, (goal, color) in enumerate(zip(self.goals, cycle(GOAL_COLORS))):
                 owners = reduce(lambda x,y: x+"_"+y,goal["owners"])
                 name = owners + f"_{i}_goal"
-                featurecolors[name] = GOAL_COLORS[i]
-            
+                # featurecolors[name] = GOAL_COLORS[i]
+                featurecolors[name] = color
+
             for i,agent in enumerate(self.agents):
                 featurecolors[agent["name"]] = AGENT_COLORS[i]
-                
+
         if ax is None:
             if figsize is None:
                 figsize = (self.width * figsize_multiplier,
@@ -263,11 +279,23 @@ class TabularGridGame(TabularStochasticGame):
         if plot_walls:
             gwp.plot_walls()
         if plot_initial_states:
-            gwp.plot_initial_states()
+            gwp.plot_initial_states(featurecolors=featurecolors)
         if plot_absorbing_states:
-            gwp.plot_absorbing_states()
+            gwp.plot_absorbing_states(featurecolors=featurecolors)
         if plot_fences:
             gwp.plot_fences()
         gwp.plot_outer_box()
 
         return gwp
+
+    def full_initial_state(self):
+        return {
+            "agents": self._initState,
+            "goals": self.goals,
+            "obstacles": self.obstacles,
+            "walls": self.walls,
+            "fences": self.fences,
+            "fence_success_prob": self.fenceSuccessProb,
+            "height": self.height,
+            "width": self.width
+        }
