@@ -191,11 +191,13 @@ class TabularStochasticGame(StochasticGame):
         self._absorbingstatevec = np.array([is_absorbing(s) for s in self.state_list])
         return self._absorbingstatevec
 
-    def reachable_states(self):
+    def reachable_states(self, MAX_STATES=float('inf')):
         S0 = self.initial_state_dist().support
         frontier = Set(S0)
         visited = Set(S0)
         while len(frontier) > 0:
+            if len(visited) > MAX_STATES:
+                break
             s = frontier.pop()
             if self.is_terminal(s):
                 continue
