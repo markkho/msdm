@@ -36,7 +36,8 @@ class TabularGridGame(TabularStochasticGame):
                  goal_reward=10,
                  collision_cost=0,
                  step_cost=-1,
-                 fence_success_prob=.5
+                 fence_success_prob=.5,
+                 collision_prob=None
                  ):
         # parse game string and convert to initial state game representation
         parseParams = {"colsep": None, "rowsep": "\n", "elementsep": "."}
@@ -105,7 +106,8 @@ class TabularGridGame(TabularStochasticGame):
         self.obstacles = sorted(obstacles, key=lambda g: json.dumps(g, sort_keys=True))
         self.walls = sorted(walls, key=lambda g: json.dumps(g, sort_keys=True))
         self.fences = sorted(fences, key=lambda g: json.dumps(g, sort_keys=True))
-        self.fenceSuccessProb = fence_success_prob
+        self.fence_success_prob = fence_success_prob
+        self.collision_prob = collision_prob
         self.height = len(parsed)
         self.width = len(parsed[0])
         self.agents = agents 
@@ -114,8 +116,8 @@ class TabularGridGame(TabularStochasticGame):
         self._initState = initState
 
         #set up rewards
-        self.goalReward = goal_reward
-        self.stepCost = step_cost
+        self.goal_reward = goal_reward
+        self.step_cost = step_cost
         self.collision_cost = collision_cost
 
     def initial_state_dist(self):
@@ -169,7 +171,7 @@ class TabularGridGame(TabularStochasticGame):
             for fence in self.fences:
                 if (self.same_location(s[an], fence['start'])) and self.same_location(agent, fence['end']):
                     fenceEffect = Pr([{an: s[an]}])
-                    agentMove = agentMove*self.fenceSuccessProb | fenceEffect*(1 - self.fenceSuccessProb)
+                    agentMove = agentMove * self.fence_success_prob | fenceEffect * (1 - self.fence_success_prob)
 
             #agent-obstacle interactions
             for obs in self.obstacles:
@@ -194,7 +196,15 @@ class TabularGridGame(TabularStochasticGame):
             ns = copy.deepcopy(ns)
             logit = 0
             for an0, an1 in combinations(self.agent_names, r=2):
+                # agents cant occupy the same location
                 if self.same_location(ns[an0], ns[an1]):
+                    logit += -np.inf
+                if self.collision_prob is not None:
+                    # NOTE: for this to properly handle collisions, it needs to split into two possible outcomes:
+                    # one where each agent gets into the center tile
+                    raise NotImplementedError("Currently does not handle probabilistic collisions!")
+                # agents can't swap locations
+                if self.same_location(ns[an0], s[an1]) and self.same_location(ns[an1], s[an0]):
                     logit += -np.inf
             interactions.append(ns)
             interactionLogits.append(logit)
@@ -220,11 +230,11 @@ class TabularGridGame(TabularStochasticGame):
             for agentName in goal['owners']:
                 agent = ns[agentName]
                 if self.same_location(goal, agent):
-                    jr[agentName] += self.goalReward
+                    jr[agentName] += self.goal_reward
 
         for agentName, a in ja.items():
             if a != {'x': 0, 'y': 0}:
-                jr[agentName] += self.stepCost
+                jr[agentName] += self.step_cost
 
         # collision cost
         # HACK semantics are subtle - this simply looks at pairwise actions
@@ -295,7 +305,7 @@ class TabularGridGame(TabularStochasticGame):
             "obstacles": self.obstacles,
             "walls": self.walls,
             "fences": self.fences,
-            "fence_success_prob": self.fenceSuccessProb,
+            "fence_success_prob": self.fence_success_prob,
             "height": self.height,
             "width": self.width
         }
