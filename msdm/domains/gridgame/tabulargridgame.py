@@ -8,8 +8,6 @@ from msdm.core.problemclasses.stochasticgame import TabularStochasticGame
 from msdm.core.distributions import DiscreteFactorTable as Pr
 
 TERMINALSTATE = {"isTerminal": True}
-GOAL_COLORS = ["red","green","blue"]
-AGENT_COLORS = ["indigo","gold","yellow"]
 
 class TabularGridGame(TabularStochasticGame):
     def __init__(self,
@@ -224,6 +222,7 @@ class TabularGridGame(TabularStochasticGame):
     
     def plot(self,
              all_elements=False,
+             figure=None,
              ax=None,
              figsize=None,
              figsize_multiplier=1,
@@ -244,19 +243,13 @@ class TabularGridGame(TabularStochasticGame):
                 "obstacle": "black",
                 "wall": "gray"
             }
-            for i,goal in enumerate(self.goals):
-                owners = reduce(lambda x,y: x+"_"+y,goal["owners"])
-                name = owners + f"_{i}_goal"
-                featurecolors[name] = GOAL_COLORS[i]
             
-            for i,agent in enumerate(self.agents):
-                featurecolors[agent["name"]] = AGENT_COLORS[i]
                 
         if ax is None:
             if figsize is None:
                 figsize = (self.width * figsize_multiplier,
                            self.height * figsize_multiplier)
-            _, ax = plt.subplots(1, 1, figsize=figsize)
+            fig, ax = plt.subplots(1, 1, figsize=figsize)
 
         gwp = GridGamePlotter(gg=self, ax=ax)
         gwp.plot_features(featurecolors=featurecolors)
@@ -271,3 +264,52 @@ class TabularGridGame(TabularStochasticGame):
         gwp.plot_outer_box()
 
         return gwp
+    
+    def animate(self,
+             all_elements=False,
+             figure=None,
+             ax=None,
+             figsize=None,
+             figsize_multiplier=1,
+             featurecolors=None,
+             plot_walls=True,
+             plot_initial_states=True,
+             plot_fences=True,
+             plot_absorbing_states=True
+             ):
+        
+        if all_elements:
+            plot_initial_states = True
+            plot_absorbing_states = True
+        from msdm.domains.gridgame.animating import GridGameAnimator
+        
+        if featurecolors is None:    
+            featurecolors = {
+                "fence": "brown",
+                "obstacle": "black",
+                "wall": "gray"
+            }
+            
+                
+        if ax is None:
+            if figure is not None:
+                raise Exception("Please pass in both figure and axis if frame is predefined")
+            if figsize is None:
+                figsize = (self.width * figsize_multiplier,
+                           self.height * figsize_multiplier)
+            fig, ax = plt.subplots(1, 1, figsize=figsize)
+
+        gwp = GridGameAnimator(gg=self,figure=figure, ax=ax)
+        gwp.plot_features(featurecolors=featurecolors)
+        if plot_walls:
+            gwp.plot_walls()
+        if plot_initial_states:
+            gwp.plot_initial_states()
+        if plot_absorbing_states:
+            gwp.plot_absorbing_states()
+        if plot_fences:
+            gwp.plot_fences()
+        gwp.plot_outer_box()
+
+        return gwp
+        

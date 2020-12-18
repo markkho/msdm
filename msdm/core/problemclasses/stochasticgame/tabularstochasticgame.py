@@ -75,7 +75,7 @@ class TabularStochasticGame(StochasticGame):
         for si, s in enumerate(tqdm(ss,desc="Generating Sparse Transition Matrix")):
             for ai, a in enumerate(aa):
                 nsdist = self.next_state_dist(s, a)
-                for nsi, ns in enumerate(ss):
+                for nsi, ns in enumerate(nsdist.keys()):
                     prob = nsdist.prob(ns)
                     if prob != 0.0:
                         scoords.append(si)
@@ -138,8 +138,6 @@ class TabularStochasticGame(StochasticGame):
             pass
         rf = self.rewardmatrix
         tf = self.transitionmatrix
-        print(rf.shape)
-        print(tf.shape)
         self._sarfmatrix = np.einsum("sant,san->sat", rf, tf)
         return self._sarfmatrix
 
