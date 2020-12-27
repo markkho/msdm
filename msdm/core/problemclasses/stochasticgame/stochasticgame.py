@@ -18,7 +18,7 @@ class StochasticGame(ProblemClass):
         if memoize:
             self.next_state_dist = AssignmentCache(self.next_state_dist)
             self.joint_rewards = AssignmentCache(self.joint_rewards)
-            self.joint_action_dist = AssignmentCache(self.joint_actions)
+            self.joint_actions = AssignmentCache(self.joint_actions)
             self.initial_state_dist = AssignmentCache(self.initial_state_dist)
             self.is_terminal = AssignmentCache(self.is_terminal)
         
