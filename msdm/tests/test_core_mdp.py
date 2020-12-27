@@ -38,26 +38,26 @@ class CoreTestCase(unittest.TestCase):
         self.assertTrue(all(a3 == a2 for a3, a2 in zip(gw3.action_list, gw2.action_list)))
 
         #test that mdp distributions are consistent
-        s0 = gw1.initialstatevec * gw2.initialstatevec
+        s0 = gw1.initial_state_vec * gw2.initial_state_vec
         s0 = s0 / s0.sum()
-        eqS0 = np.isclose(gw3.initialstatevec, s0).all()
+        eqS0 = np.isclose(gw3.initial_state_vec, s0).all()
         self.assertTrue(eqS0)
 
         #test that less than or equal are reachable
-        rv = sum(gw1.reachablestatevec * gw2.reachablestatevec)
-        self.assertTrue(sum(gw3.reachablestatevec) <= rv)
+        rv = sum(gw1.reachable_state_vec * gw2.reachable_state_vec)
+        self.assertTrue(sum(gw3.reachable_state_vec) <= rv)
 
         #test reward composition
-        rs = gw3.reachablestatevec*gw1.reachablestatevec*gw2.reachablestatevec
-        ast = gw3.absorbingstatevec*gw1.absorbingstatevec*gw2.absorbingstatevec
-        ignore = rs[None, None, :]*rs[:, None, None]*ast[:, None, None]*ast[None, None, :] 
-        eqRF = (ignore*gw3.rewardmatrix == ignore*(gw1.rewardmatrix + gw2.rewardmatrix)).all()
+        rs = gw3.reachable_state_vec * gw1.reachable_state_vec * gw2.reachable_state_vec
+        ast = gw3.absorbing_state_vec * gw1.absorbing_state_vec * gw2.absorbing_state_vec
+        ignore = rs[None, None, :]*rs[:, None, None]*ast[:, None, None]*ast[None, None, :]
+        eqRF = (ignore * gw3.reward_matrix == ignore * (gw1.reward_matrix + gw2.reward_matrix)).all()
         self.assertTrue(eqRF)
 
         #test simple transition composition
-        tf = (gw1.transitionmatrix * gw2.transitionmatrix)
+        tf = (gw1.transition_matrix * gw2.transition_matrix)
         tf = tf / tf.sum(axis=-1, keepdims=True)
-        eqTF = np.isclose(gw3.transitionmatrix, tf).all()
+        eqTF = np.isclose(gw3.transition_matrix, tf).all()
         self.assertTrue(eqTF)
 
     def test_runningAgentOnMDP(self):
@@ -73,46 +73,10 @@ class CoreTestCase(unittest.TestCase):
         vi = VectorizedValueIteration(temperature=.1,
                                       entropy_regularization=True)
         res = vi.plan_on(gw1)
-        stateTraj = res.policy.run_on(gw1)['stateTraj']
+        stateTraj = res.policy.run_on(gw1).state_traj
         self.assertTrue(stateTraj[-1] in gw1.absorbing_states)
 #         self.assertTrue(gw1.is_terminal(stateTraj[-1]))
         self.assertTrue(stateTraj[0] in gw1.initial_states)
-
-    def test_AssignmentMap_encode(self):
-        m = AssignmentMap()
-        keys = [
-            'ñ',
-            b'hi',
-            [3, 4],
-            (1, 2),
-            {'hi': 3},
-            3,
-        ]
-        for key in keys:
-            # Testing setter
-            m[key] = 1337
-
-        # Making sure we can also list keys
-        assert len(list(m.keys())) == len(keys)
-        for el in m.keys():
-            assert el in keys
-
-    def test_DefaultAssignmentMap(self):
-        m = DefaultAssignmentMap(lambda: 3)
-        assert m['number'] == 3
-        m['number'] = 7
-        assert m['number'] == 7
-        del m['number']
-        assert m['apples'] == 3
-
-        m = DefaultAssignmentMap(lambda key: key * 2)
-        assert m[3] == 6
-        m[3] = 7
-        assert m[3] == 7
-        del m[3]
-        assert m[3] == 6
-    
-    # Test for stochastic game class 
 
 if __name__ == '__main__':
     unittest.main()

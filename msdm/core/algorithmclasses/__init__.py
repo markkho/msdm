@@ -15,6 +15,12 @@ class Result(ABC):
         for k, v in kwargs.items():
             self.__setattr__(k, v)
 
+    def __repr__(self):
+        return '\n'.join(
+            f'{repr(k)}: {repr(v)}'
+            for k, v in vars(self).items()
+        )
+
 class Plans(Algorithm):
     @abstractmethod
     def plan_on(self, problem: ProblemClass) -> Result:

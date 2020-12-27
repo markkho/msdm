@@ -3,11 +3,11 @@ from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess
 from msdm.core.distributions import DiscreteFactorTable
 
 class StickyActionMDP(TabularMarkovDecisionProcess):
-    def __init__(self, basemdp, initAction=None, switchCost=-1):
+    def __init__(self, base_mdp, init_action=None, switch_cost=-1):
         super().__init__()
-        self.mdp = basemdp
-        self.switchCost = switchCost
-        self.initAction = initAction
+        self.mdp = base_mdp
+        self.switchCost = switch_cost
+        self.initAction = init_action
     
     def is_terminal(self, s):
         return self.mdp.is_terminal(s['groundState'])

@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from msdm.core.problemclasses.mdp.mdp import MarkovDecisionProcess
 from msdm.core.distributions import Distribution
+from msdm.core.algorithmclasses import Result
 
 class Policy(ABC):
     @abstractmethod
@@ -9,13 +10,13 @@ class Policy(ABC):
 
     def run_on(self,
                mdp: MarkovDecisionProcess,
-               initialState=None,
-               maxSteps=20):
-        if initialState is None:
-            initialState = mdp.initial_state_dist().sample()
+               initial_state=None,
+               max_steps=int(2 ** 30)):
+        if initial_state is None:
+            initial_state = mdp.initial_state_dist().sample()
         traj = []
-        s = initialState
-        for t in range(maxSteps):
+        s = initial_state
+        for t in range(max_steps):
             a = self.action_dist(s).sample()
             ns = mdp.next_state_dist(s, a).sample()
             r = mdp.reward(s, a, ns)
@@ -24,9 +25,9 @@ class Policy(ABC):
                 break
             s = ns
         states, actions, nextstates, rewards = zip(*traj)
-        return {
-            'stateTraj': states,
-            'actionTraj': actions,
-            'rewardTraj': rewards
-        }
+        return Result(**{
+            'state_traj': states,
+            'action_traj': actions,
+            'reward_traj': rewards
+        })
 

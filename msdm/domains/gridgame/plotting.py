@@ -1,4 +1,5 @@
 import numpy as np
+from functools import reduce
 from typing import Mapping, Union, Callable, Hashable
 from numbers import Number
 from functools import reduce
@@ -147,7 +148,8 @@ class GridGamePlotter:
         return self
         
 
-    def plot_initial_states(self, markersize=15):
+
+    def plot_initial_states(self, markersize=15, featurecolors=None):
         for i,agent in enumerate(self.gg.agents):
             self.agent_colors[agent["name"]] = AGENT_COLORS[i]
             x, y = agent['x'], agent['y']
@@ -165,7 +167,7 @@ class GridGamePlotter:
             self.agents[agent["name"]].set_data(x+.5,y+.5)
         return self
 
-    def plot_absorbing_states(self, markersize=30):
+    def plot_absorbing_states(self, markersize=30, featurecolors=None):
         for i,goal in enumerate(self.gg.goals):
             # sdict = dict(zip([v.name for v in s.variables], s.values))
             # x, y = sdict['x'], sdict['y']

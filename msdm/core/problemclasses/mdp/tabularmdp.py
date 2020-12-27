@@ -12,13 +12,13 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         return {
             'ss': self.state_list,
             'aa': self.action_list,
-            'tf': self.transitionmatrix,
-            'rf': self.rewardmatrix,
-            'sarf': self.stateactionrewardmatrix,
-            's0': self.initialstatevec,
-            'nt': self.nonterminalstatevec,
-            'rs': self.reachablestatevec,
-            'ast': self.absorbingstatevec
+            'tf': self.transition_matrix,
+            'rf': self.reward_matrix,
+            'sarf': self.state_action_reward_matrix,
+            's0': self.initial_state_vec,
+            'nt': self.nonterminal_state_vec,
+            'rs': self.reachable_state_vec,
+            'ast': self.absorbing_state_vec
         }
 
     @property
@@ -51,7 +51,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         return self._actions
 
     @property
-    def transitionmatrix(self):
+    def transition_matrix(self):
         try:
             return self._tfmatrix
         except AttributeError:
@@ -68,7 +68,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         return self._tfmatrix
 
     @property
-    def actionmatrix(self):
+    def action_matrix(self):
         try:
             return self._actmatrix
         except AttributeError:
@@ -88,7 +88,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
 
 
     @property
-    def rewardmatrix(self):
+    def reward_matrix(self):
         try:
             return self._rfmatrix
         except AttributeError:
@@ -108,18 +108,18 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         return self._rfmatrix
 
     @property
-    def stateactionrewardmatrix(self):
+    def state_action_reward_matrix(self):
         try:
             return self._sarfmatrix
         except AttributeError:
             pass
-        rf = self.rewardmatrix
-        tf = self.transitionmatrix
+        rf = self.reward_matrix
+        tf = self.transition_matrix
         self._sarfmatrix = np.einsum("san,san->sa", rf, tf)
         return self._sarfmatrix
 
     @property
-    def initialstatevec(self):
+    def initial_state_vec(self):
         try:
             return self._s0vec
         except AttributeError:
@@ -129,7 +129,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         return self._s0vec
 
     @property
-    def nonterminalstatevec(self):
+    def nonterminal_state_vec(self):
         try:
             return self._ntvec
         except AttributeError:
@@ -139,7 +139,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         return self._ntvec
 
     @property
-    def reachablestatevec(self):
+    def reachable_state_vec(self):
         try:
             return self._reachablevec
         except AttributeError:
@@ -150,7 +150,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         return self._reachablevec
 
     @property
-    def absorbingstatevec(self):
+    def absorbing_state_vec(self):
         try:
             return self._absorbingstatevec
         except AttributeError:

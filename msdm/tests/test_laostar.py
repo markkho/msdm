@@ -37,6 +37,9 @@ class LAOStarTestCase(unittest.TestCase):
             seed=6066253173235511770
         )
         R = lao.plan_on(mdp)
+        traj = R.policy.run_on(mdp)
+        print(traj.state_traj)
+        assert traj.state_traj[-1] == goal
         
 if __name__ == '__main__':
     unittest.main()

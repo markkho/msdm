@@ -47,13 +47,10 @@ class GridWorld(TabularMarkovDecisionProcess):
                     f = elements[0]
                     locFeatures[s] = f
                     if f in initial_features:
-                        # initStates[s] = None
                         initStates.add(s)
                     if f in absorbing_features:
-                        # absorbingStates[s] = None
                         absorbingStates.add(s)
                     if f in wall_features:
-                        # walls[s] = None
                         walls.add(s)
         states.append(TERMINALSTATE)
         actions = [
@@ -137,8 +134,8 @@ class GridWorld(TabularMarkovDecisionProcess):
         f = self._locFeatures.get(ns, "")
         return self._featureRewards.get(f, 0.0) + self.step_cost
 
-    def actions(self, state) -> Iterable:
-        if self.is_terminal(state):
+    def actions(self, s) -> Iterable:
+        if self.is_terminal(s):
             return [{'dx': 0, 'dy': 0}, ]
         return [a for a in self._actions]
 
