@@ -149,7 +149,7 @@ class GridGamePlotter:
         
 
 
-    def plot_initial_states(self, markersize=15):
+    def plot_initial_states(self, markersize=15, featurecolors=None):
         for i,agent in enumerate(self.gg.agents):
             self.agent_colors[agent["name"]] = AGENT_COLORS[i]
             x, y = agent['x'], agent['y']
@@ -161,7 +161,7 @@ class GridGamePlotter:
                          fillstyle='none')[0]
         return self
 
-    def plot_absorbing_states(self, markersize=30):
+    def plot_absorbing_states(self, markersize=30, featurecolors=None):
         for i,goal in enumerate(self.gg.goals):
             # sdict = dict(zip([v.name for v in s.variables], s.values))
             # x, y = sdict['x'], sdict['y']
