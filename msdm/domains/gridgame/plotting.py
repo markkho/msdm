@@ -1,4 +1,5 @@
 import numpy as np
+from functools import reduce
 from typing import Mapping, Union, Callable, Hashable
 from numbers import Number
 from functools import reduce
@@ -146,6 +147,7 @@ class GridGamePlotter:
                 self.ax.plot(x_coords,y_coords,color="green",linewidth=2)
         return self
         
+
 
     def plot_initial_states(self, markersize=15):
         for i,agent in enumerate(self.gg.agents):
