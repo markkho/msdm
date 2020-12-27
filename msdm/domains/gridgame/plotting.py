@@ -2,6 +2,7 @@ import numpy as np
 from functools import reduce
 from typing import Mapping, Union, Callable, Hashable
 from numbers import Number
+from functools import reduce
 from tqdm import tqdm 
 
 import matplotlib.pyplot as plt
@@ -11,9 +12,12 @@ import matplotlib.patches as patches
 import matplotlib.colors as colors
 import matplotlib.cm as cmx
 import matplotlib.patheffects as path_effects
+from matplotlib import animation 
 
 from msdm.core.problemclasses.stochasticgame.policy.tabularpolicy import TabularMultiAgentPolicy
 from msdm.domains.gridgame.tabulargridgame import TabularGridGame
+from msdm.core.assignment.assignmentmap import AssignmentMap
+
 
 
 DISTINCT_COLORS = [
@@ -26,6 +30,10 @@ DISTINCT_COLORS = [
     '#ffd8b1', '#000075', '#808080',
     '#ffffff', '#000000'
 ]
+
+AGENT_COLORS = ["indigo","deepskyblue","magenta"]
+
+
 
 
 def get_contrast_color(color):
@@ -44,11 +52,15 @@ class GridGamePlotter:
         self.ax.set_xlim(-0.1, self.gg.width + .1)
         self.ax.set_ylim(-0.1, self.gg.height + .1)
         self.ax.axis('equal')
+        # Whenever an agent is plotted, will be assigned a color stored here. Use
+        # the associated color for other plotting for consistency 
+        self.agent_colors = AssignmentMap()
+        self.agents = AssignmentMap()
 
     def plot_features(self, featurecolors, edgecolor='darkgrey') -> "GridGamePlotter":
         """Plot gridgame features"""
         ss = self.gg.state_list
-        for x in tqdm(range(self.gg.width),desc="Plotting Grid Features"):
+        for x in range(self.gg.width):
             for y in range(self.gg.height):
                 feature = self.check_features(x,y)
                 xy = (x, y)
@@ -136,31 +148,33 @@ class GridGamePlotter:
         return self
         
 
-    def plot_initial_states(self, markersize=15, featurecolors=None):
-        if featurecolors is None:
-            featurecolors = {}
-        for agent in self.gg.agents:
+
+    def plot_initial_states(self, markersize=15):
+        for i,agent in enumerate(self.gg.agents):
+            self.agent_colors[agent["name"]] = AGENT_COLORS[i]
             x, y = agent['x'], agent['y']
-            self.ax.plot(x + .5, y + .5,
-                         markeredgecolor=featurecolors.get(agent['name'], 'cornflowerblue'),
-                         marker='o',
+            self.agents[agent["name"]] = self.ax.plot(x + .5, y + .5,
+                         markeredgecolor=self.agent_colors[agent["name"]],
+                         marker="o",
                          markersize=markersize,
                          markeredgewidth=2,
-                         fillstyle='none')
+                         fillstyle='none')[0]
         return self
 
-    def plot_absorbing_states(self, markersize=15, featurecolors=None):
-        if featurecolors is None:
-            featurecolors = {}
-        for gi, goal in enumerate(self.gg.goals):
+    def plot_absorbing_states(self, markersize=30):
+        for i,goal in enumerate(self.gg.goals):
             # sdict = dict(zip([v.name for v in s.variables], s.values))
             # x, y = sdict['x'], sdict['y']
             x, y = goal['x'], goal['y']
-            owners = reduce(lambda x,y: x+"_"+y,goal["owners"])
-            goalname = owners + f"_{gi}_goal"
+            if len(goal["owners"]) == 1:
+                marker_color = self.agent_colors[goal["owners"][0]]
+            else:
+                marker_color = "cornflowerblue"
             self.ax.plot(x + .5, y + .5,
-                         markeredgecolor=featurecolors.get(goalname, 'cornflowerblue'),
-                         marker='x',
+                         markeredgecolor=marker_color,
+                         markerfacecolor=marker_color,
+                         marker='*',
+                         fillstyle="full",
                          markersize=markersize,
                          markeredgewidth=2)
 
@@ -284,7 +298,7 @@ class GridGamePlotter:
             colorvalue_map = cmx.ScalarMappable(norm=color_norm,
                                                 cmap=colorrange)
             colorValueFunc = lambda v: colorvalue_map.to_rgba(v)
-        for s, v in tqdm(positionMap.items(),desc="Plotting State Values"):
+        for s, v in positionMap.items():
             if (not plotOverWalls) and (s in [(wall["x"],wall["y"]) for wall in self.gg.walls]):
                 continue
             if isinstance(s, tuple) or isinstance(s, list):
@@ -310,8 +324,8 @@ class GridGamePlotter:
 
     def plot_state_action_map(self,
                               stateActionMap: Mapping[
-                               Hashable, Mapping[Hashable, Number]]
-                              ,plotOverWalls=False,
+                               Hashable, Mapping[Hashable, Number]],
+                              plotOverWalls=False,
                               valueRange=None,
                               colorvalue_func: Union[Callable, str]="bwr_r",
                               arrowWidth=.1) -> "GridGamePlotter":
@@ -332,7 +346,7 @@ class GridGamePlotter:
                                                 cmap=colorrange)
             colorvalue_func = lambda v: colorvalue_map.to_rgba(v)
 
-        for s, av in tqdm(stateActionMap.items(),desc="Plotting State-Action Values"):
+        for s, av in stateActionMap.items():
             if (not plotOverWalls) and (s in self.gg.walls):
                 continue
 
@@ -342,7 +356,7 @@ class GridGamePlotter:
                 raise Exception("unknown state representation")
 
             for a, v in av.items():
-                dx, dy = a.get('dx', 0.0), a.get('dy', 0.0)
+                dx, dy = a.get('x', 0.0), a.get('y', 0.0)
                 arrowColor = colorvalue_func(v)
                 mag = abs(v) / absvmax
                 mag *= .5
@@ -355,17 +369,70 @@ class GridGamePlotter:
                                    fill=False, color=arrowColor)
                 self.ax.add_patch(patch)
         return self
+    
+    def plot_weights(self,
+                       weightMap: Mapping,
+                       plotOverWalls=False,
+                       fontsize=10,
+                       showNumbers=True,
+                       valueRange=None,
+                       showColors=True,
+                       isCategorical=False,
+                       colorValueFunc="bwr_r") -> "GridGamePlotter":
+        
+        if len(weightMap) == 0:
+            return self
+        # state map - colors / numbers
+        vmax_abs = max(abs(v) for k, v in weightMap.items())
+        if valueRange is None:
+            valueRange = [-vmax_abs, vmax_abs]
+        vmin, vmax = valueRange
+        if isCategorical:
+            colorValueFunc = lambda i: DISTINCT_COLORS[
+                int(i) % len(DISTINCT_COLORS)]
+        elif isinstance(colorValueFunc, str):
+            colorrange = plt.get_cmap(colorValueFunc)
+            color_norm = colors.Normalize(vmin=vmin, vmax=vmax)
+            colorvalue_map = cmx.ScalarMappable(norm=color_norm,
+                                                cmap=colorrange)
+            colorValueFunc = lambda v: colorvalue_map.to_rgba(v)
+            
+        for s, v in weightMap.items():
+            if (not plotOverWalls) and (s in [(wall["x"],wall["y"]) for wall in self.gg.walls]):
+                continue
+            if isinstance(s, tuple) or isinstance(s, list):
+                xy = s
+            else:
+                raise Exception("unknown state representation")
 
-    def plot_policy(self, policy: Union[TabularMultiAgentPolicy, dict]) -> "GridGamePlotter":
-        if isinstance(policy, TabularMultiAgentPolicy):
-            policy = policy.policy_dict
+            color = 'w'
+            if showColors:
+                color = colorValueFunc(v)
+                square = Rectangle(xy, 1, 1,
+                                   color=color,
+                                   ec='k', lw=2)
+                self.ax.add_patch(square)
+            if showNumbers:
+                self.ax.text(xy[0] + .5, xy[1] + .5,
+                             f"{v : .2f}",
+                             fontsize=fontsize,
+                             color=get_contrast_color(color),
+                             horizontalalignment='center',
+                             verticalalignment='center')
+        return self
+
+        
+    def plot_policy(self, policy: TabularMultiAgentPolicy) -> "GridGamePlotter":
+        
+        for agent in policy.single_agent_policies:
+            continue 
         return self.plot_state_action_map(
             stateActionMap=policy,
             plotOverWalls=False,
             valueRange=[0, 1],
             colorvalue_func=lambda v: 'k'
         )
-
+    
     def title(self, title, **kwargs):
         self.ax.set_title(title, **kwargs)
         return self
