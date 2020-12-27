@@ -145,6 +145,7 @@ class TabularGridGame(TabularStochasticGame):
     def is_terminal(self, s):
         return s.get('isTerminal', False)
 
+
     def next_state_dist(self, s, ja):
         if self.is_terminal(s):
             return Pr([TERMINALSTATE,])
@@ -190,22 +191,35 @@ class TabularGridGame(TabularStochasticGame):
         #calculate agent interactions
         interactions = []
         interactionLogits = []
+        collisions = []
         for ns in agentDist.support:
             ns = copy.deepcopy(ns)
             logit = 0
             for an0, an1 in combinations(self.agent_names, r=2):
                 # agents cant occupy the same location
                 if self.same_location(ns[an0], ns[an1]):
+                    collisions.append((an0, an1))
                     logit += -np.inf
-                if self.collision_prob is not None:
-                    # NOTE: for this to properly handle collisions, it needs to split into two possible outcomes:
-                    # one where each agent gets into the center tile
-                    raise NotImplementedError("Currently does not handle probabilistic collisions!")
                 # agents can't swap locations
                 if self.same_location(ns[an0], s[an1]) and self.same_location(ns[an1], s[an0]):
                     logit += -np.inf
             interactions.append(ns)
             interactionLogits.append(logit)
+
+        if self.collision_prob is not None and self.collision_prob != .5:
+            # NOTE: for this to properly handle collisions, it needs to split into two possible outcomes:
+            # one where each agent gets into the center tile
+            raise NotImplementedError("Currently does not handle probabilistic collisions!")
+
+        if self.collision_prob is None: #HACK - if there was any possibility of collision, nobody moves
+            new_interaction_logits = []
+            for ns, nslog in zip(interactions, interactionLogits):
+                for an0, an1 in collisions:
+                    if (ns[an0] != s[an0]) or (ns[an1] != s[an1]):
+                        nslog = -np.inf
+                new_interaction_logits.append(nslog)
+            interactionLogits = new_interaction_logits
+
         interactionEffects = Pr(interactions, logits=interactionLogits)
         return agentDist & interactionEffects
 
