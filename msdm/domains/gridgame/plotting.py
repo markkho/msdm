@@ -158,6 +158,12 @@ class GridGamePlotter:
                          markeredgewidth=2,
                          fillstyle='none')[0]
         return self
+    
+    def plot_new_state(self,state):
+        for i,agent in enumerate(self.gg.agents):
+            x,y = state[agent["name"]]["x"], state[agent["name"]]["y"]
+            self.agents[agent["name"]].set_data(x+.5,y+.5)
+        return self
 
     def plot_absorbing_states(self, markersize=30):
         for i,goal in enumerate(self.gg.goals):

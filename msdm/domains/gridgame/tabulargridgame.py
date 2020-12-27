@@ -33,7 +33,8 @@ class TabularGridGame(TabularStochasticGame):
                  ),
                  goal_reward=10,
                  step_cost=-1,
-                 fence_success_prob=.5
+                 fence_success_prob=.5,
+                 collision_prob=None
                  ):
         # parse game string and convert to initial state game representation
         parseParams = {"colsep": None, "rowsep": "\n", "elementsep": "."}
@@ -106,6 +107,7 @@ class TabularGridGame(TabularStochasticGame):
         self.height = len(parsed)
         self.width = len(parsed[0])
         self.agents = agents 
+        self.collision_prob = collision_prob
         super(TabularStochasticGame,self).__init__(agent_names=sorted([ag['name'] for ag in agents]))
 
         self._initState = initState
@@ -187,11 +189,22 @@ class TabularGridGame(TabularStochasticGame):
             ns = copy.deepcopy(ns)
             logit = 0
             for an0, an1 in combinations(self.agent_names, r=2):
+                # agents cant occupy the same location
                 if self.same_location(ns[an0], ns[an1]):
+                    logit += -np.inf
+                if self.collision_prob is not None:
+                    # NOTE: for this to properly handle collisions, it needs to split into two possible outcomes:
+                    # one where each agent gets into the center tile
+                    raise NotImplementedError("Currently does not handle probabilistic collisions!")
+                # agents can't swap locations
+                if self.same_location(ns[an0], s[an1]) and self.same_location(ns[an1], s[an0]):
                     logit += -np.inf
             interactions.append(ns)
             interactionLogits.append(logit)
         interactionEffects = Pr(interactions, logits=interactionLogits)
+#         print(list(interactionEffects.items(probs=False)))
+#         print(list(agentDist.items(probs=False)))
+#         print(list((agentDist & interactionEffects).items(probs=False)))
         return agentDist & interactionEffects
 
     def in_goal(self, s, agentname):
@@ -262,7 +275,6 @@ class TabularGridGame(TabularStochasticGame):
         if plot_fences:
             gwp.plot_fences()
         gwp.plot_outer_box()
-
         return gwp
     
     def animate(self,

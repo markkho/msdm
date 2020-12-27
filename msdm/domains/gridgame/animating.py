@@ -72,7 +72,8 @@ class GridGameAnimator(GridGamePlotter):
                 new_frames.append(new_frame)
             new_frames.append(end_pos)  
         return new_frames
-                    
+            
+            
             
                     
         

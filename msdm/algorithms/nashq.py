@@ -18,12 +18,13 @@ class NashQLearner(TabularMultiAgentQLearner):
     
     def __init__(self,learning_agents: Iterable,
                  other_policies:dict,num_episodes=200,
-                 learning_rate=.9,discount_rate=1.0,
-                 epsilon=0.0,default_q_value=0.0,show_progress=False,alg_name="Nash Q-Learning"):
+                 learning_rate=.1,discount_rate=1.0,
+                 epsilon=0.0,epsilon_decay=1.0,default_q_value=0.0,
+                 show_progress=False,alg_name="Nash Q-Learning",render=False,render_from=0):
         super().__init__(learning_agents,other_policies,num_episodes,
-                        learning_rate,discount_rate,epsilon,
+                        learning_rate,discount_rate,epsilon,epsilon_decay,
                         default_q_value,all_actions=True,
-                        show_progress=show_progress,alg_name=alg_name)
+                        show_progress=show_progress,alg_name=alg_name,render=render,render_from=render_from)
     
     def update(self,agent_name,actions,q_values,joint_rewards,curr_state,next_state,problem):
         indiv_actions = {agent:problem.joint_actions(next_state)[agent] for agent in problem.joint_actions(next_state)}
