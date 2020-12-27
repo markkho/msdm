@@ -1,4 +1,8 @@
+import numpy as np
+import copy
 from msdm.core.problemclasses.mdp import MarkovDecisionProcess
+from msdm.core.problemclasses.mdp import TabularPolicy
+from msdm.core.problemclasses.mdp.policy.partialpolicy import PartialPolicy
 from msdm.core.assignment import DefaultAssignmentMap, \
     AssignmentMap
 from msdm.core.algorithmclasses import Plans, Result
@@ -20,25 +24,41 @@ class LRTDP(Plans):
     def __init__(self,
                  error_margin=1e-2,
                  heuristic=None,
-                 iterations=int(2**30)
+                 iterations=int(2**30),
+                 randomize_action_order=False,
+                 max_trial_length=None,
+                 seed=None
                  ):
         self.error_margin = error_margin
         self.heuristic = heuristic
         self.iterations = iterations
+        self.randomize_action_order = randomize_action_order
+        self.seed = seed
+        if max_trial_length is None:
+            max_trial_length = float('inf')
+        self.max_trial_length = max_trial_length
 
     def plan_on(self, mdp: MarkovDecisionProcess):
         self.res = Result()
+        if self.seed is None:
+            self.res.seed = np.random.randint(int(2**30))
+        else:
+            self.res.seed = self.seed
+        np.random.seed(self.res.seed)
         self.lrtdp(
             mdp, heuristic=self.heuristic, iterations=self.iterations
         )
         res = self.res
         res.policy = AssignmentMap()
         res.Q = AssignmentMap()
-        for s in mdp.state_list:
-            res.policy[s] = self.policy(mdp, s)
+        for s in sum(self.res.trials, []):
+            if s in res.policy:
+                continue
+            res.policy[s] = AssignmentMap([(self.policy(mdp, s), 1)])
             res.Q[s] = AssignmentMap()
-            for a in mdp.action_list:
+            for a in mdp.actions(s):
                 res.Q[s][a] = self.Q(mdp, s, a)
+        res.policy = PartialPolicy(res.policy)
 
         #clear result
         self.res = None
@@ -50,7 +70,7 @@ class LRTDP(Plans):
         and compute Q values and the policy from it, important in computing
         the residual in _check_solved().
         '''
-        self.res.V[s] = max(self.Q(mdp, s, a) for a in mdp.action_list)
+        self.res.V[s] = max(self.Q(mdp, s, a) for a in mdp.actions(s))
 
     def Q(self, mdp, s, a):
         q = 0
@@ -62,7 +82,16 @@ class LRTDP(Plans):
         return q
 
     def policy(self, mdp, s):
-        return max(mdp.action_list, key=lambda a: self.Q(mdp, s, a))
+        if s in self.res.action_orders:
+            action_list = self.res.action_orders[s]
+        else:
+            if self.randomize_action_order:
+                aa = mdp.actions(s)
+                action_list = [aa[i] for i in np.random.permutation(len(aa))]
+            else:
+                action_list = mdp.actions(s)
+            self.res.action_orders[s] = action_list
+        return max(action_list, key=lambda a: self.Q(mdp, s, a))
 
     def expected_one_step_reward_heuristic(self, mdp):
         '''
@@ -83,13 +112,12 @@ class LRTDP(Plans):
             heuristic = lambda s: 0
 
         self.res.V = DefaultAssignmentMap(heuristic)
+        self.res.action_orders = AssignmentMap()
+        self.res.trials = []
+        self.res.trials_solved = []
 
         # Keeping track of "labels": which states have been solved
         self.res.solved = DefaultAssignmentMap(lambda: False)
-        for s in mdp.state_list:
-            # Terminal states are solved.
-            if mdp.is_terminal(s):
-                self.res.solved[s] = True
 
         for _ in range(iterations):
             if all(self.res.solved[s] for s in mdp.initial_state_dist().support):
@@ -98,11 +126,19 @@ class LRTDP(Plans):
 
     def lrtdp_trial(self, mdp, s):
         # Ghallab, Nau, Traverso: Algorithm 6.17
-        visited = []
+        visited = [s, ]
         while not self.res.solved[s]:
-            visited.append(s)
             self._bellman_update(mdp, s)
             s = mdp.next_state_dist(s, self.policy(mdp, s)).sample()
+            visited.append(s)
+
+            # Terminal states are solved.
+            if mdp.is_terminal(s):
+                self.res.solved[s] = True
+            if len(visited) > self.max_trial_length:
+                break
+        self.res.trials.append(copy.deepcopy(visited))
+        self.res.trials_solved.append(copy.deepcopy(self.res.solved))
         s = visited.pop()
         while self._check_solved(mdp, s) and visited:
             s = visited.pop()

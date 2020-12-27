@@ -7,17 +7,17 @@ from msdm.core.problemclasses.mdp.mdp import MarkovDecisionProcess
 from msdm.core.assignment.assignmentmap import AssignmentMap
 from msdm.core.distributions import DiscreteFactorTable, Distribution
 class TabularPolicy(Policy):
-    def __init__(self, states, actions, policymatrix=None, policydict=None):
+    def __init__(self, states, actions, policy_matrix=None, policy_dict=None):
         self._states = states
         self._actions = actions
-        if policymatrix is not None:
-            policydict = AssignmentMap()
+        if policy_matrix is not None:
+            policy_dict = AssignmentMap()
             for si, s in enumerate(states):
-                policydict[s] = AssignmentMap()
+                policy_dict[s] = AssignmentMap()
                 for ai, a in enumerate(actions):
-                    if policymatrix[si, ai] > 0:
-                        policydict[s][a] = policymatrix[si, ai]
-        self._policydict = policydict
+                    if policy_matrix[si, ai] > 0:
+                        policy_dict[s][a] = policy_matrix[si, ai]
+        self._policydict = policy_dict
 
     def evaluate_on(self, mdp: MarkovDecisionProcess) -> Mapping:
         # do policy evaluation

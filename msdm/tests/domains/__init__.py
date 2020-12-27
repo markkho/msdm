@@ -34,8 +34,9 @@ class GNTFig6_6(TabularMarkovDecisionProcess):
         return s in (12, 15, 16)
 
     def actions(self, s) -> Iterable:
-        dests = GNTFig6_6.T[s]
-        return [a for a in range(len(dests)) if dests[a][0]]
+        return [0, 1, 2]
+        # dests = GNTFig6_6.T[s]
+        # return [a for a in range(len(dests)) if dests[a][0]]
 
     def next_state_dist(self, s, a):
         if a < len(GNTFig6_6.T[s]):

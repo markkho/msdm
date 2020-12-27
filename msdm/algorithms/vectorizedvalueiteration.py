@@ -19,10 +19,10 @@ class VectorizedValueIteration(Plans):
 
     def plan_on(self, mdp: TabularMarkovDecisionProcess):
         ss = mdp.state_list
-        tf = mdp.transitionmatrix
-        rf = mdp.rewardmatrix
-        nt = mdp.nonterminalstatevec
-        am = mdp.actionmatrix
+        tf = mdp.transition_matrix
+        rf = mdp.reward_matrix
+        nt = mdp.nonterminal_state_vec
+        am = mdp.action_matrix
 
         #available actions - add -inf if it is not available
         aa = am.copy()
@@ -50,7 +50,7 @@ class VectorizedValueIteration(Plans):
         # create result object
         res = Result()
         res.mdp = mdp
-        res.policy = res.pi = TabularPolicy(mdp.state_list, mdp.action_list, policymatrix=pi)
+        res.policy = res.pi = TabularPolicy(mdp.state_list, mdp.action_list, policy_matrix=pi)
         res._valuevec = v
         vf = AssignmentMap([(s, vi) for s, vi in zip(mdp.state_list, v)])
         res.valuefunc = res.V = vf
