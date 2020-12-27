@@ -7,6 +7,8 @@ import numpy as np
 from msdm.core.assignment import AssignmentMap as Dict
 from msdm.core.algorithmclasses import Plans, Result
 from msdm.core.problemclasses.mdp import MarkovDecisionProcess
+from msdm.core.problemclasses.mdp.policy.partialpolicy import PartialPolicy
+from msdm.core.distributions import DiscreteFactorTable, Distribution
 
 def _hash(x):
     if isinstance(x, dict):
@@ -20,14 +22,17 @@ class LAOStar(Plans):
     with loops. Artificial Intelligence, 129(1-2), 35-62.
     """
     def __init__(self,
-                 heuristic, # Function over states
+                 heuristic=None, # Function over states
                  egraph=None,
                  show_warning=False,
                  show_progress=True,
                  max_lao_iters=100,
                  policy_evaluation_iters=100,
                  policy_iteration_iters=100,
+                 discount_rate=1.0,
                  seed=None):
+        if heuristic is None:
+            heuristic = lambda s : 0.0
         A = SimpleNamespace(**{n: a for n, a in locals().items() if n != "self"})
         self.A = A
 
@@ -39,7 +44,8 @@ class LAOStar(Plans):
             seed = A.seed
         random.seed(seed)
         
-        discount_rate = 1 - mdp.termination_prob
+        # discount_rate = 1 - mdp.termination_prob
+        discount_rate = A.discount_rate
         #initialize explicit graph
         if A.egraph is None:
             egraph = {} #explicit graph
@@ -208,9 +214,15 @@ class LAOStar(Plans):
             
         if A.show_progress:
             pbar.close()
+
+        pi = Dict()
+        for n in sGraph.values():
+            pi[n['state']] = Dict([[n['bestaction'], 1.0]])
+        pi = PartialPolicy(pi)
             
         return Result(
             egraph=egraph,
+            policy=pi,
             sGraph=sGraph,
             laoIter=laoIter,
             nonterminaltips=ntt,

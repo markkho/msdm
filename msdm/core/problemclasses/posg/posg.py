@@ -13,8 +13,8 @@ class PartiallyObservableStochasticGame(ProblemClass):
     - next state, observation distributions
     """
 
-    def __init__(self, agentNames):
-        self._agentNames = agentNames
+    def __init__(self, agent_names):
+        self._agentNames = agent_names
 
     @property
     def agent_names(self):
