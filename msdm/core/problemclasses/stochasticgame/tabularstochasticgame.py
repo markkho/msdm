@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 class TabularStochasticGame(StochasticGame):
     
-    def __init__(self,agent_names,memoize=True):
+    def __init__(self,agent_names,memoize=False):
         super(TabularStochasticGame,self).__init__(agent_names=agent_names,memoize=memoize)
     
     @property
@@ -76,11 +76,13 @@ class TabularStochasticGame(StochasticGame):
             for ai, a in enumerate(aa):
                 nsdist = self.next_state_dist(s, a)
                 for nsi, ns in enumerate(nsdist.keys()):
+                    # Getting state index from state_list 
+                    index = self.state_list.index(ns)
                     prob = nsdist.prob(ns)
                     if prob != 0.0:
                         scoords.append(si)
                         acoords.append(ai)
-                        nscoords.append(nsi)
+                        nscoords.append(index)
                         probs.append(prob)
         coords = []
         coords.append(scoords)

@@ -82,6 +82,7 @@ class CorrelatedQLearner(TabularMultiAgentQLearner):
         return -agent_total
         
     def update(self,agent_name,actions,q_values,joint_rewards,curr_state,next_state,problem):
+        cvxopt.solvers.options['show_progress'] = False
         next_actions = problem.joint_actions(next_state)
         joint_actions = problem.joint_action_list
         policies = variable(len(joint_actions))

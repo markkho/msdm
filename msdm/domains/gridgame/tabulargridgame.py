@@ -197,17 +197,23 @@ class TabularGridGame(TabularStochasticGame):
             ns = copy.deepcopy(ns)
             logit = 0
             for an0, an1 in combinations(self.agent_names, r=2):
-                # agents cant occupy the same location
-                if self.same_location(ns[an0], ns[an1]):
-                    collisions.append((an0, an1))
-                    logit += -np.inf
-                # agents can't swap locations
-                if self.same_location(ns[an0], s[an1]) and self.same_location(ns[an1], s[an0]):
-                    logit += -np.inf
-                if self.collision_prob is not None:
-                    # NOTE: for this to properly handle collisions, it needs to split into two possible outcomes:
-                    # one where each agent gets into the center tile
-                    raise NotImplementedError("Currently does not handle probabilistic collisions!")
+                skip = False
+                for goal in self.goals:
+                    if an0 in goal["owners"] or an1 in goal["owners"]:
+                        if self.same_location(goal,ns[an0]) or self.same_location(goal,ns[an1]):
+                            skip = True
+                if not skip:
+                    # agents cant occupy the same location
+                    if self.same_location(ns[an0], ns[an1]):
+                        collisions.append((an0, an1))
+                        logit += -np.inf
+                    # agents can't swap locations
+                    if self.same_location(ns[an0], s[an1]) and self.same_location(ns[an1], s[an0]):
+                        logit += -np.inf
+                    if self.collision_prob is not None and self.collision_prob != .5:
+                        # NOTE: for this to properly handle collisions, it needs to split into two possible outcomes:
+                        # one where each agent gets into the center tile
+                        raise NotImplementedError("Currently does not handle probabilistic collisions!")
                 # agents can't swap locations
                 if self.same_location(ns[an0], s[an1]) and self.same_location(ns[an1], s[an0]):
                     logit += -np.inf
@@ -229,9 +235,6 @@ class TabularGridGame(TabularStochasticGame):
             interactionLogits = new_interaction_logits
 
         interactionEffects = Pr(interactions, logits=interactionLogits)
-#         print(list(interactionEffects.items(probs=False)))
-#         print(list(agentDist.items(probs=False)))
-#         print(list((agentDist & interactionEffects).items(probs=False)))
         return agentDist & interactionEffects
 
     def in_goal(self, s, agentname):

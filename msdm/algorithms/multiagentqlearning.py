@@ -118,7 +118,7 @@ class TabularMultiAgentQLearner(Learns):
             episodes = tqdm(range(self.num_episodes),desc="Training with " + self.alg_name)
         else:
             episodes = range(self.num_episodes)
-                    
+        MAX_STEPS = 50
         for i in episodes:
             curr_state = problem.initial_state_dist().sample()
             curr_step = 0
@@ -130,7 +130,7 @@ class TabularMultiAgentQLearner(Learns):
                 renderer.display_func(figure)
                 time.sleep(renderer.interval)
                 
-            while not problem.is_terminal(curr_state):
+            while not problem.is_terminal(curr_state) and curr_step < MAX_STEPS:
                 # Choose action 
                 actions = self.pick_action(curr_state,res.Q,problem)
                 #Choose action 

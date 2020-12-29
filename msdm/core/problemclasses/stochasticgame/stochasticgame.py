@@ -13,7 +13,7 @@ class StochasticGame(ProblemClass):
     - next state distributions
     """
 
-    def __init__(self, agent_names, memoize=True):
+    def __init__(self, agent_names, memoize=False):
         self._agentNames = agent_names
         if memoize:
             self.next_state_dist = AssignmentCache(self.next_state_dist)
