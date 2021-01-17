@@ -267,7 +267,11 @@ class TabularGridGame(TabularStochasticGame):
         for name1, name2 in combinations(self.agent_names, 2):
             nloc1 = (s[name1]['x'] + ja[name1]['x'], s[name1]['y'] + ja[name1]['y'])
             nloc2 = (s[name2]['x'] + ja[name2]['x'], s[name2]['y'] + ja[name2]['y'])
-            if nloc1 == nloc2:
+            goal_state = False
+            for goal in self.goals:
+                if nloc1 == (goal["x"],goal["y"]) or nloc2 == (goal["x"],goal["y"]):
+                    goal_state = True
+            if nloc1 == nloc2 and not goal_state:
                 jr[name1] += self.collision_cost
                 jr[name2] += self.collision_cost
 

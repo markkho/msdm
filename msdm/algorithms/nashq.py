@@ -27,6 +27,8 @@ class NashQLearner(TabularMultiAgentQLearner):
                         show_progress=show_progress,alg_name=alg_name,render=render,render_from=render_from)
     
     def update(self,agent_name,actions,q_values,joint_rewards,curr_state,next_state,problem):
+        if problem.is_terminal(next_state):
+            return self.lr*joint_rewards[agent_name]
         indiv_actions = {agent:problem.joint_actions(next_state)[agent] for agent in problem.joint_actions(next_state)}
         next_actions = problem.joint_actions(next_state)
         agent_one_actions = list(next_actions[agent_name])
@@ -55,5 +57,5 @@ class NashQLearner(TabularMultiAgentQLearner):
         sample_action_two = agent_two_actions[action_two_index]
         joint_action = {agent_name:sample_action_one,agent_two:sample_action_two}
         q_val = q_values[agent_name][next_state][joint_action]*rand_eq[0][action_one_index]*rand_eq[1][action_two_index]
-        q_del = self.lr*(joint_rewards[agent_name] + self.dr*q_val)
+        q_del = (joint_rewards[agent_name] + self.dr*q_val)
         return q_del

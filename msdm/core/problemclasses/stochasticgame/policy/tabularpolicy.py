@@ -239,8 +239,9 @@ class SingleAgentPolicy(Policy):
     @property 
     def q_matrix(self):
         if self.q_vals == None:
-            print("Q-values not stored for this agent's policy")
-            return 
+            print(f"Q-values not stored for {self._agent_name}'s' policy")
+            self._q_matrix = np.zeros((len(self._state_list),len(self._joint_actions)))
+            return self._q_matrix
         try:
             return self._q_matrix 
         except AttributeError: 

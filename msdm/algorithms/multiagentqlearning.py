@@ -9,7 +9,7 @@ import numpy as np
 import itertools 
 from scipy.special import softmax
 import matplotlib.pyplot as plt
-from copy import copy
+from copy import copy, deepcopy
 import time
 
     
@@ -17,11 +17,14 @@ class TabularMultiAgentQLearner(Learns):
     
     def __init__(self,learning_agents:Iterable,other_policies:dict,num_episodes=200,
                  learning_rate=.1,discount_rate=1.0,epsilon=0.0,
-                 epsilon_decay=1.0,default_q_value=0.0,all_actions=True,
+                 epsilon_decay=1.0,default_q_value=0.0,max_steps=50,all_actions=True,
                  show_progress=False,render=False,render_from=0,alg_name="Q-Learning"):
         self.learning_agents = learning_agents 
         self.other_agents = list(other_policies.keys())
         self.other_policies = other_policies 
+        self.all_agents = [] 
+        self.all_agents.extend(self.learning_agents)
+        self.all_agents.extend(self.other_agents)
         self.num_episodes = num_episodes 
         self.lr = learning_rate 
         self.dr = discount_rate 
@@ -33,6 +36,8 @@ class TabularMultiAgentQLearner(Learns):
         self.epsilon_decay = epsilon_decay
         self.render = render
         self.render_from = render_from
+        self.errors = []
+        self.max_steps = max_steps
         # rendering animation and progress bars don't play nicely together in jupyter lab
         if self.render:
             self.show_progress = False
@@ -98,7 +103,6 @@ class TabularMultiAgentQLearner(Learns):
         # initialize Q values for each agent using q learning
         res = Result()
         res.Q = {agent_name: AssignmentMap() for agent_name in self.learning_agents}
-        
         for state in problem.state_list:
             for agent_name in self.learning_agents:
                 if not self.all_actions:
@@ -113,15 +117,17 @@ class TabularMultiAgentQLearner(Learns):
                     all_joint_actions = [dict(zip(ja_keys, list(v))) for v in itertools.product(*ja_values)]
                     for joint_action in all_joint_actions:
                         res.Q[agent_name][state][joint_action] = self.default_q_value
+                        
         # Adds a progress bar 
         if self.show_progress:
             episodes = tqdm(range(self.num_episodes),desc="Training with " + self.alg_name)
         else:
             episodes = range(self.num_episodes)
-        MAX_STEPS = 50
+            
         for i in episodes:
             curr_state = problem.initial_state_dist().sample()
             curr_step = 0
+            avg_error = 0.0
             if self.render and i >= self.render_from:
                 all_agents = [agent for agent in self.learning_agents]
                 all_agents.extend(self.other_agents)
@@ -129,29 +135,33 @@ class TabularMultiAgentQLearner(Learns):
                 renderer.clear_func(wait=True)
                 renderer.display_func(figure)
                 time.sleep(renderer.interval)
-                
-            while not problem.is_terminal(curr_state) and curr_step < MAX_STEPS:
+            while not problem.is_terminal(curr_state) and curr_step < self.max_steps:
                 # Choose action 
                 actions = self.pick_action(curr_state,res.Q,problem)
-                #Choose action 
                 curr_state,actions,jr,nxt_st = self.step(problem,curr_state,actions)
                 if self.render and i >= self.render_from:
                     if not problem.is_terminal(nxt_st):
                         renderer.render_frame(i,curr_step,res.Q,actions,jr,curr_state,nxt_st,self.eps)
                 # update q values for each agent 
                 for agent_name in self.learning_agents:
-                    q_del = self.update(agent_name,actions,res.Q,jr,curr_state,nxt_st,problem)
+                    new_q = self.update(agent_name,actions,res.Q,jr,curr_state,nxt_st,problem)
                     if not self.all_actions:
-                        res.Q[agent_name][curr_state][actions[agent_name]] = (1-self.lr)*res.Q[agent_name][curr_state][actions[agent_name]] + q_del
+                        old_q = res.Q[agent_name][curr_state][actions[agent_name]]
+                        res.Q[agent_name][curr_state][actions[agent_name]] = (1-self.lr)*res.Q[agent_name][curr_state][actions[agent_name]] + self.lr*new_q
+                        avg_error += abs(old_q - res.Q[agent_name][curr_state][actions[agent_name]])
                     else:
-                        res.Q[agent_name][curr_state][actions] = (1-self.lr)*res.Q[agent_name][curr_state][actions] + q_del
+                        old_q = res.Q[agent_name][curr_state][actions]
+                        res.Q[agent_name][curr_state][actions] = (1-self.lr)*res.Q[agent_name][curr_state][actions] + self.lr*new_q
+                        avg_error += abs(old_q - res.Q[agent_name][curr_state][actions])
                 curr_state = nxt_st
                 curr_step += 1
+            avg_error /= (curr_step*len(self.learning_agents)) 
+            self.errors.append(avg_error)
             self.eps *= self.epsilon_decay
-                
+
         # Converting to dictionary representation of deterministic policy
         pi = self.compute_deterministic_policy(res.Q,problem)
-        
+
         # add in non_learning agents 
         for agent in self.other_agents:
             pi[agent] = self.other_policies[agent]
@@ -165,6 +175,68 @@ class TabularMultiAgentQLearner(Learns):
             plt.close()
         return res
     
+    def plan_on(self,problem: TabularStochasticGame,delta=.0001):
+        # initialize Q values for each agent using q learning
+        res = Result()
+        res.Q = {agent_name: AssignmentMap() for agent_name in self.all_agents}
+        
+        for state in problem.state_list:
+            for agent_name in self.all_agents:
+                if not self.all_actions:
+                    res.Q[agent_name][state] = AssignmentMap()
+                    indiv_actions = list(problem.joint_actions(state)[agent_name])
+                    for action in indiv_actions:
+                        res.Q[agent_name][state][action] = self.default_q_value
+                else:
+                    res.Q[agent_name][state] = AssignmentMap()
+                    joint_actions = problem.joint_actions(state)
+                    ja_keys,ja_values = zip(*joint_actions.items())
+                    all_joint_actions = [dict(zip(ja_keys, list(v))) for v in itertools.product(*ja_values)]
+                    for joint_action in all_joint_actions:
+                        res.Q[agent_name][state][joint_action] = self.default_q_value
+        # Currently does full sweeps of state-action space. Would be nice to add in a function 
+        # as a parameter that determines order/priority of updates
+        q_del = delta
+        while q_del >= delta:
+            q_del = 0.0
+            agent_deltas = {agent:0.0 for agent in self.learning_agents}
+            if self.show_progress:
+                states = tqdm(problem.state_list)
+            else:
+                states = problem.state_list
+            avg_error = 0.0
+            for state in states:
+                for action in problem.joint_action_list:
+                    next_vals = {agent:0.0 for agent in self.learning_agents}
+                    for next_state,prob in problem.next_state_dist(state,action).items(probs=True):
+                        rewards = problem.joint_rewards(state,action,next_state)
+                        for agent in self.learning_agents:
+                            new_q = self.update(agent,action,res.Q,rewards,state,next_state,problem)
+                            next_vals[agent] += prob*new_q
+                    for agent in self.learning_agents:
+                        old_q = res.Q[agent][state][action]
+                        res.Q[agent][state][action] = next_vals[agent]
+                        avg_error += abs(old_q - res.Q[agent][state][action])
+                        if abs(old_q - res.Q[agent][state][action]) > q_del:
+                            q_del = abs(old_q - res.Q[agent][state][action])
+                        if abs(old_q - res.Q[agent][state][action]) > agent_deltas[agent]:
+                            agent_deltas[agent] = abs(old_q - res.Q[agent][state][action])
+            print(agent_deltas)
+            self.errors.append(avg_error/(len(states)*len(problem.joint_action_list)*len(self.learning_agents)))
+        print(f"Planning for {self.alg_name} Complete")
+        # Converting to dictionary representation of deterministic policy
+        pi = self.compute_deterministic_policy(res.Q,problem)
+
+        # add in non_learning agents 
+        for agent in self.other_agents:
+            pi[agent] = self.other_policies[agent]
+            
+        # create result object
+        res.problem = problem
+        res.policy = {}
+        res.policy = res.pi = TabularMultiAgentPolicy(problem, pi,self.dr,show_progress=self.show_progress)
+        return res
+    
     def compute_deterministic_policy(self,q_values,problem):
         """
         Turns the Q-values for each learning agent into a deterministic policy
@@ -176,7 +248,6 @@ class TabularMultiAgentQLearner(Learns):
         outputs: 
         ::pi:: Hashable[learning_agent -> SingleAgentPolicy]
         """
-        init_action_list = problem.joint_actions(problem.initial_state_dist().sample())
         pi = AssignmentMap()
         for agent in q_values:
             pi[agent] = AssignmentMap()
@@ -184,36 +255,40 @@ class TabularMultiAgentQLearner(Learns):
                 pi[agent][state] = AssignmentMap()
                 # Picks randomly among maximum actions 
                 max_val = max(q_values[agent][state].items(),key=lambda k:k[1])[1]
-                max_acts = []
-                for act in q_values[agent][state].items():
-                    if act[1] == max_val:
-                        max_acts.append(act[0])
+                max_acts = []                
+                for act in problem.joint_action_list:
+                    if self.all_actions:
+                        if q_values[agent][state][act] == max_val:
+                            max_acts.append(act)
+                    else:
+                        if q_values[agent][state][act[agent]] == max_val:
+                            max_acts.append(act[agent])
                 max_act = np.random.choice(max_acts)
                 if self.all_actions:
                     max_act = max_act[agent]
-                for action in q_values[agent][state]:
+                    
+                for ai,action in enumerate(problem.joint_action_list):
                     if self.all_actions:
                         if action[agent] == max_act:
                             pi[agent][state][action[agent]] = 1.0
                         else:
                             pi[agent][state][action[agent]] = 0.0
                     else:
-                        if action == max_act:
-                            pi[agent][state][action] = 1.0
+                        if action[agent] == max_act:
+                            pi[agent][state][action[agent]] = 1.0
                         else:
-                            pi[agent][state][action] = 0.0
+                            pi[agent][state][action[agent]] = 0.0
             pi[agent] = SingleAgentPolicy(agent,problem,pi[agent],q_values[agent],self.all_actions)
         return pi 
 
     
     def update(self,agent_name,actions,q_values,joint_rewards,curr_state,next_state,problem):
-        q_del = joint_rewards[agent_name]     
+        if problem.is_terminal(next_state):
+            return joint_rewards[agent_name]
+        if problem.is_terminal(curr_state):
+            return 0.0
+        q_del = joint_rewards[agent_name]
         q_del += self.dr*(max(q_values[agent_name][next_state].items(),key=lambda k:k[1])[1])
-        if not self.all_actions:
-            q_del -= q_values[agent_name][curr_state][actions[agent_name]]
-        else:
-            q_del -= q_values[agent_name][curr_state][actions]
-        q_del *= self.lr
         return q_del 
     
 class Renderer():

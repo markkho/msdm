@@ -25,8 +25,11 @@ class FriendFoeQ(TabularMultiAgentQLearner):
                          alg_name=alg_name,render=render,render_from=render_from)
         self.friends = friends 
         self.foes = foes 
+        self.equilibria = []
     
     def update(self,agent_name,actions,q_values,joint_rewards,curr_state,next_state,problem):
+        if problem.is_terminal(next_state):
+            return self.lr*joint_rewards[agent_name]
         # Pure friend-Q case:
         if len(self.foes[agent_name]) == 0:
             ffq_equilibrium = max(q_values[agent_name][next_state].items(),key=lambda x:x[1])[1]
@@ -58,21 +61,22 @@ class FriendFoeQ(TabularMultiAgentQLearner):
                         joint_action[friend] = action[friend_order[friend]]
                     for foe in foe_order:
                         joint_action[foe] = foe_action[foe_order[foe]]
-                    payoff_matrix[i,j] = q_vals[joint_action]
-
+                    payoff_matrix[i][j] = q_vals[joint_action]
             cvxopt.solvers.options['show_progress'] = False
-            payoff_matrix = cvxopt.matrix(payoff_matrix)    
-    #         pi = variable(len(friendly_actions),"policy")
-            pi = variable(len(foe_actions),"policy")
+            cvx_payoff_matrix = cvxopt.matrix(payoff_matrix.T)    
+            pi = variable(len(friendly_actions),"policy")
             c1 = (cvxopt.modeling.sum(pi) == 1.0)
             c2 = (pi >= 0.0)
             c4 = (pi <= 1.0)
             minimax_value = variable(1,"minimax_value")
-            c3 = (minimax_value >= payoff_matrix*pi)
+            c3 = (minimax_value >= cvx_payoff_matrix*pi)
             constraints = [c1,c2,c3,c4]
-            lp = op(minimax_value,constraints)
+            lp = op(-minimax_value,constraints)
             lp.solve()
-            ffq_equilibrium = float(lp.objective.value()[0])
-        q_del = self.lr*(joint_rewards[agent_name] + self.dr*ffq_equilibrium)
+            policy = np.array(pi.value)
+            expected_val = np.amin(np.dot(payoff_matrix.T,policy))
+            ffq_equilibrium = expected_val
+            self.equilibria.append((ffq_equilibrium,next_state))
+        q_del = (joint_rewards[agent_name] + self.dr*ffq_equilibrium)
         return q_del 
     
