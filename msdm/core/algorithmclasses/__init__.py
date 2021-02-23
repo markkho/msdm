@@ -1,5 +1,9 @@
 from abc import ABC, abstractmethod
+from typing import Iterable
 from msdm.core.problemclasses.problemclass import ProblemClass
+from msdm.core.problemclasses.stochasticgame import TabularStochasticGame
+from msdm.core.assignment.assignmentmap import AssignmentMap
+from msdm.core.problemclasses.stochasticgame.policy.tabularpolicy import TabularMultiAgentPolicy,SingleAgentPolicy
 
 class Algorithm(ABC):
     """Abstract superclass for all algorithms"""
@@ -26,3 +30,4 @@ class Learns(Algorithm):
     @abstractmethod
     def train_on(self, problem: ProblemClass) -> Result:
         pass
+    

@@ -1,7 +1,6 @@
 import unittest
 import numpy as np
 from msdm.domains import GridWorld
-from msdm.domains.gridgame.gridgame import GridGame
 from msdm.domains.gridgame.tabulargridgame import TabularGridGame
 from msdm.domains import StickyActionMDP
 from msdm.algorithms import VectorizedValueIteration
@@ -17,7 +16,7 @@ class TestCase(unittest.TestCase):
             #  # # #  G1 #  # # #
         """.strip()
 
-        gg = GridGame(gameString)
+        gg = TabularGridGame(gameString)
         s = gg.initial_state_dist().sample()
         a = {'A0': {'x': 1, 'y': 0}, 'A1': {'x': -1, 'y': 0}}
         nsdist = gg.next_state_dist(s, a)
@@ -37,9 +36,10 @@ class TestCase(unittest.TestCase):
         """.strip()
         gg = TabularGridGame(gamestring)
         init_state = gg.initial_state_dist().sample()
-        action = gg.joint_action_dist(init_state).sample()
-        next_state = gg.next_state_dist(init_state,action).sample()
-        rewards = gg.joint_rewards(init_state,action,next_state)
+        joint_actions = gg.joint_actions(init_state)
+        joint_action = {agent: next(actions) for agent, actions in joint_actions.items()}
+        next_state = gg.next_state_dist(init_state,joint_action).sample()
+        rewards = gg.joint_rewards(init_state,joint_action,next_state)
         
 if __name__ == '__main__':
     unittest.main()

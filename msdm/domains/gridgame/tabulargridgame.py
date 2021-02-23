@@ -1,8 +1,8 @@
 from functools import reduce
-from itertools import combinations
+from itertools import combinations, cycle
 import json, copy
 import numpy as np
-
+import matplotlib.pyplot as plt 
 from msdm.core.utils.gridstringutils import string_to_element_array
 from msdm.core.problemclasses.stochasticgame import TabularStochasticGame
 from msdm.core.distributions import DiscreteFactorTable as Pr
@@ -32,8 +32,10 @@ class TabularGridGame(TabularStochasticGame):
                      ( 'u', 'below')
                  ),
                  goal_reward=10,
+                 collision_cost=0,
                  step_cost=-1,
-                 fence_success_prob=.5
+                 fence_success_prob=.5,
+                 collision_prob=None
                  ):
         # parse game string and convert to initial state game representation
         parseParams = {"colsep": None, "rowsep": "\n", "elementsep": "."}
@@ -102,20 +104,25 @@ class TabularGridGame(TabularStochasticGame):
         self.obstacles = sorted(obstacles, key=lambda g: json.dumps(g, sort_keys=True))
         self.walls = sorted(walls, key=lambda g: json.dumps(g, sort_keys=True))
         self.fences = sorted(fences, key=lambda g: json.dumps(g, sort_keys=True))
-        self.fenceSuccessProb = fence_success_prob
-
-        super().__init__(agent_names=sorted([ag['name'] for ag in agents]))
+        self.fence_success_prob = fence_success_prob
+        self.collision_prob = collision_prob
+        self.height = len(parsed)
+        self.width = len(parsed[0])
+        self.agents = agents 
+        self.collision_prob = collision_prob
+        super(TabularStochasticGame,self).__init__(agent_names=sorted([ag['name'] for ag in agents]))
 
         self._initState = initState
 
         #set up rewards
-        self.goalReward = goal_reward
-        self.stepCost = step_cost
+        self.goal_reward = goal_reward
+        self.step_cost = step_cost
+        self.collision_cost = collision_cost
 
     def initial_state_dist(self):
         return Pr([self._initState,])
-
-    def joint_action_dist(self, s):
+    
+    def joint_actions(self,s):
         actions = [
             {'x': 0, 'y': 0},
             {'x': 1, 'y': 0},
@@ -123,14 +130,10 @@ class TabularGridGame(TabularStochasticGame):
             {'x': 0, 'y': 1},
             {'x': 0, 'y': -1},
         ]
-        adists = []
+        action_dict = {}
         for agentname in self.agent_names:
-            adist = Pr([{agentname: action} for action in actions])
-            adists.append(adist)
-        return reduce(lambda a, b: a & b, adists)
-    
-    def joint_actions(self,s):
-        pass 
+            action_dict[agentname] = (action for action in actions)
+        return action_dict
 
     def is_absorbing(self, s):
         for an in self.agent_names:
@@ -142,6 +145,7 @@ class TabularGridGame(TabularStochasticGame):
 
     def is_terminal(self, s):
         return s.get('isTerminal', False)
+
 
     def next_state_dist(self, s, ja):
         if self.is_terminal(s):
@@ -157,14 +161,17 @@ class TabularGridGame(TabularStochasticGame):
             # action effect
             EPS = .00001 # minor hack to handle agent collisions
             agentaction = ja[an]
-            agent['x'] += agentaction['x']
-            agent['y'] += agentaction['y']
+
+            # assumes you can't leave the grid
+            agent['x'] = max(min(agent['x'] + agentaction['x'], self.width-1), 0)
+            agent['y'] = max(min(agent['y'] + agentaction['y'], self.height-1), 0)
+
             agentMove = Pr([{an:s[an]}, {an: agent}], probs=[EPS, 1-EPS])
             #fence-agent effects
             for fence in self.fences:
                 if (self.same_location(s[an], fence['start'])) and self.same_location(agent, fence['end']):
                     fenceEffect = Pr([{an: s[an]}])
-                    agentMove = agentMove*self.fenceSuccessProb | fenceEffect*(1 - self.fenceSuccessProb)
+                    agentMove = agentMove * self.fence_success_prob | fenceEffect * (1 - self.fence_success_prob)
 
             #agent-obstacle interactions
             for obs in self.obstacles:
@@ -185,14 +192,48 @@ class TabularGridGame(TabularStochasticGame):
         #calculate agent interactions
         interactions = []
         interactionLogits = []
+        collisions = []
         for ns in agentDist.support:
             ns = copy.deepcopy(ns)
             logit = 0
             for an0, an1 in combinations(self.agent_names, r=2):
-                if self.same_location(ns[an0], ns[an1]):
+                skip = False
+                for goal in self.goals:
+                    if an0 in goal["owners"] or an1 in goal["owners"]:
+                        if self.same_location(goal,ns[an0]) or self.same_location(goal,ns[an1]):
+                            skip = True
+                if not skip:
+                    # agents cant occupy the same location
+                    if self.same_location(ns[an0], ns[an1]):
+                        collisions.append((an0, an1))
+                        logit += -np.inf
+                    # agents can't swap locations
+                    if self.same_location(ns[an0], s[an1]) and self.same_location(ns[an1], s[an0]):
+                        logit += -np.inf
+                    if self.collision_prob is not None and self.collision_prob != .5:
+                        # NOTE: for this to properly handle collisions, it needs to split into two possible outcomes:
+                        # one where each agent gets into the center tile
+                        raise NotImplementedError("Currently does not handle probabilistic collisions!")
+                # agents can't swap locations
+                if self.same_location(ns[an0], s[an1]) and self.same_location(ns[an1], s[an0]):
                     logit += -np.inf
             interactions.append(ns)
             interactionLogits.append(logit)
+
+        if self.collision_prob is not None and self.collision_prob != .5:
+            # NOTE: for this to properly handle collisions, it needs to split into two possible outcomes:
+            # one where each agent gets into the center tile
+            raise NotImplementedError("Currently does not handle probabilistic collisions!")
+
+        if self.collision_prob is None: #HACK - if there was any possibility of collision, nobody moves
+            new_interaction_logits = []
+            for ns, nslog in zip(interactions, interactionLogits):
+                for an0, an1 in collisions:
+                    if (ns[an0] != s[an0]) or (ns[an1] != s[an1]):
+                        nslog = -np.inf
+                new_interaction_logits.append(nslog)
+            interactionLogits = new_interaction_logits
+
         interactionEffects = Pr(interactions, logits=interactionLogits)
         return agentDist & interactionEffects
 
@@ -215,9 +256,125 @@ class TabularGridGame(TabularStochasticGame):
             for agentName in goal['owners']:
                 agent = ns[agentName]
                 if self.same_location(goal, agent):
-                    jr[agentName] += self.goalReward
+                    jr[agentName] += self.goal_reward
 
         for agentName, a in ja.items():
             if a != {'x': 0, 'y': 0}:
-                jr[agentName] += self.stepCost
+                jr[agentName] += self.step_cost
+
+        # collision cost
+        # HACK semantics are subtle - this simply looks at pairwise actions
+        for name1, name2 in combinations(self.agent_names, 2):
+            nloc1 = (s[name1]['x'] + ja[name1]['x'], s[name1]['y'] + ja[name1]['y'])
+            nloc2 = (s[name2]['x'] + ja[name2]['x'], s[name2]['y'] + ja[name2]['y'])
+            goal_state = False
+            for goal in self.goals:
+                if nloc1 == (goal["x"],goal["y"]) or nloc2 == (goal["x"],goal["y"]):
+                    goal_state = True
+            if nloc1 == nloc2 and not goal_state:
+                jr[name1] += self.collision_cost
+                jr[name2] += self.collision_cost
+
         return jr
+    
+    def plot(self,
+             all_elements=False,
+             figure=None,
+             ax=None,
+             figsize=None,
+             figsize_multiplier=1,
+             featurecolors=None,
+             plot_walls=True,
+             plot_initial_states=True,
+             plot_fences=True,
+             plot_absorbing_states=True
+             ):
+        if all_elements:
+            plot_initial_states = True
+            plot_absorbing_states = True
+        from msdm.domains.gridgame.plotting import GridGamePlotter
+        if featurecolors is None:
+            
+            featurecolors = {
+                "fence": "brown",
+                "obstacle": "black",
+                "wall": "gray"
+            }
+        if ax is None:
+            if figsize is None:
+                figsize = (self.width * figsize_multiplier,
+                           self.height * figsize_multiplier)
+            fig, ax = plt.subplots(1, 1, figsize=figsize)
+
+        gwp = GridGamePlotter(gg=self, ax=ax)
+        gwp.plot_features(featurecolors=featurecolors)
+        if plot_walls:
+            gwp.plot_walls()
+        if plot_initial_states:
+            gwp.plot_initial_states(featurecolors=featurecolors)
+        if plot_absorbing_states:
+            gwp.plot_absorbing_states(featurecolors=featurecolors)
+        if plot_fences:
+            gwp.plot_fences()
+        gwp.plot_outer_box()
+        return gwp
+      
+    def animate(self,
+             all_elements=False,
+             figure=None,
+             ax=None,
+             figsize=None,
+             figsize_multiplier=1,
+             featurecolors=None,
+             plot_walls=True,
+             plot_initial_states=True,
+             plot_fences=True,
+             plot_absorbing_states=True
+             ):
+        
+        if all_elements:
+            plot_initial_states = True
+            plot_absorbing_states = True
+        from msdm.domains.gridgame.animating import GridGameAnimator
+        
+        if featurecolors is None:    
+            featurecolors = {
+                "fence": "brown",
+                "obstacle": "black",
+                "wall": "gray"
+            }
+            
+                
+        if ax is None:
+            if figure is not None:
+                raise Exception("Please pass in both figure and axis if frame is predefined")
+            if figsize is None:
+                figsize = (self.width * figsize_multiplier,
+                           self.height * figsize_multiplier)
+            fig, ax = plt.subplots(1, 1, figsize=figsize)
+
+        gwp = GridGameAnimator(gg=self,figure=figure, ax=ax)
+        gwp.plot_features(featurecolors=featurecolors)
+        if plot_walls:
+            gwp.plot_walls()
+        if plot_initial_states:
+            gwp.plot_initial_states()
+        if plot_absorbing_states:
+            gwp.plot_absorbing_states()
+        if plot_fences:
+            gwp.plot_fences()
+        gwp.plot_outer_box()
+
+        return gwp
+        
+    def full_initial_state(self):
+        return {
+            "agents": self._initState,
+            "goals": self.goals,
+            "obstacles": self.obstacles,
+            "walls": self.walls,
+            "fences": self.fences,
+            "fence_success_prob": self.fence_success_prob,
+            "height": self.height,
+            "width": self.width
+        }
