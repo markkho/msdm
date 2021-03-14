@@ -55,6 +55,7 @@ class VectorizedValueIteration(Plans):
         vf = AssignmentMap([(s, vi) for s, vi in zip(mdp.state_list, v)])
         res.valuefunc = res.V = vf
         res._qvaluemat = q
+        res.iterations = i
         qf = AssignmentMap()
         for si, s in enumerate(mdp.state_list):
             qf[s] = AssignmentMap()
