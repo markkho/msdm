@@ -140,9 +140,6 @@ class GridWorld(TabularMarkovDecisionProcess):
     def initial_state_dist(self) -> DiscreteFactorTable:
         return DiscreteFactorTable([s for s in self.initial_states])
 
-    def __and__(self, other):
-        return ANDGridWorld(self, other)
-
     def plot(self,
              all_elements=False,
              ax=None,
@@ -179,3 +176,9 @@ class GridWorld(TabularMarkovDecisionProcess):
         gwp.plot_outer_box()
 
         return gwp
+
+    def hash_state(self, s):
+        return s['x'], s['y']
+
+    def hash_action(self, a):
+        return a['dx'], a['dy']

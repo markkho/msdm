@@ -1,11 +1,13 @@
 import numpy as np
 import copy
+import inspect
 from msdm.core.problemclasses.mdp import MarkovDecisionProcess
 from msdm.core.problemclasses.mdp import TabularPolicy
 from msdm.core.problemclasses.mdp.policy.partialpolicy import PartialPolicy
 from msdm.core.assignment import DefaultAssignmentMap, \
     AssignmentMap
 from msdm.core.algorithmclasses import Plans, Result
+from msdm.core.utils.hashdictionary import HashDictionary, DefaultHashDictionary
 
 def iter_dist_prob(dist):
     '''
@@ -49,13 +51,17 @@ class LRTDP(Plans):
             mdp, heuristic=self.heuristic, iterations=self.iterations
         )
         res = self.res
-        res.policy = AssignmentMap()
-        res.Q = AssignmentMap()
+        res.policy = mdp.state_action_map()
+        res.Q = mdp.state_action_map()
+        # res.policy = HashDictionary(mdp.hash_state)
+        # res.Q = HashDictionary(mdp.hash_state)
         for s in sum(self.res.trials, []):
             if s in res.policy:
                 continue
-            res.policy[s] = AssignmentMap([(self.policy(mdp, s), 1)])
-            res.Q[s] = AssignmentMap()
+
+            # res.policy[s] = HashDictionary(mdp.hash_action)
+            res.policy[s][self.policy(mdp, s)] = 1
+            # res.Q[s] = HashDictionary(mdp.hash_action)
             for a in mdp.actions(s):
                 res.Q[s][a] = self.Q(mdp, s, a)
         res.policy = PartialPolicy(res.policy)
@@ -64,60 +70,30 @@ class LRTDP(Plans):
         self.res = None
         return res
 
-    def _bellman_update(self, mdp, s):
-        '''
-        Following Bonet & Geffner 2003, we only explicitly store value
-        and compute Q values and the policy from it, important in computing
-        the residual in _check_solved().
-        '''
-        self.res.V[s] = max(self.Q(mdp, s, a) for a in mdp.actions(s))
-
-    def Q(self, mdp, s, a):
-        q = 0
-        for ns, prob in iter_dist_prob(mdp.next_state_dist(s, a)):
-            future = 0
-            if not mdp.is_terminal(ns):
-                future = self.res.V[ns]
-            q += prob * (mdp.reward(s, a, ns) + future)
-        return q
-
-    def policy(self, mdp, s):
-        if s in self.res.action_orders:
-            action_list = self.res.action_orders[s]
-        else:
-            if self.randomize_action_order:
-                aa = mdp.actions(s)
-                action_list = [aa[i] for i in np.random.permutation(len(aa))]
-            else:
-                action_list = mdp.actions(s)
-            self.res.action_orders[s] = action_list
-        return max(action_list, key=lambda a: self.Q(mdp, s, a))
-
-    def expected_one_step_reward_heuristic(self, mdp):
-        '''
-        This admissible heuristic is a generally applicable one.
-        The heuristic value for a state is the best one-step reward.
-        '''
-        return lambda s: 0 if mdp.is_terminal(s) else max(
-            sum(
-                prob * mdp.reward(s, a, ns)
-                for ns, prob in iter_dist_prob(mdp.next_state_dist(s, a))
-            )
-            for a in mdp.action_dist(s).support
-        )
-
     def lrtdp(self, mdp, heuristic=None, iterations=None):
         # Ghallab, Nau, Traverso: Algorithm 6.17
         if heuristic is None:
             heuristic = lambda s: 0
 
-        self.res.V = DefaultAssignmentMap(heuristic)
-        self.res.action_orders = AssignmentMap()
+        self.res.V = mdp.state_map(default_value=heuristic)
+        # self.res.V = DefaultHashDictionary(
+        #     default_value=heuristic,
+        #     hash_function=mdp.hash_state
+        # )
+        self.res.action_orders = mdp.state_map()
+
+        # self.res.action_orders = HashDictionary(
+        #     hash_function=mdp.hash_state
+        # )
         self.res.trials = []
         self.res.trials_solved = []
 
         # Keeping track of "labels": which states have been solved
-        self.res.solved = DefaultAssignmentMap(lambda: False)
+        self.res.solved = mdp.state_map(default_value=lambda: False)
+        # self.res.solved = DefaultHashDictionary(
+        #     default_value=lambda: False,
+        #     hash_function=mdp.hash_state
+        # )
 
         for _ in range(iterations):
             if all(self.res.solved[s] for s in mdp.initial_state_dist().support):
@@ -168,3 +144,46 @@ class LRTDP(Plans):
                 s = closed.pop()
                 self._bellman_update(mdp, s)
         return flag
+
+    def _bellman_update(self, mdp, s):
+        '''
+        Following Bonet & Geffner 2003, we only explicitly store value
+        and compute Q values and the policy from it, important in computing
+        the residual in _check_solved().
+        '''
+        self.res.V[s] = max(self.Q(mdp, s, a) for a in mdp.actions(s))
+
+    def Q(self, mdp, s, a):
+        q = 0
+        for ns, prob in iter_dist_prob(mdp.next_state_dist(s, a)):
+            future = 0
+            if not mdp.is_terminal(ns):
+                future = self.res.V[ns]
+            q += prob * (mdp.reward(s, a, ns) + future)
+        return q
+
+    def policy(self, mdp, s):
+        if s in self.res.action_orders:
+            action_list = self.res.action_orders[s]
+        else:
+            if self.randomize_action_order:
+                aa = mdp.actions(s)
+                action_list = [aa[i] for i in np.random.permutation(len(aa))]
+            else:
+                action_list = mdp.actions(s)
+            self.res.action_orders[s] = action_list
+        return max(action_list, key=lambda a: self.Q(mdp, s, a))
+
+    def expected_one_step_reward_heuristic(self, mdp):
+        '''
+        This admissible heuristic is a generally applicable one.
+        The heuristic value for a state is the best one-step reward.
+        '''
+        return lambda s: 0 if mdp.is_terminal(s) else max(
+            sum(
+                prob * mdp.reward(s, a, ns)
+                for ns, prob in iter_dist_prob(mdp.next_state_dist(s, a))
+            )
+            for a in mdp.action_dist(s).support
+        )
+
