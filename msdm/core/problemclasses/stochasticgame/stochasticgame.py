@@ -3,7 +3,6 @@ from abc import abstractmethod
 
 from msdm.core.problemclasses.problemclass import ProblemClass
 from msdm.core.distributions import Distribution
-from msdm.core.assignment.assignmentcache import AssignmentCache
 
 class StochasticGame(ProblemClass):
     """
@@ -13,15 +12,9 @@ class StochasticGame(ProblemClass):
     - next state distributions
     """
 
-    def __init__(self, agent_names, memoize=False):
+    def __init__(self, agent_names):
         self._agentNames = agent_names
-        if memoize:
-            self.next_state_dist = AssignmentCache(self.next_state_dist)
-            self.joint_rewards = AssignmentCache(self.joint_rewards)
-            self.joint_actions = AssignmentCache(self.joint_actions)
-            self.initial_state_dist = AssignmentCache(self.initial_state_dist)
-            self.is_terminal = AssignmentCache(self.is_terminal)
-        
+
     @property
     def agent_names(self):
         return self._agentNames
