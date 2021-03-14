@@ -3,9 +3,7 @@ import json
 from typing import Iterable
 from msdm.core.utils.gridstringutils import  string_to_element_array
 
-from msdm.core.problemclasses.mdp import \
-    TabularMarkovDecisionProcess, \
-    ANDMarkovDecisionProcess
+from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess
 from msdm.core.distributions import DiscreteFactorTable
 from msdm.core.assignment import \
     AssignmentMap as Dict, AssignmentSet as Set
@@ -181,24 +179,3 @@ class GridWorld(TabularMarkovDecisionProcess):
         gwp.plot_outer_box()
 
         return gwp
-
-
-class ANDGridWorld(ANDMarkovDecisionProcess, GridWorld):
-    def __init__(self, mdp1, mdp2):
-        assert (mdp1.height == mdp2.height) and (mdp1.width == mdp2.width)
-        assert (mdp1.action_list == mdp2.action_list)
-        ANDMarkovDecisionProcess.__init__(self, mdp1, mdp2)
-
-        # this is mostly for plotting
-        self._width = mdp1._width
-        self._height = mdp1._height
-        self._walls = sorted(list(Set(mdp1._walls) | Set(mdp2._walls)), key=dictToStr)
-        self._initStates = sorted(list(Set(mdp1._initStates) | Set(mdp2._initStates)), key=dictToStr)
-        self._absorbingStates = sorted(list(Set(mdp1._absorbingStates) | Set(mdp2._absorbingStates)), key=dictToStr)
-        self._actions = sorted(list(Set(mdp1._actions) | Set(mdp2._actions)), key=dictToStr)
-        self._states = sorted(list(Set(mdp1._states) | Set(mdp2._states)), key=dictToStr)
-
-        #store as strings of features
-        locFeatures = mdp1._locFeatures.merge(mdp2._locFeatures)
-        locFeatures = [(k, mdp1._locFeatures.get(k, "")+mdp2._locFeatures.get(k, "")) for k, fs in locFeatures.items()]
-        self._locFeatures = Dict(locFeatures)
