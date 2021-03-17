@@ -6,12 +6,17 @@ mainly for cog sci research.
 
 ## Installation
 
+### Installing from GitHub
+```bash
+$ pip install --upgrade git+https://github.com/markkho/msdm.git
+```
+
 ### Installing the package in edit mode
 
 After downloading, go into the folder and install the package locally
 (with a symlink so its updated as source file changes are made):
 
-```
+```bash
 $ pip install -e .
 ```
 
