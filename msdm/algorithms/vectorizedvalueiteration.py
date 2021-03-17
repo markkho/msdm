@@ -26,6 +26,7 @@ class VectorizedValueIteration(Plans):
 
         #available actions - add -inf if it is not available
         aa = am.copy()
+        assert np.all(aa[np.nonzero(aa)] == 1) # If this is true, then the next line is unnecessary.
         aa[np.nonzero(aa)] = 1
         aa = np.log(aa)
         terminal_sidx = np.where(1 - nt)[0]
@@ -43,6 +44,8 @@ class VectorizedValueIteration(Plans):
         if self.entreg:
             pi = softmax((1 / self.temp) * q, axis=-1)
         else:
+            # This ensures we assign equal probability to actions that result
+            # in the same q-values.
             pi = np.log(np.zeros_like(q))
             pi[q == np.max(q, axis=-1, keepdims=True)] = 1
             pi = softmax(pi, axis=-1)
