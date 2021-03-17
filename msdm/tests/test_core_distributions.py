@@ -1,9 +1,8 @@
 import unittest
 import numpy as np
-
 import pandas as pd
-
-from msdm.core.distributions import DiscreteFactorTable as Pr
+from scipy.special import softmax
+from msdm.core.distributions import DiscreteFactorTable as Pr, Multinomial
 
 def toDF(p):
     df = pd.DataFrame(p.support)
@@ -13,7 +12,44 @@ def toDF(p):
 
 np.seterr(divide='ignore')
 
-class LAOStarTestCase(unittest.TestCase):
+class DistributionTestCase(unittest.TestCase):
+    def test_basics(self):
+        cls = Multinomial
+
+        dist = cls({0: 0, 1: 1}) # Can construct with a logit dict
+        assert dist == cls([0, 1], logits=[0, 1]) # or explicitly
+
+        # Per Python convention for repr, we ensure we can evaluate to the same.
+        assert eval(repr(dist)) == dist
+
+        # Testing close but not identical ones.
+        dist_close = cls([0, 1], logits=[0, 1.000001])
+        assert dist != dist_close
+        assert dist.isclose(dist_close)
+
+        # Testing case where logits differ but describe same probability dist
+        dist_logit_fixed_dist = cls([0, 1], logits=[100, 101])
+        assert dist != dist_close
+        assert dist.isclose(dist_close)
+
+        # Testing case where keys are out of order
+        dist_logit_fixed_dist = cls([1, 0], logits=[1, 0])
+        assert dist != dist_close
+        assert dist.isclose(dist_close)
+
+        # Can do isclose to probabilities
+        assert dist.isclose(cls([0, 1], probs=softmax([1, 2])))
+
+        # Testing uniform distribution
+        assert cls([0, 1, 2]).isclose(cls([0, 1, 2], logits=[1, 1, 1]))
+
+    def test_sample(self):
+        for cls in [Multinomial, Pr]:
+            np.random.seed(42)
+            assert cls([]).sample() is None
+            assert cls([0]).sample() == 0
+            assert {cls([0, 1]).sample() for _ in range(20)} == {0, 1}
+
     def test_independent_conjunction(self):
         # Conjunction (independent variables)
         pA = Pr([{'a': 0}, {'a': 1}], probs=[.9, .1])
