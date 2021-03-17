@@ -2,6 +2,7 @@ from typing import Mapping
 import numpy as np
 
 from msdm.core.problemclasses.mdp.policy.policy import Policy
+from msdm.core.problemclasses.mdp.policy.deterministic_policy import DeterministicPolicy
 from msdm.core.problemclasses.mdp.mdp import MarkovDecisionProcess
 
 from msdm.core.assignment.assignmentmap import AssignmentMap
@@ -54,3 +55,5 @@ class TabularPolicy(Policy):
         self._policymat = pi
         return self._policymat
 
+class DeterministicTabularPolicy(TabularPolicy, DeterministicPolicy):
+    pass

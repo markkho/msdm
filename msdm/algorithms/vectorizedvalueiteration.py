@@ -1,7 +1,7 @@
 from scipy.special import softmax, logsumexp
 import numpy as np
 from msdm.core.problemclasses.mdp import TabularPolicy, \
-    TabularMarkovDecisionProcess
+    TabularMarkovDecisionProcess, DeterministicTabularPolicy
 from msdm.core.algorithmclasses import Plans, Result
 from msdm.core.assignment import AssignmentMap
 
@@ -50,7 +50,8 @@ class VectorizedValueIteration(Plans):
         # create result object
         res = Result()
         res.mdp = mdp
-        res.policy = res.pi = TabularPolicy(mdp.state_list, mdp.action_list, policy_matrix=pi)
+        cls = TabularPolicy if self.entreg else DeterministicTabularPolicy
+        res.policy = res.pi = cls(mdp.state_list, mdp.action_list, policy_matrix=pi)
         res._valuevec = v
         vf = AssignmentMap([(s, vi) for s, vi in zip(mdp.state_list, v)])
         res.valuefunc = res.V = vf
