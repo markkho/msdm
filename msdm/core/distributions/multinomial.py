@@ -10,18 +10,27 @@ logger.info("Ignoring division by zero errors")
 from msdm.core.distributions.distributions import Distribution
 
 class Multinomial(Distribution):
-    def __init__(self, support, logits=None, probs=None):
-        if (probs is None) and (logits is None):
-            logits = np.zeros(len(support))
+    def __init__(self, support, logits=None, probs=None, scores=None):
+        if logits is None:
+            logits = scores
+        if isinstance(support, dict):
+            assert logits is None
+            assert probs is None
+            support, logits = zip(*support.items())
         if len(support) == 0:
             probs = []
             logits = []
+        if (probs is None) and (logits is None):
+            logits = (0,)*len(support)
+            probs = (1/len(support),)*len(support)
         if probs is None:
+            assert len(support) == len(logits)
             if np.sum(logits) == -np.inf:
                 probs = np.zeros(len(support))
             else:
                 probs = softmax(logits)
         if logits is None:
+            assert len(support) == len(probs)
             logits = np.log(probs)
 
         self._probs = tuple(probs)
@@ -62,6 +71,8 @@ class Multinomial(Distribution):
     def sample(self):
         if len(self.support) == 0:
             return
+        if len(self.support) == 1:
+            return self.support[0]
         return self.support[np.random.choice(len(self.support), p=self._probs)]
 
     def items(self, probs=False):
@@ -75,12 +86,9 @@ class Multinomial(Distribution):
     def __len__(self):
         return len(self.support)
 
-    def __str__(self):
-        e_l = ", ".join([f"{e}: {l:.2f}" for e, l in self.items()])
-        return f"{self.__class__.__name__}{{{e_l}}}"
-
     def __repr__(self):
-        return str(self)
+        e_l = ", ".join([f"{e}: {l:.2f}" for e, l in self.items()])
+        return f"{self.__class__.__name__}({{{e_l}}})"
 
     def __and__(self, other: "Multinomial"):
         """Conjunction"""
@@ -127,3 +135,15 @@ class Multinomial(Distribution):
         """
         raise NotImplementedError
 
+    def __eq__(self, other):
+        return self.support == other.support and self.logits == other.logits
+
+    def isclose(self, other):
+        mapped = {
+            s: p
+            for s, p in self.items(probs=True)
+        }
+        for s, p in other.items(probs=True):
+            if not np.isclose(p, mapped[s]):
+                return False
+        return True

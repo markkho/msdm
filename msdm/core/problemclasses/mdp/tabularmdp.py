@@ -62,8 +62,8 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         for si, s in enumerate(ss):
             for ai, a in enumerate(aa):
                 nsdist = self.next_state_dist(s, a)
-                for nsi, ns in enumerate(ss):
-                    tf[si, ai, nsi] = nsdist.prob(ns)
+                for ns, nsp in nsdist.items(probs=True):
+                    tf[si, ai, ss.index(ns)] = nsp
         self._tfmatrix = tf
         return self._tfmatrix
 
@@ -99,11 +99,9 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         for si, s in enumerate(ss):
             for ai, a in enumerate(aa):
                 nsdist = self.next_state_dist(s, a)
-                for nsi, ns in enumerate(ss):
-                    if ns not in nsdist.support:
-                        continue
-                    r = self.reward(s, a, ns)
-                    rf[si, ai, nsi] = r
+                for ns in nsdist.support:
+                    nsi = ss.index(ns)
+                    rf[si, ai, nsi] = self.reward(s, a, ns)
         self._rfmatrix = rf
         return self._rfmatrix
 
@@ -190,4 +188,3 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
 class ANDTabularMarkovDecisionProcess(ANDMarkovDecisionProcess,
                                       TabularMarkovDecisionProcess):
     pass
-

@@ -21,17 +21,24 @@ class DiscreteFactorTable(Distribution):
     def __init__(self, support, logits=None, probs=None, scores=None):
         if scores is None:
             scores = logits
-        if (probs is None) and (scores is None):
-            scores = np.zeros(len(support))
+        if isinstance(support, dict):
+            assert logits is None
+            assert probs is None
+            support, scores = zip(*support.items())
         if len(support) == 0:
             probs = []
             scores = []
+        if (probs is None) and (scores is None):
+            scores = (0,)*len(support)
+            probs = (1/len(support),)*len(support)
         if probs is None:
+            assert len(support) == len(scores)
             if np.sum(scores) == -np.inf:
                 probs = np.zeros(len(support))
             else:
                 probs = softmax(scores)
         if scores is None:
+            assert len(support) == len(probs)
             scores = np.log(probs)
 
         self._probs = tuple(probs)
@@ -76,6 +83,8 @@ class DiscreteFactorTable(Distribution):
     def sample(self):
         if len(self.support) == 0:
             return
+        if len(self.support) == 1:
+            return self.support[0]
         return self.support[np.random.choice(len(self.support), p=self._probs)]
 
     def items(self, probs=False):
@@ -276,9 +285,19 @@ class DiscreteFactorTable(Distribution):
         """
         raise NotImplementedError
 
-    def __str__(self):
-        e_l = ", ".join([f"{e}: {l:.2f}" for e, l in self.items()])
-        return f"{self.__class__.__name__}{{{e_l}}}"
-
     def __repr__(self):
-        return str(self)
+        e_l = ", ".join([f"{e}: {l:.2f}" for e, l in self.items()])
+        return f"{self.__class__.__name__}({{{e_l}}})"
+
+    def __eq__(self, other):
+        return self.support == other.support and self.logits == other.logits
+
+    def isclose(self, other):
+        mapped = {
+            s: p
+            for s, p in self.items(probs=True)
+        }
+        for s, p in other.items(probs=True):
+            if not np.isclose(p, mapped[s]):
+                return False
+        return True

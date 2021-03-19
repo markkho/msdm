@@ -51,7 +51,7 @@ class LRTDP(Plans):
         res = self.res
         res.policy = AssignmentMap()
         res.Q = AssignmentMap()
-        for s in sum(self.res.trials, []):
+        for s in sum(self.res.trials, []) + [state for state, solved in res.solved.items() if solved]:
             if s in res.policy:
                 continue
             res.policy[s] = AssignmentMap([(self.policy(mdp, s), 1)])

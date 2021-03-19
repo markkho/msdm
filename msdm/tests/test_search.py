@@ -2,7 +2,7 @@ import unittest
 
 from msdm.algorithms import BreadthFirstSearch, AStarSearch
 from msdm.domains import GridWorld
-from msdm.core.problemclasses.mdp import DeterministicShortestPathProblem
+from msdm.tests.domains import Counter
 
 def deterministic(dist):
     '''
@@ -35,6 +35,10 @@ class SearchTestCase(unittest.TestCase):
     def test_bfs(self):
         res = BreadthFirstSearch().plan_on(gw)
         assert [(s['x'], s['y']) for s in res.path] == [(0, 2), (1, 2), (2, 2), (-1, -1)]
+
+    def test_deterministic_shortest_path(self):
+        res = BreadthFirstSearch().plan_on(Counter(3))
+        assert res.path == [0, 1, 2, 3]
 
     def test_astarsearch(self):
         soln1 = [(0, 2), (0, 3), (0, 4), (1, 4), (2, 4), (2, 3), (2, 2), (-1, -1)]
