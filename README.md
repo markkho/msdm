@@ -24,3 +24,11 @@ It is recommended to use a virtual environment.
 
 Related libraries:
 - [BURLAP](https://github.com/jmacglashan/burlap)
+
+## Contributing
+
+To run all tests: `make test`
+
+To run tests for some file: `python -m py.test msdm/tests/$TEST_FILE_NAME.py`
+
+To lint the code: `make lint`
