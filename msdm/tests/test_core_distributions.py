@@ -14,34 +14,36 @@ np.seterr(divide='ignore')
 
 class DistributionTestCase(unittest.TestCase):
     def test_basics(self):
-        cls = Multinomial
+        DiscreteFactorTable = Pr
+        for cls in [Multinomial, DiscreteFactorTable]:
+            print(cls)
+            dist = cls({0: 0, 1: 1}) # Can construct with a logit dict
+            assert dist == cls([0, 1], logits=[0, 1]) # or explicitly
+            assert dist == cls([0, 1], scores=[0, 1]) # or explicitly
 
-        dist = cls({0: 0, 1: 1}) # Can construct with a logit dict
-        assert dist == cls([0, 1], logits=[0, 1]) # or explicitly
+            # Per Python convention for repr, we ensure we can evaluate to the same.
+            assert eval(repr(dist)) == dist
 
-        # Per Python convention for repr, we ensure we can evaluate to the same.
-        assert eval(repr(dist)) == dist
+            # Testing close but not identical ones.
+            dist_close = cls([0, 1], logits=[0, 1.000001])
+            assert dist != dist_close
+            assert dist.isclose(dist_close)
 
-        # Testing close but not identical ones.
-        dist_close = cls([0, 1], logits=[0, 1.000001])
-        assert dist != dist_close
-        assert dist.isclose(dist_close)
+            # Testing case where logits differ but describe same probability dist
+            dist_logit_fixed_dist = cls([0, 1], logits=[100, 101])
+            assert dist != dist_close
+            assert dist.isclose(dist_close)
 
-        # Testing case where logits differ but describe same probability dist
-        dist_logit_fixed_dist = cls([0, 1], logits=[100, 101])
-        assert dist != dist_close
-        assert dist.isclose(dist_close)
+            # Testing case where keys are out of order
+            dist_logit_fixed_dist = cls([1, 0], logits=[1, 0])
+            assert dist != dist_close
+            assert dist.isclose(dist_close)
 
-        # Testing case where keys are out of order
-        dist_logit_fixed_dist = cls([1, 0], logits=[1, 0])
-        assert dist != dist_close
-        assert dist.isclose(dist_close)
+            # Can do isclose to probabilities
+            assert dist.isclose(cls([0, 1], probs=softmax([1, 2])))
 
-        # Can do isclose to probabilities
-        assert dist.isclose(cls([0, 1], probs=softmax([1, 2])))
-
-        # Testing uniform distribution
-        assert cls([0, 1, 2]).isclose(cls([0, 1, 2], logits=[1, 1, 1]))
+            # Testing uniform distribution
+            assert cls([0, 1, 2]).isclose(cls([0, 1, 2], logits=[1, 1, 1]))
 
     def test_sample(self):
         for cls in [Multinomial, Pr]:
