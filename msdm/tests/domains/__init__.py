@@ -54,11 +54,12 @@ class Counter(TabularMarkovDecisionProcess, DeterministicShortestPathProblem):
     '''
     MDP where actions are increment/decrement and goal is to reach some count.
     '''
-    def __init__(self, goal):
+    def __init__(self, goal, *, initial_state=0):
+        self._initial_state = initial_state
         self.goal = goal
 
     def initial_state(self):
-        return 0
+        return self._initial_state
 
     def actions(self, s):
         return [1, -1]

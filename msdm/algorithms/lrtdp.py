@@ -73,6 +73,8 @@ class LRTDP(Plans):
         self.res.V[s] = max(self.Q(mdp, s, a) for a in mdp.actions(s))
 
     def Q(self, mdp, s, a):
+        if mdp.is_terminal(s):
+            return 0
         q = 0
         for ns, prob in iter_dist_prob(mdp.next_state_dist(s, a)):
             future = 0
