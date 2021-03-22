@@ -39,7 +39,6 @@ class LAOStarTestCase(unittest.TestCase):
         )
         R = lao.plan_on(mdp)
         traj = R.policy.run_on(mdp)
-        print(traj.state_traj)
         assert traj.state_traj[-1] == goal
         
     def test_trivial_solution(self):
