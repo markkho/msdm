@@ -101,3 +101,34 @@ class Geometric(TabularMarkovDecisionProcess):
 
     def is_terminal(self, s):
         return s == 1
+
+class VaryingActionNumber(DeterministicShortestPathProblem, TabularMarkovDecisionProcess):
+    '''
+    Counting MDP where actions at every state vary. Used to test handling of MDPs with
+    varying numbers of states.
+    '''
+    def initial_state(self):
+        return 0
+
+    def actions(self, s):
+        return {
+            0: [+1],
+            1: [-1, +1],
+            2: [-1],
+        }[s]
+
+    def next_state(self, s, a):
+        # Intentionally coding like this to ensure that
+        # invalid access of this function results in a KeyError
+        return {
+            (0, +1): 1,
+            (1, -1): 0,
+            (1, +1): 2,
+            (2, -1): 1,
+        }[s, a]
+
+    def reward(self, s, a, ns):
+        return -1
+
+    def is_terminal(self, s):
+        return s == 2
