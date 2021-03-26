@@ -29,7 +29,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         logger.info("State space unspecified; performing reachability analysis.")
         self._states = \
             sorted(self.reachable_states(),
-                key=lambda d: json.dumps(d, sort_keys=True) if isinstance(d, dict) else d
+                key=self.hash_state
             )
         return self._states
 
@@ -45,7 +45,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
             for a in self.actions(s):
                 actions.add(a)
         self._actions = sorted(actions, 
-                key=lambda d: json.dumps(d, sort_keys=True) if isinstance(d, dict) else d
+                key=self.hash_action
             )
         return self._actions
 

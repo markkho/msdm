@@ -1,4 +1,5 @@
 from typing import Iterable
+from frozendict import frozendict
 from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess
 from msdm.core.distributions import DiscreteFactorTable
 
@@ -15,7 +16,7 @@ class StickyActionMDP(TabularMarkovDecisionProcess):
     def next_state_dist(self, s, a) -> DiscreteFactorTable:
         nsDist = self.mdp.next_state_dist(s['groundState'], a)
         nsDist = DiscreteFactorTable(
-            [{'groundState': ns, 'curAction': a} for ns in nsDist.support],
+            [frozendict({'groundState': ns, 'curAction': a}) for ns in nsDist.support],
             logits=nsDist.logits
         )
         return nsDist
@@ -45,7 +46,9 @@ class StickyActionMDP(TabularMarkovDecisionProcess):
             support=[{'groundState': s} for s in S0.support],
             logits=S0.logits
         )
-        return SA0 & S0
+        S0 = SA0 & S0
+        S0 = DiscreteFactorTable(support=[frozendict(e) for e in S0.support], logits=S0.logits)
+        return S0
 
     def hash_state(self, s):
         return self.mdp.hash_state(s['groundState']), self.mdp.hash_action(s['curAction'])

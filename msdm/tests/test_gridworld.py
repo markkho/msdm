@@ -1,5 +1,6 @@
 import unittest
 import numpy as np
+from frozendict import frozendict
 from msdm.domains import GridWorld
 from msdm.domains.gridgame.tabulargridgame import TabularGridGame
 from msdm.domains import StickyActionMDP
@@ -25,7 +26,7 @@ class TestCase(unittest.TestCase):
             step_cost=-1
         )
 
-        sagw = StickyActionMDP(gw, init_action={'dx': 0, 'dy': 0})
+        sagw = StickyActionMDP(gw, init_action=frozendict({'dx': 0, 'dy': 0}))
         vi = VectorizedValueIteration(
             iterations=50,
             discount_rate=1.0,
