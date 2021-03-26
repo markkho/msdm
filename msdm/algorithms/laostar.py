@@ -142,6 +142,7 @@ class LAOStar(Plans):
 
         def expand_graph(egraph, n, nExpanded):
             s = n['state']
+            assert not mdp.is_terminal(s), "Only expand non-terminal states"
             n['expanded'] = True
             n['expandedorder'] = nExpanded
             aa = n['actionorder']
@@ -191,6 +192,8 @@ class LAOStar(Plans):
             pbar = tqdm.tqdm()
         nExpanded = 0
         for s0 in initStates:
+            if mdp.is_terminal(s0):
+                continue
             n0 = egraph[_hash(s0)]
             expand_graph(egraph, n0, nExpanded)
             nExpanded += 1
@@ -211,7 +214,7 @@ class LAOStar(Plans):
             z = get_ancestors(egraph, nonterm)
             update_dynamic_programming(z, egraph)
             sGraph = get_solution_graph(egraph, initStates)
-            
+
         if A.show_progress:
             pbar.close()
 

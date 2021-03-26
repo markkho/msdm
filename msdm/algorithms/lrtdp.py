@@ -53,9 +53,7 @@ class LRTDP(Plans):
         res = self.res
         res.policy = mdp.state_action_map()
         res.Q = mdp.state_action_map()
-        # res.policy = HashDictionary(mdp.hash_state)
-        # res.Q = HashDictionary(mdp.hash_state)
-        for s in sum(self.res.trials, []):
+        for s in sum(self.res.trials, []) + [state for state, solved in res.solved.items() if solved]:
             if s in res.policy:
                 continue
 

@@ -1,7 +1,7 @@
 from scipy.special import softmax, logsumexp
 import numpy as np
 from msdm.core.problemclasses.mdp import TabularPolicy, \
-    TabularMarkovDecisionProcess
+    TabularMarkovDecisionProcess, DeterministicTabularPolicy
 from msdm.core.algorithmclasses import Plans, Result
 from msdm.core.assignment import AssignmentMap
 
@@ -26,6 +26,7 @@ class VectorizedValueIteration(Plans):
 
         #available actions - add -inf if it is not available
         aa = am.copy()
+        assert np.all(aa[np.nonzero(aa)] == 1) # If this is true, then the next line is unnecessary.
         aa[np.nonzero(aa)] = 1
         aa = np.log(aa)
         terminal_sidx = np.where(1 - nt)[0]
@@ -43,6 +44,8 @@ class VectorizedValueIteration(Plans):
         if self.entreg:
             pi = softmax((1 / self.temp) * q, axis=-1)
         else:
+            # This ensures we assign equal probability to actions that result
+            # in the same q-values.
             pi = np.log(np.zeros_like(q))
             pi[q == np.max(q, axis=-1, keepdims=True)] = 1
             pi = softmax(pi, axis=-1)
@@ -50,7 +53,8 @@ class VectorizedValueIteration(Plans):
         # create result object
         res = Result()
         res.mdp = mdp
-        res.policy = res.pi = TabularPolicy(mdp.state_list, mdp.action_list, policy_matrix=pi)
+        cls = TabularPolicy if self.entreg else DeterministicTabularPolicy
+        res.policy = res.pi = cls(mdp.state_list, mdp.action_list, policy_matrix=pi)
         res._valuevec = v
         vf = AssignmentMap([(s, vi) for s, vi in zip(mdp.state_list, v)])
         res.valuefunc = res.V = vf

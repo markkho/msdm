@@ -1,7 +1,7 @@
 import unittest
 
 from msdm.algorithms import VectorizedValueIteration, LRTDP
-from msdm.tests.domains import GNTFig6_6
+from msdm.tests.domains import GNTFig6_6, Counter
 from msdm.domains import GridWorld
 
 def ensure_uniform(dist):
@@ -118,6 +118,21 @@ class LRTDPTestCase(unittest.TestCase):
             for s1, s2 in zip(t1, t2):
                 notequal.append(s1 != s2)
         assert any(notequal)
+
+    def test_trivial_solution(self):
+        algo = LRTDP(seed=42)
+        # Normal
+        mdp = Counter(3, initial_state=0)
+        R = algo.plan_on(mdp)
+        assert R.V[mdp.initial_state()] == -3
+        assert R.policy.run_on(mdp).action_traj == (+1, +1, +1)
+
+        # No-op task. Now we start at 3, so value should be 0 there
+        mdp = Counter(3, initial_state=3)
+        R = algo.plan_on(mdp)
+        assert R.V[mdp.initial_state()] == 0
+        assert R.policy.run_on(mdp).action_traj == ()
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,7 +1,7 @@
 from typing import Iterable
 
-from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess
-from msdm.core.distributions import DiscreteFactorTable, Distribution
+from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess, DeterministicShortestPathProblem
+from msdm.core.distributions import DiscreteFactorTable, Distribution, Multinomial
 
 class GNTFig6_6(TabularMarkovDecisionProcess):
     T = [
@@ -50,25 +50,54 @@ class GNTFig6_6(TabularMarkovDecisionProcess):
             return -GNTFig6_6.T[s][a][1]
         return -100 # HACK
 
-class CountToTen(TabularMarkovDecisionProcess):
-    def is_terminal(self, s):
-        return s == 10
+class Counter(TabularMarkovDecisionProcess, DeterministicShortestPathProblem):
+    '''
+    MDP where actions are increment/decrement and goal is to reach some count.
+    '''
+    def __init__(self, goal, *, initial_state=0):
+        self._initial_state = initial_state
+        self.goal = goal
 
-    def next_state_dist(self, s, a):
-        if s == 10:
-            return DiscreteFactorTable([])
-        return DiscreteFactorTable([s+a])
+    def initial_state(self):
+        return self._initial_state
 
     def actions(self, s):
-        if s < 0:
-            return DiscreteFactorTable([1])
-        if s < 5:
-            return DiscreteFactorTable([1, -1])
-        return DiscreteFactorTable([1])
+        return [1, -1]
 
-    def initial_state_dist(self):
-        return DiscreteFactorTable([0,])
+    def next_state(self, s, a):
+        ns = s + a
+        if ns < 0 or self.goal < ns:
+            return s
+        return ns
 
     def reward(self, s, a, ns):
         return -1
 
+    def is_terminal(self, s):
+        return s == self.goal
+
+class Geometric(TabularMarkovDecisionProcess):
+    '''
+    MDP where actions are to draw from a Bernoulli or wait.
+    Goal is to get a 1 from the Bernoulli, which has probability `p`.
+    '''
+    def __init__(self, *, p=1/2):
+        self.p = p
+
+    def initial_state_dist(self):
+        return Multinomial([0])
+
+    def actions(self, s):
+        return ['flip', 'wait']
+
+    def next_state_dist(self, s, a):
+        if a == 'wait':
+            return Multinomial([s])
+        elif a == 'flip':
+            return Multinomial([0, 1], probs=[1-self.p, self.p])
+
+    def reward(self, s, a, ns):
+        return -1
+
+    def is_terminal(self, s):
+        return s == 1

@@ -17,17 +17,21 @@ class Policy(ABC):
         traj = []
         s = initial_state
         for t in range(max_steps):
+            if mdp.is_terminal(s):
+                break
             a = self.action_dist(s).sample()
             ns = mdp.next_state_dist(s, a).sample()
             r = mdp.reward(s, a, ns)
             traj.append((s, a, ns, r))
-            if mdp.is_terminal(ns):
-                break
             s = ns
-        states, actions, nextstates, rewards = zip(*traj)
+        if traj:
+            states, actions, _, rewards = zip(*traj)
+        else:
+            states = ()
+            actions = ()
+            rewards = ()
         return Result(**{
             'state_traj': states,
             'action_traj': actions,
             'reward_traj': rewards
         })
-
