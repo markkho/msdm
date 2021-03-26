@@ -51,10 +51,7 @@ class LRTDP(Plans):
         for s in sum(self.res.trials, []) + [state for state, solved in res.solved.items() if solved]:
             if s in res.policy:
                 continue
-
-            # res.policy[s] = HashDictionary(mdp.hash_action)
             res.policy[s][self.policy(mdp, s)] = 1
-            # res.Q[s] = HashDictionary(mdp.hash_action)
             for a in mdp.actions(s):
                 res.Q[s][a] = self.Q(mdp, s, a)
         res.policy = PartialPolicy(res.policy)
