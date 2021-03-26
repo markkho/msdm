@@ -1,6 +1,5 @@
 from abc import abstractmethod
-from typing import Iterable, Callable, Hashable, Mapping
-import collections
+from collections.abc import Hashable, Mapping, Iterable
 
 from msdm.core.problemclasses.problemclass import ProblemClass
 from msdm.core.distributions import Distribution
@@ -54,7 +53,7 @@ class MarkovDecisionProcess(ProblemClass):
     def state_map(self, default_value=None) -> Mapping:
         """Creates a dictionary-like object where keys are states."""
         s0 = self.initial_state_dist().sample()
-        if isinstance(s0, collections.abc.Hashable):
+        if isinstance(s0, Hashable):
             return self._variable_map(
                 hashable=True,
                 default_value=default_value
@@ -69,7 +68,7 @@ class MarkovDecisionProcess(ProblemClass):
         """Creates a dictionary-like object where keys are actions."""
         s0 = self.initial_state_dist().sample()
         a = next(iter(self.actions(s0)))
-        if isinstance(a, collections.abc.Hashable):
+        if isinstance(a, Hashable):
             return self._variable_map(
                 hashable=True,
                 default_value=default_value

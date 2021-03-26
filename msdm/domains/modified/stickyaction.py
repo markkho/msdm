@@ -46,3 +46,9 @@ class StickyActionMDP(TabularMarkovDecisionProcess):
             logits=S0.logits
         )
         return SA0 & S0
+
+    def hash_state(self, s):
+        return self.mdp.hash_state(s['groundState']), self.mdp.hash_action(s['curAction'])
+
+    def hash_action(self, a):
+        return self.mdp.hash_action(a)

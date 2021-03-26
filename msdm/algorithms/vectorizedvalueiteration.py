@@ -3,7 +3,6 @@ import numpy as np
 from msdm.core.problemclasses.mdp import TabularPolicy, \
     TabularMarkovDecisionProcess, DeterministicTabularPolicy
 from msdm.core.algorithmclasses import Plans, Result
-from msdm.core.assignment import AssignmentMap
 
 class VectorizedValueIteration(Plans):
     def __init__(self,
@@ -56,21 +55,15 @@ class VectorizedValueIteration(Plans):
         cls = TabularPolicy if self.entreg else DeterministicTabularPolicy
         res.policy = res.pi = cls(mdp.state_list, mdp.action_list, policy_matrix=pi)
         res._valuevec = v
-        vf = AssignmentMap([(s, vi) for s, vi in zip(mdp.state_list, v)])
+        vf = mdp.state_map()
+        for s, vi in zip(mdp.state_list, v):
+            vf[s] = vi
         res.valuefunc = res.V = vf
         res._qvaluemat = q
         res.iterations = i
-        qf = AssignmentMap()
+        qf = mdp.state_action_map()
         for si, s in enumerate(mdp.state_list):
-            qf[s] = AssignmentMap()
             for ai, a in enumerate(mdp.action_list):
                 qf[s][a] = q[si, ai]
         res.actionvaluefunc = res.Q = qf
         return res
-
-    # def getSoftPolicy(self, temp=1.0):
-    #     return TabularPolicy(
-    #         self.states,
-    #         self.actions,
-    #         policymatrix=softmax(self._qvaluemat/temp, axis=-1)
-    #     )
