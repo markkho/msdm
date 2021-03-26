@@ -1,13 +1,8 @@
 import numpy as np
 import copy
-import inspect
 from msdm.core.problemclasses.mdp import MarkovDecisionProcess
-from msdm.core.problemclasses.mdp import TabularPolicy
 from msdm.core.problemclasses.mdp.policy.partialpolicy import PartialPolicy
-from msdm.core.assignment import DefaultAssignmentMap, \
-    AssignmentMap
 from msdm.core.algorithmclasses import Plans, Result
-from msdm.core.utils.hashdictionary import HashDictionary, DefaultHashDictionary
 
 def iter_dist_prob(dist):
     '''
@@ -74,24 +69,13 @@ class LRTDP(Plans):
             heuristic = lambda s: 0
 
         self.res.V = mdp.state_map(default_value=heuristic)
-        # self.res.V = DefaultHashDictionary(
-        #     default_value=heuristic,
-        #     hash_function=mdp.hash_state
-        # )
         self.res.action_orders = mdp.state_map()
 
-        # self.res.action_orders = HashDictionary(
-        #     hash_function=mdp.hash_state
-        # )
         self.res.trials = []
         self.res.trials_solved = []
 
         # Keeping track of "labels": which states have been solved
         self.res.solved = mdp.state_map(default_value=lambda: False)
-        # self.res.solved = DefaultHashDictionary(
-        #     default_value=lambda: False,
-        #     hash_function=mdp.hash_state
-        # )
 
         for _ in range(iterations):
             if all(self.res.solved[s] for s in mdp.initial_state_dist().support):
