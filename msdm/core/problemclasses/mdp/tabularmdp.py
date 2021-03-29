@@ -1,7 +1,6 @@
 import json, logging
 import numpy as np
-from msdm.core.problemclasses.mdp import ANDMarkovDecisionProcess, \
-    MarkovDecisionProcess
+from msdm.core.problemclasses.mdp import MarkovDecisionProcess
 
 from msdm.core.assignment.assignmentset import AssignmentSet as Set
 logger = logging.getLogger(__name__)
@@ -176,15 +175,3 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
                         frontier.add(ns)
                     visited.add(ns)
         return visited
-
-    def __and__(self, other: "TabularMarkovDecisionProcess"):
-        assert isinstance(other, TabularMarkovDecisionProcess)
-        assert all(s == z for s, z in zip(self.state_list, other.state_list)), \
-            "State spaces not aligned"
-        assert all(a == b for a, b in zip(self.action_list, other.action_list)), \
-            "Action spaces not aligned"
-        return ANDTabularMarkovDecisionProcess(self, other)
-
-class ANDTabularMarkovDecisionProcess(ANDMarkovDecisionProcess,
-                                      TabularMarkovDecisionProcess):
-    pass
