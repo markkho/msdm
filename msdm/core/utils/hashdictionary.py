@@ -2,11 +2,30 @@ import inspect
 
 class HashDictionary(dict):
     """Dictionary with a function for hashing keys"""
-    def __init__(self, hash_function=None, *args, **kwargs):
+    def __init__(self,
+                 hash_function=None,
+                 dehash_function=None,
+                 *args,
+                 **kwargs
+                 ):
         if hash_function is None:
             hash_function = lambda x: x
         self.hash_function = hash_function
-        self._encoded_keys = {} #note: this isn't doing garbage collection
+        if dehash_function is None:
+            self._encoded_keys = {} #note: this isn't doing garbage collection
+            def dehash_function(encoded_item):
+                try:
+                    return self._encoded_keys[encoded_item]
+                except KeyError:
+                    return encoded_item
+
+            self.original_hash_function = hash_function
+            def wrapped_hash_function(item):
+                encoded = self.original_hash_function(item)
+                self._encoded_keys[encoded] = item
+                return encoded
+            self.hash_function = wrapped_hash_function
+        self.dehash_function = dehash_function
         dict.update(self)
         if len(args) > 0:
             for k, v in args[0]:
@@ -16,15 +35,11 @@ class HashDictionary(dict):
                 self[k] = v
 
     def encode_item(self, i):
-        if isinstance(i, (dict, list)):
-            encoded = self.hash_function(i)
-            self._encoded_keys[encoded] = i
-            i = encoded
-        return i
+        return self.hash_function(i)
 
     def decode_item(self, encoded_item):
         try:
-            return self._encoded_keys[encoded_item]
+            return self.dehash_function(encoded_item)
         except KeyError:
             return encoded_item
 
