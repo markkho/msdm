@@ -28,10 +28,10 @@ class MarkovDecisionProcess(ProblemClass):
         pass
 
     def hash_state(self, s) -> Hashable:
-        raise NotImplementedError
+        return s #default to assuming hashable
 
     def hash_action(self, a) -> Hashable:
-        raise NotImplementedError
+        return a #default to assuming hashable
 
     def _variable_map(self,
                       hashable,
