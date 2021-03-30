@@ -7,6 +7,15 @@ import numpy as np
 
 
 class DictDistribution(dict, Distribution):
+    @classmethod
+    def uniform(cls, support):
+        p = 1/len(support)
+        return DictDistribution({e: p for e in support})
+
+    @classmethod
+    def deterministic(cls, element):
+        return DictDistribution({element: 1})
+
     def sample(self):
         if len(self.support) == 1:
             return self.support[0]
@@ -100,3 +109,4 @@ class DictDistribution(dict, Distribution):
             if not np.isclose(p, mapped.get(s, 0.0)):
                 return False
         return True
+

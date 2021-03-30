@@ -60,9 +60,9 @@ class GridWorld(TabularMarkovDecisionProcess):
         ]
         self._actions = sorted(actions, key=self.hash_action)
         self._states = sorted(states, key=self.hash_state)
-        self._initStates = sorted(list(initStates), key=self.hash_state)
-        self._absorbingStates = sorted(list(absorbingStates), key=self.hash_state)
-        self._walls = sorted(list(walls), key=self.hash_state)
+        self._initStates = sorted(initStates, key=self.hash_state)
+        self._absorbingStates = sorted(absorbingStates, key=self.hash_state)
+        self._walls = sorted(walls, key=self.hash_state)
         self._locFeatures = locFeatures
         self.success_prob = success_prob
         if feature_rewards is None:
