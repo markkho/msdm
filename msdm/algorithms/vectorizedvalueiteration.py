@@ -52,8 +52,7 @@ class VectorizedValueIteration(Plans):
             if np.abs(diff).max() < self.convergence_diff:
                 break
             v = nv
-        if i == (iterations - 1):
-            warnings.warn(f"VI not converged after {iterations} iterations")
+
         if self.entreg:
             pi = softmax((1 / self.temp) * q, axis=-1)
         else:
@@ -66,6 +65,11 @@ class VectorizedValueIteration(Plans):
 
         # create result object
         res = Result()
+        if i == (iterations - 1):
+            warnings.warn(f"VI not converged after {iterations} iterations")
+            res.converged = False
+        else:
+            res.converged = True
         res.mdp = mdp
         cls = TabularPolicy if ((pi < 1) & (pi > 0)).any() else DeterministicTabularPolicy
         res.policy = res.pi = cls(mdp.state_list, mdp.action_list, policy_matrix=pi, mdp=mdp)
