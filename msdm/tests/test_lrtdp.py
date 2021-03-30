@@ -76,7 +76,12 @@ class LRTDPTestCase(unittest.TestCase):
 
         s = deterministic(mdp.initial_state_dist())
         reachable = [s]
+        MAX_ITERATIONS = 1000
+        i = 0
         while reachable:
+            i += 1
+            if i > MAX_ITERATIONS:
+                assert False, f"Unable to compare policies after {MAX_ITERATIONS} iterations"
             s = reachable.pop()
             for ns in mdp.next_state_dist(s, policy(s)).support:
                 if not mdp.is_terminal(ns):
