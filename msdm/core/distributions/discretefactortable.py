@@ -1,4 +1,5 @@
 import logging
+import warnings
 from itertools import product
 import numpy as np
 from scipy.special import softmax, logsumexp
@@ -90,6 +91,10 @@ class DiscreteFactorTable(Distribution):
         return self.support[np.random.choice(len(self.support), p=self._probs)]
 
     def items(self, probs=False):
+        warnings.warn(
+            "items(probs=False) will be deprecated after June 2021.",
+             PendingDeprecationWarning
+        )
         if probs:
             return zip(self.support, self._probs)
         return zip(self.support, self._scores)
@@ -288,7 +293,7 @@ class DiscreteFactorTable(Distribution):
         raise NotImplementedError
 
     def __repr__(self):
-        e_l = ", ".join([f"{e}: {l:.2f}" for e, l in self.items()])
+        e_l = ", ".join([f"{e}: {l:.2f}" for e, l in zip(self.support, self.logits)])
         return f"{self.__class__.__name__}({{{e_l}}})"
 
     def __eq__(self, other):
@@ -297,9 +302,9 @@ class DiscreteFactorTable(Distribution):
     def isclose(self, other):
         mapped = {
             s: p
-            for s, p in self.items(probs=True)
+            for s, p in zip(self.support, self.probs)
         }
-        for s, p in other.items(probs=True):
+        for s, p in zip(other.support, other.probs):
             if not np.isclose(p, mapped[s]):
                 return False
         return True

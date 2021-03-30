@@ -61,7 +61,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         for si, s in enumerate(ss):
             for ai, a in enumerate(aa):
                 nsdist = self.next_state_dist(s, a)
-                for ns, nsp in nsdist.items(probs=True):
+                for ns, nsp in zip(nsdist.support, nsdist.probs):
                     tf[si, ai, ss.index(ns)] = nsp
         self._tfmatrix = tf
         return self._tfmatrix

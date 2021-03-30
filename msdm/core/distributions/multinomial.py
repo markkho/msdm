@@ -1,7 +1,9 @@
 import logging
+import warnings
 from collections import defaultdict
 import numpy as np
 from scipy.special import softmax, logsumexp
+
 
 np.seterr(divide='ignore')
 logger = logging.getLogger(__name__)
@@ -11,6 +13,10 @@ from msdm.core.distributions.distributions import Distribution
 
 class Multinomial(Distribution):
     def __init__(self, support, logits=None, probs=None, scores=None):
+        warnings.warn(
+            "Multinomial will be deprecated after June 2021. Switch to DictDistribution.",
+            PendingDeprecationWarning
+        )
         if logits is None:
             logits = scores
         if isinstance(support, dict):
@@ -76,6 +82,10 @@ class Multinomial(Distribution):
         return self.support[np.random.choice(len(self.support), p=self._probs)]
 
     def items(self, probs=False):
+        warnings.warn(
+            "items(probs=False) will be deprecated after June 2021.",
+            PendingDeprecationWarning
+        )
         if probs:
             return zip(self.support, self._probs)
         return zip(self.support, self._logits)
@@ -87,7 +97,7 @@ class Multinomial(Distribution):
         return len(self.support)
 
     def __repr__(self):
-        e_l = ", ".join([f"{e}: {l:.2f}" for e, l in self.items()])
+        e_l = ", ".join([f"{e}: {l:.2f}" for e, l in zip(self.support, self.logits)])
         return f"{self.__class__.__name__}({{{e_l}}})"
 
     def __and__(self, other: "Multinomial"):
@@ -141,9 +151,9 @@ class Multinomial(Distribution):
     def isclose(self, other):
         mapped = {
             s: p
-            for s, p in self.items(probs=True)
+            for s, p in zip(self.support, self.probs)
         }
-        for s, p in other.items(probs=True):
+        for s, p in zip(other.support, other.probs):
             if not np.isclose(p, mapped[s]):
                 return False
         return True

@@ -1,8 +1,9 @@
 import unittest
+import warnings
 import numpy as np
 import pandas as pd
 from scipy.special import softmax
-from msdm.core.distributions import DiscreteFactorTable as Pr, Multinomial
+from msdm.core.distributions import DiscreteFactorTable as Pr, Multinomial, DictDistribution
 
 def toDF(p):
     df = pd.DataFrame(p.support)
@@ -15,6 +16,7 @@ np.seterr(divide='ignore')
 class DistributionTestCase(unittest.TestCase):
     def test_basics(self):
         DiscreteFactorTable = Pr
+        warnings.filterwarnings("ignore", category=PendingDeprecationWarning)
         for cls in [Multinomial, DiscreteFactorTable]:
             print(cls)
             dist = cls({0: 0, 1: 1}) # Can construct with a logit dict
@@ -44,13 +46,27 @@ class DistributionTestCase(unittest.TestCase):
 
             # Testing uniform distribution
             assert cls([0, 1, 2]).isclose(cls([0, 1, 2], logits=[1, 1, 1]))
+        warnings.filterwarnings("default", category=PendingDeprecationWarning)
+
+    def test_dictdistribution(self):
+        dd1 = DictDistribution(a=.1, b=.2, c=.7)
+        dd2 = DictDistribution(d=1)
+        assert (dd2 * .5 | dd1 * .5) == {'d': 0.5, 'a': 0.05, 'b': 0.1, 'c': 0.35}
+
+        dd1 = DictDistribution(a=.1, b=.2, c=.7)
+        dd2 = DictDistribution(a=.5, b=.5)
+        assert (dd1 & dd2) == {'b': 2/3, 'a': 1/3}
+
+        assert (dd1 & dd2).isclose(DictDistribution({'b': 2/3, 'a': 1/3}))
 
     def test_sample(self):
+        warnings.filterwarnings("ignore", category=PendingDeprecationWarning)
         for cls in [Multinomial, Pr]:
             np.random.seed(42)
             assert cls([]).sample() is None
             assert cls([0]).sample() == 0
             assert {cls([0, 1]).sample() for _ in range(20)} == {0, 1}
+        warnings.filterwarnings("default", category=PendingDeprecationWarning)
 
     def test_independent_conjunction(self):
         # Conjunction (independent variables)
