@@ -44,7 +44,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         for s in self.state_list:
             for a in self.actions(s):
                 actions.add(a)
-        self._actions = sorted(actions, 
+        self._actions = sorted(actions,
                 key=self.hash_action
             )
         return self._actions
@@ -59,7 +59,10 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         aa = self.action_list
         tf = np.zeros((len(ss), len(aa), len(ss)))
         for si, s in enumerate(ss):
+            state_actions = self.actions(s)
             for ai, a in enumerate(aa):
+                if a not in state_actions:
+                    continue
                 nsdist = self.next_state_dist(s, a)
                 for ns, nsp in zip(nsdist.support, nsdist.probs):
                     tf[si, ai, ss.index(ns)] = nsp
@@ -96,7 +99,10 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         aa = self.action_list
         rf = np.zeros((len(ss), len(aa), len(ss)))
         for si, s in enumerate(ss):
+            state_actions = self.actions(s)
             for ai, a in enumerate(aa):
+                if a not in state_actions:
+                    continue
                 nsdist = self.next_state_dist(s, a)
                 for ns in nsdist.support:
                     nsi = ss.index(ns)

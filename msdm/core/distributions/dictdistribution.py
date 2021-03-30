@@ -97,6 +97,6 @@ class DictDistribution(dict, Distribution):
             for s, p in zip(self.support, self.probs)
         }
         for s, p in zip(other.support, other.probs):
-            if not np.isclose(p, mapped[s]):
+            if not np.isclose(p, mapped.get(s, 0.0)):
                 return False
         return True

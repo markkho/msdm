@@ -45,9 +45,10 @@ class VectorizedValueIteration(Plans):
         else:
             # This ensures we assign equal probability to actions that result
             # in the same q-values.
-            pi = np.log(np.zeros_like(q))
-            pi[q == np.max(q, axis=-1, keepdims=True)] = 1
-            pi = softmax(pi, axis=-1)
+            pi = np.zeros_like(q)
+            validq = q + aa
+            pi[validq == np.max(validq, axis=-1, keepdims=True)] = 1
+            pi /= pi.sum(axis=-1, keepdims=True)
 
         # create result object
         res = Result()
