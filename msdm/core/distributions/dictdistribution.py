@@ -19,7 +19,7 @@ class DictDistribution(dict, Distribution):
         try:
             return self._support
         except AttributeError:
-            self._support = list(self.keys())
+            self._support = [e for e in self.keys() if self[e] > 0.0]
             return self._support
 
     @property
