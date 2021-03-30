@@ -3,7 +3,7 @@ from collections.abc import Hashable, Mapping, Iterable
 
 from msdm.core.problemclasses.problemclass import ProblemClass
 from msdm.core.distributions import Distribution
-from msdm.core.utils.hashdictionary import HashDictionary, DefaultHashDictionary
+from msdm.core.utils.hashdictionary import HashDictionary, DefaultHashDictionary, defaultdict2
 
 
 class MarkovDecisionProcess(ProblemClass):
@@ -40,11 +40,17 @@ class MarkovDecisionProcess(ProblemClass):
                       initialize_defaults=True):
         """Generic function for mapping variables"""
         if default_value is not None:
-            return DefaultHashDictionary(
-                default_value=default_value,
-                initialize_defaults=initialize_defaults,
-                hash_function=hash_function
-            )
+            if hashable:
+                return defaultdict2(
+                    default_value=default_value,
+                    initialize_defaults=initialize_defaults,
+                )
+            else:
+                return DefaultHashDictionary(
+                    default_value=default_value,
+                    initialize_defaults=initialize_defaults,
+                    hash_function=hash_function
+                )
         if hashable:
             return {}
         else:

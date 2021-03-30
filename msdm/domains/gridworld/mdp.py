@@ -112,7 +112,7 @@ class GridWorld(TabularMarkovDecisionProcess):
         nx, ny = x + ax, y + ay
         ns = frozendict({'x': nx, 'y': ny})
 
-        if ns not in self.state_list:
+        if ns not in self._states:
             bdist = DictDistribution({s: 1})
         elif ns in self.walls:
             bdist = DictDistribution({s: 1})
