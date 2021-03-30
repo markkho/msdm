@@ -128,8 +128,11 @@ class GridWorld(TabularMarkovDecisionProcess):
                 ns: self.success_prob
             })
             # bdist = DiscreteFactorTable(support=[s, ns], probs=[1 - self.success_prob, self.success_prob])
-        
-        return bdist * (1 - self.termination_prob) | TERMINALDIST * self.termination_prob
+
+        if self.termination_prob > 0:
+            return bdist * (1 - self.termination_prob) | TERMINALDIST * self.termination_prob
+        else:
+            return bdist
 
     def reward(self, s, a, ns) -> float:
         if self.is_terminal(s) or self.is_terminal(ns):
