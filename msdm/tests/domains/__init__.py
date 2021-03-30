@@ -1,7 +1,7 @@
 from typing import Iterable
 
 from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess, DeterministicShortestPathProblem
-from msdm.core.distributions import DiscreteFactorTable, Distribution, Multinomial
+from msdm.core.distributions import DiscreteFactorTable, Distribution, Multinomial, DictDistribution
 
 class GNTFig6_6(TabularMarkovDecisionProcess):
     T = [
@@ -85,16 +85,16 @@ class Geometric(TabularMarkovDecisionProcess):
         self.p = p
 
     def initial_state_dist(self):
-        return Multinomial([0])
+        return DictDistribution({0: 1})
 
     def actions(self, s):
         return ['flip', 'wait']
 
     def next_state_dist(self, s, a):
         if a == 'wait':
-            return Multinomial([s])
+            return DictDistribution({s: 1})
         elif a == 'flip':
-            return Multinomial([0, 1], probs=[1-self.p, self.p])
+            return DictDistribution({0: 1 - self.p, 1: self.p})
 
     def reward(self, s, a, ns):
         return -1

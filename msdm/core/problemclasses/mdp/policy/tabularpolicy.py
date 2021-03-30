@@ -7,7 +7,8 @@ from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess
 from msdm.core.algorithmclasses import Result
 
 from msdm.core.assignment.assignmentmap import AssignmentMap
-from msdm.core.distributions import DiscreteFactorTable, Distribution
+from msdm.core.distributions import Distribution
+from msdm.core.distributions.dictdistribution import DictDistribution
 class TabularPolicy(Policy):
     def __init__(self, states, actions, policy_matrix=None, policy_dict=None):
         self._states = states
@@ -66,7 +67,8 @@ class TabularPolicy(Policy):
     def action_dist(self, s) -> Distribution:
         adist = self._policydict[s]
         a, p = zip(*adist.items())
-        return DiscreteFactorTable(support=a, probs=p)
+        return DictDistribution(adist)
+        # return DiscreteFactorTable(support=a, probs=p)
 
     @property
     def state_list(self):
