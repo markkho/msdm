@@ -59,10 +59,6 @@ class DistributionTestCase(unittest.TestCase):
 
         assert (dd1 & dd2).isclose(DictDistribution({'b': 2/3, 'a': 1/3}))
 
-            # Testing isclose with non-mappable types
-            els = [dict(number=i) for i in range(3)]
-            assert cls(els).isclose(cls(els, logits=[1, 1, 1]))
-
     def test_sample(self):
         warnings.filterwarnings("ignore", category=PendingDeprecationWarning)
         for cls in [Multinomial, Pr]:
