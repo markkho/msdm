@@ -127,7 +127,6 @@ class GridWorld(TabularMarkovDecisionProcess):
                 s: 1 - self.success_prob,
                 ns: self.success_prob
             })
-
         return bdist * (1 - self.termination_prob) | TERMINALDIST * self.termination_prob
 
     def reward(self, s, a, ns) -> float:

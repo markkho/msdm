@@ -52,7 +52,7 @@ class MarkovDecisionProcess(ProblemClass):
 
     def state_map(self, default_value=None) -> Mapping:
         """Creates a dictionary-like object where keys are states."""
-        s0 = self.initial_state_dist().sample()
+        s0 = self.initial_state_dist().support[0]
         if isinstance(s0, Hashable):
             return self._variable_map(
                 hashable=True,
@@ -66,7 +66,7 @@ class MarkovDecisionProcess(ProblemClass):
 
     def action_map(self, default_value=None) -> Mapping:
         """Creates a dictionary-like object where keys are actions."""
-        s0 = self.initial_state_dist().sample()
+        s0 = self.initial_state_dist().support[0]
         a = next(iter(self.actions(s0)))
         if isinstance(a, Hashable):
             return self._variable_map(

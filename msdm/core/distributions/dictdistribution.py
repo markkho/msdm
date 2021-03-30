@@ -8,6 +8,8 @@ import numpy as np
 
 class DictDistribution(dict, Distribution):
     def sample(self):
+        if len(self.support) == 1:
+            return self.support[0]
         return random.choices(
             population=self.support,
             weights=self.probs,
@@ -87,7 +89,7 @@ class DictDistribution(dict, Distribution):
         return DictDistribution(newdist)
 
     def __mul__(self, num):
-        return DictDistribution({e: p*num for e, p in zip(self.support, self.probs)})
+        return DictDistribution({e: p*num for e, p in dict.items(self)})
 
     def isclose(self, other):
         mapped = {
