@@ -117,3 +117,28 @@ class DefaultHashDictionary(HashDictionary):
             return self.defaultvalue(key)
         return super().__getitem__(key)
 
+class defaultdict2(dict):
+    '''
+    defaultdict2 extends dict to support a default value for unset items,
+    akin to collections.defaultdict. Notably, this implementation does not store default values
+    after access, a departure from defaultdict.
+
+    The first parameter to defaultdict2 is the function used to generate values
+    returned when the dict has no set value for a key.
+
+    The defaultvalue function can either take no arguments or one argument, which corresponds
+    to the key passed to dict.__getitem__.
+    '''
+    def __init__(self, default_value, initialize_defaults=False):
+        arity = len(inspect.getfullargspec(default_value).args)
+        assert arity in (0, 1), 'Default must take either 0 or 1 arguments.'
+        self.defaultvalue = default_value if arity == 1 else lambda _: default_value()
+        self.initialize_defaults = initialize_defaults
+
+    def __getitem__(self, key):
+        if key not in self:
+            if self.initialize_defaults:
+                self[key] = self.defaultvalue(key)
+                return self[key]
+            return self.defaultvalue(key)
+        return super().__getitem__(key)

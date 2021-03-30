@@ -1,11 +1,19 @@
 import json, logging
 import numpy as np
 from msdm.core.problemclasses.mdp import MarkovDecisionProcess
+from msdm.core.utils.funcutils import method_cache
 
 from msdm.core.assignment.assignmentset import AssignmentSet as Set
 logger = logging.getLogger(__name__)
 
 class TabularMarkovDecisionProcess(MarkovDecisionProcess):
+    @method_cache
+    def _cached_next_state_dist(self, s, a):
+        '''
+        We prefer using this cached version of next_state_dist when possible.
+        '''
+        return self.next_state_dist(s, a)
+
     """Tabular MDPs can be fully enumerated (e.g., as matrices)"""
     def as_matrices(self):
         return {
@@ -63,7 +71,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
             for ai, a in enumerate(aa):
                 if a not in state_actions:
                     continue
-                nsdist = self.next_state_dist(s, a)
+                nsdist = self._cached_next_state_dist(s, a)
                 for ns, nsp in zip(nsdist.support, nsdist.probs):
                     tf[si, ai, ss.index(ns)] = nsp
         self._tfmatrix = tf
@@ -103,7 +111,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
             for ai, a in enumerate(aa):
                 if a not in state_actions:
                     continue
-                nsdist = self.next_state_dist(s, a)
+                nsdist = self._cached_next_state_dist(s, a)
                 for ns in nsdist.support:
                     nsi = ss.index(ns)
                     rf[si, ai, nsi] = self.reward(s, a, ns)
@@ -161,7 +169,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         def is_absorbing(s):
             actions = self.actions(s)
             for a in actions:
-                nextstates = self.next_state_dist(s, a).support
+                nextstates = self._cached_next_state_dist(s, a).support
                 for ns in nextstates:
                     if not self.is_terminal(ns):
                         return False
@@ -176,7 +184,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         while len(frontier) > 0:
             s = frontier.pop()
             for a in self.actions(s):
-                for ns in self.next_state_dist(s, a).support:
+                for ns in self._cached_next_state_dist(s, a).support:
                     if ns not in visited:
                         frontier.add(ns)
                     visited.add(ns)
