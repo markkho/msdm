@@ -3,7 +3,7 @@ import warnings
 import numpy as np
 from msdm.core.problemclasses.mdp import TabularPolicy, \
     TabularMarkovDecisionProcess, DeterministicTabularPolicy
-from msdm.core.algorithmclasses import Plans, Result
+from msdm.core.algorithmclasses import Plans, PlanningResult
 
 class VectorizedValueIteration(Plans):
     def __init__(self,
@@ -64,7 +64,7 @@ class VectorizedValueIteration(Plans):
             pi /= pi.sum(axis=-1, keepdims=True)
 
         # create result object
-        res = Result()
+        res = PlanningResult()
         if i == (iterations - 1):
             warnings.warn(f"VI not converged after {iterations} iterations")
             res.converged = False

@@ -1,8 +1,10 @@
 import numpy as np
 import copy
+import warnings
 from msdm.core.problemclasses.mdp import MarkovDecisionProcess
 from msdm.core.problemclasses.mdp.policy.partialpolicy import PartialPolicy
-from msdm.core.algorithmclasses import Plans, Result
+from msdm.core.algorithmclasses import Plans, PlanningResult
+
 
 def iter_dist_prob(dist):
     '''
@@ -36,7 +38,7 @@ class LRTDP(Plans):
         self.max_trial_length = max_trial_length
 
     def plan_on(self, mdp: MarkovDecisionProcess):
-        self.res = Result()
+        self.res = PlanningResult()
         if self.seed is None:
             self.res.seed = np.random.randint(int(2**30))
         else:
@@ -74,10 +76,15 @@ class LRTDP(Plans):
         # Keeping track of "labels": which states have been solved
         self.res.solved = mdp.state_map(default_value=lambda: False)
 
-        for _ in range(iterations):
+        for i in range(iterations):
             if all(self.res.solved[s] for s in mdp.initial_state_dist().support):
                 return
             self.lrtdp_trial(mdp, mdp.initial_state_dist().sample())
+        if i == (iterations - 1):
+            warnings.warn(f"LRTDP not converged after {iterations} iterations")
+            self.res.converged = False
+        else:
+            self.res.converged = True
 
     def lrtdp_trial(self, mdp, s):
         # Ghallab, Nau, Traverso: Algorithm 6.17
