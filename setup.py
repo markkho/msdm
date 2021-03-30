@@ -12,7 +12,10 @@ setup(name='msdm',
       author_email='mark.ho.cs@gmail.com',
       license='MIT',
       packages=find_packages(),
-      install_requires=['numpy', 'matplotlib', 'scipy', 'torch', 'tqdm'],
+      install_requires=[
+          'numpy', 'matplotlib', 'scipy', 'torch', 'tqdm', 'sparse',
+          'frozendict @ git+https://github.com/Marco-Sulla/python-frozendict@v2.0.1'
+      ],
       test_suite='nose.collector',
       tests_require=['nose'],
       zip_safe=False)
