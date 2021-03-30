@@ -1,13 +1,9 @@
 import matplotlib.pyplot as plt
-import json
 from typing import Iterable
 from msdm.core.utils.gridstringutils import  string_to_element_array
 from frozendict import frozendict
 
 from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess
-from msdm.core.distributions import DiscreteFactorTable
-from msdm.core.assignment import \
-    AssignmentMap as Dict, AssignmentSet as Set
 
 from msdm.core.distributions.dictdistribution import DictDistribution
 
@@ -122,12 +118,17 @@ class GridWorld(TabularMarkovDecisionProcess):
             bdist = DictDistribution({s: 1})
         elif ns == s:
             bdist = DictDistribution({s: 1})
-        else:
+        elif self.success_prob != 1:
             bdist = DictDistribution({
                 s: 1 - self.success_prob,
                 ns: self.success_prob
             })
-        return bdist * (1 - self.termination_prob) | TERMINALDIST * self.termination_prob
+        else:
+            bdist = DictDistribution({ns: 1})
+        if self.termination_prob:
+            bdist = bdist * (1 - self.termination_prob) | TERMINALDIST * self.termination_prob
+
+        return bdist
 
     def reward(self, s, a, ns) -> float:
         if self.is_terminal(s) or self.is_terminal(ns):
