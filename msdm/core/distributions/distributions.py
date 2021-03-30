@@ -18,3 +18,13 @@ class Distribution(ABC):
     def score(self, e):
         pass
 
+class DiscreteDistribution(Distribution):
+    @abstractmethod
+    def items(self): #yields elements and probabilities
+        pass
+
+    @property
+    @abstractmethod
+    def probs(self):
+        pass
+

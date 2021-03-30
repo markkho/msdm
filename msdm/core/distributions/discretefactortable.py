@@ -90,14 +90,8 @@ class DiscreteFactorTable(Distribution):
             return self.support[0]
         return self.support[np.random.choice(len(self.support), p=self._probs)]
 
-    def items(self, probs=False):
-        warnings.warn(
-            "items(probs=False) will be deprecated after June 2021.",
-             PendingDeprecationWarning
-        )
-        if probs:
-            return zip(self.support, self._probs)
-        return zip(self.support, self._scores)
+    def items(self):
+        yield from ((e, p) for e, p in zip(self.support, self.probs) if p > 0.0)
 
     def keys(self):
         return [e for e in self.support]
@@ -306,7 +300,7 @@ class DiscreteFactorTable(Distribution):
         # Instead, this implementation checks every assigned probability
         # in each, ensuring the value is close in the other distribution.
         for first, second in [(self, other), (other, self)]:
-            for s, p in first.items(probs=True):
+            for s, p in first.items():
                 if not np.isclose(p, second.prob(s)):
                     return False
         return True

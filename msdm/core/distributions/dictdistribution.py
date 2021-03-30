@@ -1,12 +1,11 @@
 import random
-import warnings
 from collections import defaultdict
 import math
-from msdm.core.distributions.distributions import Distribution
+from msdm.core.distributions.distributions import DiscreteDistribution
 import numpy as np
 
 
-class DictDistribution(dict, Distribution):
+class DictDistribution(dict, DiscreteDistribution):
     @classmethod
     def uniform(cls, support):
         p = 1/len(support)
