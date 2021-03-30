@@ -76,7 +76,8 @@ class LAOStar(Plans):
                 maxav = -np.inf
                 for a in aa:
                     aval = 0
-                    for ns, p in mdp.next_state_dist(s, a).items(probs=True):
+                    nsdist = mdp.next_state_dist(s, a)
+                    for ns, p in zip(nsdist.support, nsdist.probs):
                         aval += p*(mdp.reward(s, a, ns) + discount_rate * egraph[_hash(ns)]["value"])
                     if aval > maxav:
                         maxav = aval
@@ -95,9 +96,9 @@ class LAOStar(Plans):
                 for n in graph.values():
                     assert n['expanded']
                     s, a = n["state"], n["bestaction"]
-                    nsdist = mdp.next_state_dist(s, a).items(probs=True)
                     expval = 0
-                    for ns, p in nsdist:
+                    nsdist = mdp.next_state_dist(s, a)
+                    for ns, p in zip(nsdist.support, nsdist.probs):
                         nextnode = egraph[_hash(ns)]
                         expval += p*(mdp.reward(s, a, ns) + discount_rate * nextnode["value"])
                     valchange = np.max([np.abs(n["value"] - expval), valchange])

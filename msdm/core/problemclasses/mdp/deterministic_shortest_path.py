@@ -1,6 +1,6 @@
 from abc import abstractmethod
 from msdm.core.problemclasses.mdp import MarkovDecisionProcess
-from msdm.core.distributions import Distribution, Multinomial
+from msdm.core.distributions import Distribution, Multinomial, DictDistribution
 
 class DeterministicShortestPathProblem(MarkovDecisionProcess):
     """
@@ -11,14 +11,14 @@ class DeterministicShortestPathProblem(MarkovDecisionProcess):
     """
 
     def next_state_dist(self, s, a) -> Distribution:
-        return Multinomial([self.next_state(s, a)])
+        return DictDistribution({self.next_state(s, a): 1})
 
     @abstractmethod
     def next_state(self, s, a):
         pass
 
     def initial_state_dist(self) -> Distribution:
-        return Multinomial([self.initial_state()])
+        return DictDistribution({self.initial_state(): 1})
 
     @abstractmethod
     def initial_state(self):

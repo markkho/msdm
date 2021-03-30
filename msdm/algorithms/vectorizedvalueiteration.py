@@ -54,7 +54,7 @@ class VectorizedValueIteration(Plans):
         res = Result()
         res.mdp = mdp
         cls = TabularPolicy if self.entreg else DeterministicTabularPolicy
-        res.policy = res.pi = cls(mdp.state_list, mdp.action_list, policy_matrix=pi)
+        res.policy = res.pi = cls(mdp.state_list, mdp.action_list, policy_matrix=pi, mdp=mdp)
         res._valuevec = v
         vf = mdp.state_map()
         for s, vi in zip(mdp.state_list, v):

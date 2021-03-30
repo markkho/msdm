@@ -1,4 +1,5 @@
 import logging
+import warnings
 from itertools import product
 import numpy as np
 from scipy.special import softmax, logsumexp
@@ -10,6 +11,8 @@ logger.info("Ignoring division by zero errors")
 from msdm.core.utils.dictutils import dict_merge, dict_match
 from msdm.core.distributions.distributions import Distribution
 from msdm.core.assignment import DefaultAssignmentMap
+
+from frozendict import frozendict
 
 class DiscreteFactorTable(Distribution):
     """
@@ -88,6 +91,10 @@ class DiscreteFactorTable(Distribution):
         return self.support[np.random.choice(len(self.support), p=self._probs)]
 
     def items(self, probs=False):
+        warnings.warn(
+            "items(probs=False) will be deprecated after June 2021.",
+             PendingDeprecationWarning
+        )
         if probs:
             return zip(self.support, self._probs)
         return zip(self.support, self._scores)
@@ -127,7 +134,7 @@ class DiscreteFactorTable(Distribution):
         # HACK: this should throw a warning or something if the distributions have different headers
         # i.e., dictionary keys interact in a weird way
         for si, oi in product(self.support, other.support):
-            if isinstance(si, dict) and isinstance(oi, dict):
+            if isinstance(si, (dict, frozendict)) and isinstance(oi, (dict, frozendict)):
                 if dict_match(si, oi): #not efficient if the cartesian product is large
                     soi = dict_merge(si, oi)
                     if soi in jsupport:
@@ -182,18 +189,18 @@ class DiscreteFactorTable(Distribution):
         unmatchedrows = []
 
         #check that all entries have same keys
-        if isinstance(self.support[0], dict):
+        if isinstance(self.support[0], (dict, frozendict)):
             s_keys = tuple(self.support[0].keys())
             for si in self.support:
                 assert tuple(si.keys()) == s_keys
-        if isinstance(other.support[0], dict):
+        if isinstance(other.support[0], (dict, frozendict)):
             o_keys = tuple(other.support[0].keys())
             for oi in self.support:
                 assert tuple(oi.keys()) == o_keys
 
         #first get inner join rows, tracking ones that don't match
         for si, oi in product(self.support, other.support):
-            if isinstance(si, dict) and isinstance(oi, dict):
+            if isinstance(si, (dict, frozendict)) and isinstance(oi, (dict, frozendict)):
                 if dict_match(si, oi): #not efficient if the cartesian product is large
                     matchedrows.extend([si, oi])
                     soi = dict_merge(si, oi)
@@ -286,7 +293,7 @@ class DiscreteFactorTable(Distribution):
         raise NotImplementedError
 
     def __repr__(self):
-        e_l = ", ".join([f"{e}: {l:.2f}" for e, l in self.items()])
+        e_l = ", ".join([f"{e}: {l:.2f}" for e, l in zip(self.support, self.logits)])
         return f"{self.__class__.__name__}({{{e_l}}})"
 
     def __eq__(self, other):

@@ -1,18 +1,14 @@
 import matplotlib.pyplot as plt
-import json
 from typing import Iterable
 from msdm.core.utils.gridstringutils import  string_to_element_array
+from frozendict import frozendict
 
 from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess
-from msdm.core.distributions import DiscreteFactorTable
-from msdm.core.assignment import \
-    AssignmentMap as Dict, AssignmentSet as Set
 
-def dictToStr(d):
-    return json.dumps(d, sort_keys=True)
+from msdm.core.distributions.dictdistribution import DictDistribution
 
-TERMINALSTATE = {'x': -1, 'y': -1}
-TERMINALDIST = DiscreteFactorTable([TERMINALSTATE,])
+TERMINALSTATE = frozendict({'x': -1, 'y': -1})
+TERMINALDIST = DictDistribution({TERMINALSTATE: 1})
 
 class GridWorld(TabularMarkovDecisionProcess):
     def __init__(self,
@@ -32,14 +28,14 @@ class GridWorld(TabularMarkovDecisionProcess):
             tile_array = "\n".join(tile_array)
         elementArray = string_to_element_array(tile_array, **parseParams)
         states = []
-        walls = Set()
-        absorbingStates = Set()
-        initStates = Set()
-        locFeatures = Dict()
+        walls = set()
+        absorbingStates = set()
+        initStates = set()
+        locFeatures = {}
         for y_, row in enumerate(elementArray):
             y = len(elementArray) - y_ - 1
             for x, elements in enumerate(row):
-                s = {'x': x, 'y': y}
+                s = frozendict({'x': x, 'y': y})
                 states.append(s)
                 if len(elements) > 0:
                     f = elements[0]
@@ -52,17 +48,17 @@ class GridWorld(TabularMarkovDecisionProcess):
                         walls.add(s)
         states.append(TERMINALSTATE)
         actions = [
-            {'dx': 0, 'dy': 0},
-            {'dx': 1, 'dy': 0},
-            {'dx': -1, 'dy': 0},
-            {'dy': 1, 'dx': 0},
-            {'dy': -1, 'dx': 0}
+            frozendict({'dx': 0, 'dy': 0}),
+            frozendict({'dx': 1, 'dy': 0}),
+            frozendict({'dx': -1, 'dy': 0}),
+            frozendict({'dy': 1, 'dx': 0}),
+            frozendict({'dy': -1, 'dx': 0})
         ]
-        self._actions = sorted(actions, key=dictToStr)
-        self._states = sorted(states, key=dictToStr)
-        self._initStates = sorted(list(initStates), key=dictToStr)
-        self._absorbingStates = sorted(list(absorbingStates), key=dictToStr)
-        self._walls = sorted(list(walls), key=dictToStr)
+        self._actions = sorted(actions, key=self.hash_action)
+        self._states = sorted(states, key=self.hash_state)
+        self._initStates = sorted(initStates, key=self.hash_state)
+        self._absorbingStates = sorted(absorbingStates, key=self.hash_state)
+        self._walls = sorted(walls, key=self.hash_state)
         self._locFeatures = locFeatures
         self.success_prob = success_prob
         if feature_rewards is None:
@@ -104,27 +100,35 @@ class GridWorld(TabularMarkovDecisionProcess):
     def is_terminal(self, s):
         return s == TERMINALSTATE
 
-    def next_state_dist(self, s, a) -> DiscreteFactorTable:
+    def next_state_dist(self, s, a) -> DictDistribution:
         if self.is_terminal(s):
             return TERMINALDIST
         if s in self.absorbing_states:
             return TERMINALDIST
+        assert isinstance(s, frozendict)
 
         x, y = s['x'], s['y']
         ax, ay = a.get('dx', 0), a.get('dy', 0)
         nx, ny = x + ax, y + ay
-        ns = {'x': nx, 'y': ny}
+        ns = frozendict({'x': nx, 'y': ny})
 
         if ns not in self.state_list:
-            bdist = DiscreteFactorTable([s,])
+            bdist = DictDistribution({s: 1})
         elif ns in self.walls:
-            bdist = DiscreteFactorTable([s,])
+            bdist = DictDistribution({s: 1})
         elif ns == s:
-            bdist = DiscreteFactorTable([s,])
+            bdist = DictDistribution({s: 1})
+        elif self.success_prob != 1:
+            bdist = DictDistribution({
+                s: 1 - self.success_prob,
+                ns: self.success_prob
+            })
         else:
-            bdist = DiscreteFactorTable(support=[s, ns], probs=[1 - self.success_prob, self.success_prob])
-        
-        return bdist * (1 - self.termination_prob) | TERMINALDIST * self.termination_prob
+            bdist = DictDistribution({ns: 1})
+        if self.termination_prob:
+            bdist = bdist * (1 - self.termination_prob) | TERMINALDIST * self.termination_prob
+
+        return bdist
 
     def reward(self, s, a, ns) -> float:
         if self.is_terminal(s) or self.is_terminal(ns):
@@ -134,11 +138,12 @@ class GridWorld(TabularMarkovDecisionProcess):
 
     def actions(self, s) -> Iterable:
         if self.is_terminal(s):
-            return [{'dx': 0, 'dy': 0}, ]
+            return [frozendict({'dx': 0, 'dy': 0}), ]
         return [a for a in self._actions]
 
-    def initial_state_dist(self) -> DiscreteFactorTable:
-        return DiscreteFactorTable([s for s in self.initial_states])
+    def initial_state_dist(self) -> DictDistribution:
+        n_s0 = len(self.initial_states)
+        return DictDistribution({s: 1/n_s0 for s in self.initial_states})
 
     def plot(self,
              all_elements=False,

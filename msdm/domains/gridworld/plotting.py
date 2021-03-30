@@ -1,4 +1,5 @@
 import numpy as np
+from frozendict import frozendict
 from typing import Mapping, Union, Callable, Hashable
 from numbers import Number
 
@@ -89,8 +90,6 @@ class GridWorldPlotter:
 
     def plot_absorbing_states(self, markersize=15):
         for s in self.gw.absorbing_states:
-            # sdict = dict(zip([v.name for v in s.variables], s.values))
-            # x, y = sdict['x'], sdict['y']
             x, y = s['x'], s['y']
             self.ax.plot(x + .5, y + .5,
                          markeredgecolor='cornflowerblue',
@@ -118,7 +117,7 @@ class GridWorldPlotter:
                 break
             if isinstance(s, tuple):
                 xys.append(s)
-            elif isinstance(s, dict):
+            elif isinstance(s, (dict, frozendict)):
                 xys.append((s['x'], s['y']))
 
         if len(xys) == 2:
@@ -224,7 +223,7 @@ class GridWorldPlotter:
                 continue
             if (not plot_over_walls) and (s in self.gw.walls):
                 continue
-            if isinstance(s, dict):
+            if isinstance(s, (dict, frozendict)):
                 xy = s['x'], s['y']
             elif isinstance(s, tuple) or isinstance(s, list):
                 xy = s
@@ -275,7 +274,7 @@ class GridWorldPlotter:
                 continue
             if (not plot_over_walls) and (s in self.gw.walls):
                 continue
-            if isinstance(s, dict):
+            if isinstance(s, (dict, frozendict)):
                 x, y = s['x'], s['y']
             elif isinstance(s, tuple) or isinstance(s, list):
                 x, y = s

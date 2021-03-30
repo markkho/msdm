@@ -5,6 +5,7 @@ class Distribution(ABC):
     def sample(self):
         pass
 
+    @property
     @abstractmethod
     def support(self):
         pass
@@ -16,3 +17,4 @@ class Distribution(ABC):
     @abstractmethod
     def score(self, e):
         pass
+

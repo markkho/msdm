@@ -1,7 +1,8 @@
 import unittest
 
 import numpy as np
-from msdm.core.distributions import Multinomial
+from frozendict import frozendict
+from msdm.core.distributions import DictDistribution
 from msdm.algorithms import VectorizedValueIteration
 from msdm.tests.domains import Counter, GNTFig6_6, Geometric, VaryingActionNumber
 from msdm.domains import GridWorld
@@ -43,17 +44,12 @@ class VITestCase(unittest.TestCase):
             step_cost=-1,
         )
         res = VectorizedValueIteration().plan_on(mdp)
-        assert np.isclose(res.V[dict(x=0, y=1)], res.V[dict(x=1, y=0)])
-        assert res.policy.action_dist(dict(x=0, y=0)).isclose(Multinomial([
-            {'dx': 0, 'dy': 0},
-            {'dx': 1, 'dy': 0},
-            {'dx': -1, 'dy': 0},
-            {'dy': 1, 'dx': 0},
-            {'dy': -1, 'dx': 0}
-        ], probs=[
-            0,
-            1/2,
-            0,
-            1/2,
-            0,
-        ]))
+        assert np.isclose(res.V[frozendict(x=0, y=1)], res.V[frozendict(x=1, y=0)])
+        assert res.policy.action_dist(frozendict(x=0, y=0)).\
+            isclose(DictDistribution({
+                frozendict({'dx': 0, 'dy': 0}): 0,
+                frozendict({'dx': 1, 'dy': 0}): 1/2,
+                frozendict({'dx': -1, 'dy': 0}): 0,
+                frozendict({'dy': 1, 'dx': 0}): 1/2,
+                frozendict({'dy': -1, 'dx': 0}): 0
+        }))
