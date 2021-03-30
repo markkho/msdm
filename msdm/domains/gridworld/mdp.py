@@ -9,11 +9,10 @@ from msdm.core.distributions import DiscreteFactorTable
 from msdm.core.assignment import \
     AssignmentMap as Dict, AssignmentSet as Set
 
-def dictToStr(d):
-    return json.dumps(d, sort_keys=True)
+from msdm.core.distributions.dictdistribution import DictDistribution
 
 TERMINALSTATE = frozendict({'x': -1, 'y': -1})
-TERMINALDIST = DiscreteFactorTable([TERMINALSTATE,])
+TERMINALDIST = DictDistribution({TERMINALSTATE: 1})
 
 class GridWorld(TabularMarkovDecisionProcess):
     def __init__(self,
@@ -105,7 +104,7 @@ class GridWorld(TabularMarkovDecisionProcess):
     def is_terminal(self, s):
         return s == TERMINALSTATE
 
-    def next_state_dist(self, s, a) -> DiscreteFactorTable:
+    def next_state_dist(self, s, a) -> DictDistribution:
         if self.is_terminal(s):
             return TERMINALDIST
         if s in self.absorbing_states:
@@ -118,13 +117,17 @@ class GridWorld(TabularMarkovDecisionProcess):
         ns = frozendict({'x': nx, 'y': ny})
 
         if ns not in self.state_list:
-            bdist = DiscreteFactorTable([s,])
+            bdist = DictDistribution({s: 1})
         elif ns in self.walls:
-            bdist = DiscreteFactorTable([s,])
+            bdist = DictDistribution({s: 1})
         elif ns == s:
-            bdist = DiscreteFactorTable([s,])
+            bdist = DictDistribution({s: 1})
         else:
-            bdist = DiscreteFactorTable(support=[s, ns], probs=[1 - self.success_prob, self.success_prob])
+            bdist = DictDistribution({
+                s: 1 - self.success_prob,
+                ns: self.success_prob
+            })
+            # bdist = DiscreteFactorTable(support=[s, ns], probs=[1 - self.success_prob, self.success_prob])
         
         return bdist * (1 - self.termination_prob) | TERMINALDIST * self.termination_prob
 
@@ -139,8 +142,9 @@ class GridWorld(TabularMarkovDecisionProcess):
             return [frozendict({'dx': 0, 'dy': 0}), ]
         return [a for a in self._actions]
 
-    def initial_state_dist(self) -> DiscreteFactorTable:
-        return DiscreteFactorTable([s for s in self.initial_states])
+    def initial_state_dist(self) -> DictDistribution:
+        n_s0 = len(self.initial_states)
+        return DictDistribution({s: 1/n_s0 for s in self.initial_states})
 
     def plot(self,
              all_elements=False,
