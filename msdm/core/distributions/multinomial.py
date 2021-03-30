@@ -139,11 +139,13 @@ class Multinomial(Distribution):
         return self.support == other.support and self.logits == other.logits
 
     def isclose(self, other):
-        mapped = {
-            s: p
-            for s, p in self.items(probs=True)
-        }
-        for s, p in other.items(probs=True):
-            if not np.isclose(p, mapped[s]):
-                return False
+        # This implementation avoids comparing the lengths of
+        # support since it's possible to have entries that are near-zero,
+        # the default value when asking for a probability.
+        # Instead, this implementation checks every assigned probability
+        # in each, ensuring the value is close in the other distribution.
+        for first, second in [(self, other), (other, self)]:
+            for s, p in first.items(probs=True):
+                if not np.isclose(p, second.prob(s)):
+                    return False
         return True

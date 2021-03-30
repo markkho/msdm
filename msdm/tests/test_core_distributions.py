@@ -45,6 +45,10 @@ class DistributionTestCase(unittest.TestCase):
             # Testing uniform distribution
             assert cls([0, 1, 2]).isclose(cls([0, 1, 2], logits=[1, 1, 1]))
 
+            # Testing isclose with non-mappable types
+            els = [dict(number=i) for i in range(3)]
+            assert cls(els).isclose(cls(els, logits=[1, 1, 1]))
+
     def test_sample(self):
         for cls in [Multinomial, Pr]:
             np.random.seed(42)
