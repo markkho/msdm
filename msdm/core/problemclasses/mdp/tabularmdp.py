@@ -36,7 +36,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
     @property
     def action_list(self):
         try:
-            return self._actions
+            return self._action_list
         except AttributeError:
             pass
         logger.info("Action space unspecified; performing reachability analysis.")
@@ -44,10 +44,10 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         for s in self.state_list:
             for a in self.actions(s):
                 actions.add(a)
-        self._actions = sorted(actions,
-                key=self.hash_action
-            )
-        return self._actions
+        self._action_list = sorted(actions,
+                                   key=self.hash_action
+                                   )
+        return self._action_list
 
     @property
     def transition_matrix(self):

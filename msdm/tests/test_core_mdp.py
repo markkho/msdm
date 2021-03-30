@@ -44,5 +44,20 @@ class CoreTestCase(unittest.TestCase):
         print(eval_res.initial_value, true_v0)
         assert eval_res.initial_value == true_v0
 
+    def test_quick_tabular_mdp(self):
+        from msdm.core.distributions import DictDistribution as DD
+        from msdm.core.problemclasses.mdp.quicktabularmdp import QuickTabularMDP
+        TERMINAL = -float('inf')
+        mdp = QuickTabularMDP(
+            next_state_dist    = lambda s, a : DD({s + a: .8, s - a: .1, s: .1 if a else 1}) if (0 < s < 10) else DD({TERMINAL: 1}),
+            reward             = lambda s, a, ns : {0: -100, 10: 0, TERMINAL: 0}.get(ns, 0) - abs(a) - 1,
+            actions            = lambda s: (-1, 0, 1),
+            initial_state_dist = lambda : DD({5: .5, 6: .5}),
+            is_terminal        = lambda s: s == TERMINAL,
+        )
+        res = VectorizedValueIteration(discount_rate=.99).plan_on(mdp)
+        pi = [res.policy.action_dist(s).sample() for s in range(1, 10)]
+        assert all([a == 1 for a in pi])
+
 if __name__ == '__main__':
     unittest.main()
