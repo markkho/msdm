@@ -67,16 +67,6 @@ class DictDistribution(dict, Distribution):
     def score(self, e):
         return self.logit(e)
 
-    def items(self, probs=False):
-        warnings.warn(
-            "items(probs=False) will be deprecated after June 2021.",
-            PendingDeprecationWarning
-        )
-        if probs:
-            yield from ((e, p) for e, p in zip(self.support, self.probs))
-        else:
-            yield from ((e, l) for e, l in zip(self.support, self.logits))
-
     def __and__(self, other: "DictDistribution"):
         """Conjunction"""
         newdist = defaultdict(float)
@@ -99,6 +89,10 @@ class DictDistribution(dict, Distribution):
 
     def __mul__(self, num):
         return DictDistribution({e: p*num for e, p in dict.items(self)})
+
+    def __repr__(self):
+        e_p = ", ".join([f"{e}: {p}" for e, p in self.items()])
+        return f"{self.__class__.__name__}({{{e_p}}})"
 
     def isclose(self, other):
         mapped = {
