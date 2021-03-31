@@ -1,18 +1,11 @@
 import numpy as np
 import copy
 import warnings
+from collections import defaultdict
+from msdm.core.utils.hashdictionary import defaultdict2
 from msdm.core.problemclasses.mdp import MarkovDecisionProcess
 from msdm.core.problemclasses.mdp.policy.partialpolicy import PartialPolicy
 from msdm.core.algorithmclasses import Plans, PlanningResult
-
-
-def iter_dist_prob(dist):
-    '''
-    Iterate over support of a distribution and probability.
-    Useful for computing expectations.
-    '''
-    for e in dist.support:
-        yield e, dist.prob(e)
 
 class LRTDP(Plans):
     '''
@@ -48,8 +41,8 @@ class LRTDP(Plans):
             mdp, heuristic=self.heuristic, iterations=self.iterations
         )
         res = self.res
-        res.policy = mdp.state_action_map()
-        res.Q = mdp.state_action_map()
+        res.policy = defaultdict(lambda : dict())
+        res.Q = defaultdict(lambda : dict())
         for s in sum(self.res.trials, []) + [state for state, solved in res.solved.items() if solved]:
             if s in res.policy:
                 continue
@@ -67,14 +60,14 @@ class LRTDP(Plans):
         if heuristic is None:
             heuristic = lambda s: 0
 
-        self.res.V = mdp.state_map(default_value=heuristic)
-        self.res.action_orders = mdp.state_map()
+        self.res.V = defaultdict2(heuristic)
+        self.res.action_orders = dict()
 
         self.res.trials = []
         self.res.trials_solved = []
 
         # Keeping track of "labels": which states have been solved
-        self.res.solved = mdp.state_map(default_value=lambda: False)
+        self.res.solved = defaultdict2(lambda s: False)
 
         for i in range(iterations):
             if all(self.res.solved[s] for s in mdp.initial_state_dist().support):
@@ -143,7 +136,7 @@ class LRTDP(Plans):
         if mdp.is_terminal(s):
             return 0
         q = 0
-        for ns, prob in iter_dist_prob(mdp.next_state_dist(s, a)):
+        for ns, prob in mdp.next_state_dist(s, a).items():
             future = 0
             if not mdp.is_terminal(ns):
                 future = self.res.V[ns]
@@ -170,7 +163,7 @@ class LRTDP(Plans):
         return lambda s: 0 if mdp.is_terminal(s) else max(
             sum(
                 prob * mdp.reward(s, a, ns)
-                for ns, prob in iter_dist_prob(mdp.next_state_dist(s, a))
+                for ns, prob in mdp.next_state_dist(s, a).items()
             )
             for a in mdp.action_dist(s).support
         )
