@@ -1,6 +1,5 @@
 from types import SimpleNamespace
 import warnings, tqdm
-import json
 import random
 import numpy as np
 
@@ -8,12 +7,6 @@ from msdm.core.assignment import AssignmentMap as Dict
 from msdm.core.algorithmclasses import Plans, PlanningResult
 from msdm.core.problemclasses.mdp import MarkovDecisionProcess
 from msdm.core.problemclasses.mdp.policy.partialpolicy import PartialPolicy
-from msdm.core.distributions import DiscreteFactorTable, Distribution
-
-def _hash(x):
-    if isinstance(x, dict):
-        return json.dumps(x, sort_keys=True)
-    return x
 
 class LAOStar(Plans):
     """
@@ -64,7 +57,7 @@ class LAOStar(Plans):
                 "expandedorder": -1,
                 "expanded": False
             }
-            egraph[_hash(s0)] = node
+            egraph[s0] = node
 
         def policy_improvement(graph, egraph):
             pichange = False
@@ -78,7 +71,7 @@ class LAOStar(Plans):
                     aval = 0
                     nsdist = mdp.next_state_dist(s, a)
                     for ns, p in zip(nsdist.support, nsdist.probs):
-                        aval += p*(mdp.reward(s, a, ns) + discount_rate * egraph[_hash(ns)]["value"])
+                        aval += p*(mdp.reward(s, a, ns) + discount_rate * egraph[ns]["value"])
                     if aval > maxav:
                         maxav = aval
                         maxa = a
@@ -99,7 +92,7 @@ class LAOStar(Plans):
                     expval = 0
                     nsdist = mdp.next_state_dist(s, a)
                     for ns, p in zip(nsdist.support, nsdist.probs):
-                        nextnode = egraph[_hash(ns)]
+                        nextnode = egraph[ns]
                         expval += p*(mdp.reward(s, a, ns) + discount_rate * nextnode["value"])
                     valchange = np.max([np.abs(n["value"] - expval), valchange])
                     n["value"] = expval
@@ -132,10 +125,10 @@ class LAOStar(Plans):
                 toget = [s0, ]
                 while len(toget) > 0:
                     s = toget.pop()
-                    if _hash(s) in sGraph:
+                    if s in sGraph:
                         continue
-                    n = egraph[_hash(s)]
-                    sGraph[_hash(s)] = n            
+                    n = egraph[s]
+                    sGraph[s] = n
                     bestchildren = n['actionchildren'].get(n['bestaction'], [])
                     bestchildrenstates = [cn['state'] for cn in bestchildren]
                     toget.extend(bestchildrenstates)
@@ -152,7 +145,7 @@ class LAOStar(Plans):
                 nextstates = list(mdp.next_state_dist(s, a).support)
                 random.shuffle(nextstates)
                 for ns in nextstates:
-                    if _hash(ns) not in egraph:
+                    if ns not in egraph:
                         actionorder = list(mdp.actions(ns))
                         random.shuffle(actionorder)
                         nextnode = {
@@ -166,25 +159,25 @@ class LAOStar(Plans):
                             "actionchildren": Dict(),
                             "expanded": False
                         }
-                        egraph[_hash(ns)] = nextnode
+                        egraph[ns] = nextnode
                     else:
-                        nextnode = egraph[_hash(ns)]
+                        nextnode = egraph[ns]
                         nextnode['parents'].append(n)
                     children.append(nextnode)
-                n['actionchildren'][_hash(a)] = children
+                n['actionchildren'][a] = children
 
         def get_ancestors(egraph, tip):
             ans = {}
             toget = [tip,]
             while len(toget) > 0:
                 n = toget.pop()
-                hs = _hash(n['state'])
+                hs = n['state']
                 ans[hs] = n
                 for pn in n['parents']:
-                    if _hash(pn["state"]) in ans:
+                    if pn["state"] in ans:
                         continue
                     bestchildren = pn['actionchildren'][pn['bestaction']]
-                    if _hash(n['state']) in [_hash(cn['state']) for cn in bestchildren]:
+                    if n['state'] in [cn['state'] for cn in bestchildren]:
                         toget.append(pn)
             return ans
 
@@ -195,7 +188,7 @@ class LAOStar(Plans):
         for s0 in initStates:
             if mdp.is_terminal(s0):
                 continue
-            n0 = egraph[_hash(s0)]
+            n0 = egraph[s0]
             expand_graph(egraph, n0, nExpanded)
             nExpanded += 1
             z = get_ancestors(egraph, n0)
