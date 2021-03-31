@@ -17,28 +17,20 @@ class DictDistribution(dict, DiscreteDistribution):
 
     def sample(self):
         if len(self.support) == 1:
-            return self.support[0]
+            return next(iter(self.support))
         return random.choices(
-            population=self.support,
-            weights=self.probs,
+            population=list(self.support),
+            weights=list(self.probs),
             k=1
         )[0]
 
     @property
     def support(self):
-        try:
-            return self._support
-        except AttributeError:
-            self._support = [e for e in self.keys() if self[e] > 0.0]
-            return self._support
+        return self.keys()
 
     @property
     def probs(self):
-        try:
-            return self._probs
-        except AttributeError:
-            self._probs = [self[k] for k in self.support]
-            return self._probs
+        yield from (self[e] for e in self.keys())
 
     def prob(self, e):
         return self.get(e, 0.0)
