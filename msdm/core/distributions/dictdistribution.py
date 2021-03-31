@@ -1,62 +1,45 @@
-import random
 from collections import defaultdict
+from msdm.core.distributions.distributions import FiniteDistribution
 import math
-from msdm.core.distributions.distributions import DiscreteDistribution
-import numpy as np
 
 
-class DictDistribution(dict, DiscreteDistribution):
+class UniformDistribution(FiniteDistribution):
+    def __init__(self, support):
+        self._support = support
+    @property
+    def support(self):
+        return self._support
+    def prob(self, e):
+        if e in self._support:
+            return 1/len(self.support)
+        return 0
+
+class DeterministicDistribution(FiniteDistribution):
+    def __init__(self, value):
+        self.value = value
+    @property
+    def support(self):
+        return [self.value]
+    def prob(self, e):
+        if e == self.value:
+            return 1
+        return 0
+
+class DictDistribution(dict, FiniteDistribution):
     @classmethod
     def uniform(cls, support):
-        p = 1/len(support)
-        return DictDistribution({e: p for e in support})
+        return UniformDistribution(support)
 
     @classmethod
     def deterministic(cls, element):
-        return DictDistribution({element: 1})
-
-    def sample(self):
-        if len(self.support) == 1:
-            return next(iter(self.support))
-        return random.choices(
-            population=list(self.support),
-            weights=list(self.probs),
-            k=1
-        )[0]
+        return DeterministicDistribution(element)
 
     @property
     def support(self):
         return self.keys()
 
-    @property
-    def probs(self):
-        yield from (self[e] for e in self.keys())
-
     def prob(self, e):
         return self.get(e, 0.0)
-
-    def logit(self, e):
-        p = self.prob(e)
-        if p == 0:
-            return -float('inf')
-        return math.log(p)
-
-    @property
-    def logits(self):
-        try:
-            return self._logits
-        except AttributeError:
-            _logits = []
-            for e in self.support:
-                if self[e] == 0:
-                    _logits.append(-float('inf'))
-                else:
-                    _logits.append(self.logit(e))
-            self._logits = _logits
-            return self._logits
-
-    def score(self, e):
-        return self.logit(e)
 
     def __and__(self, other: "DictDistribution"):
         """Conjunction"""
@@ -80,18 +63,3 @@ class DictDistribution(dict, DiscreteDistribution):
 
     def __mul__(self, num):
         return DictDistribution({e: p*num for e, p in dict.items(self)})
-
-    def __repr__(self):
-        e_p = ", ".join([f"{e}: {p}" for e, p in self.items()])
-        return f"{self.__class__.__name__}({{{e_p}}})"
-
-    def isclose(self, other):
-        mapped = {
-            s: p
-            for s, p in zip(self.support, self.probs)
-        }
-        for s, p in zip(other.support, other.probs):
-            if not np.isclose(p, mapped.get(s, 0.0)):
-                return False
-        return True
-

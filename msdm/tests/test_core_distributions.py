@@ -59,6 +59,10 @@ class DistributionTestCase(unittest.TestCase):
 
         assert (dd1 & dd2).isclose(DictDistribution({'b': 2/3, 'a': 1/3}))
 
+    def test_uniform_and_deterministic_dist(self):
+        assert DictDistribution(a=0.5, b=0.5).isclose(DictDistribution.uniform(['a', 'b']))
+        assert DictDistribution(a=1).isclose(DictDistribution.deterministic('a'))
+
     def test_sample(self):
         warnings.filterwarnings("ignore", category=PendingDeprecationWarning)
         for cls in [Multinomial, Pr]:
