@@ -1,13 +1,22 @@
 import logging
 import numpy as np
 from abc import abstractmethod
+from typing import Iterable, Hashable, Mapping, TypeVar
 from msdm.core.problemclasses.mdp import MarkovDecisionProcess
 from msdm.core.utils.funcutils import method_cache, cached_property
 from msdm.core.distributions import DiscreteDistribution
 
 logger = logging.getLogger(__name__)
 
+State = TypeVar('State')
+Action = TypeVar('Action')
+
 class TabularMarkovDecisionProcess(MarkovDecisionProcess):
+    """
+    Tabular MDPs can be fully enumerated (e.g., as matrices) and
+    assume states/actions are hashable.
+    """
+
     @abstractmethod
     def next_state_dist(self, s, a) -> DiscreteDistribution:
         pass
@@ -19,7 +28,10 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         '''
         return self.next_state_dist(s, a)
 
-    """Tabular MDPs can be fully enumerated (e.g., as matrices)"""
+    @method_cache
+    def _cached_actions(self, s) -> Iterable[Action]:
+        return self.actions(s)
+
     def as_matrices(self):
         return {
             'ss': self.state_list,
@@ -34,7 +46,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         }
 
     @cached_property
-    def state_list(self):
+    def state_list(self) -> Iterable[State]:
         """
         List of states. Note that state ordering is only guaranteed to be
         consistent for a particular TabularMarkovDecisionProcess instance.
@@ -43,7 +55,11 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         return list(self.reachable_states())
 
     @cached_property
-    def action_list(self):
+    def state_index(self) -> Mapping[State, int]:
+        return {s: i for i, s in enumerate(self.state_list)}
+
+    @cached_property
+    def action_list(self) -> Iterable[Action]:
         """
         List of actions. Note that action ordering is only guaranteed to be
         consistent for a particular TabularMarkovDecisionProcess instance.
@@ -56,49 +72,57 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         return list(actions)
 
     @cached_property
-    def transition_matrix(self):
+    def action_index(self) -> Mapping[Action, int]:
+        return {a: i for i, a in enumerate(self.action_list)}
+
+    @cached_property
+    def transition_matrix(self) -> np.array:
         ss = self.state_list
+        ssi = self.state_index
         aa = self.action_list
+        aai = self.action_index
         tf = np.zeros((len(ss), len(aa), len(ss)))
-        for si, s in enumerate(ss):
-            state_actions = self.actions(s)
-            for ai, a in enumerate(aa):
+        for s, si in ssi.items():
+            state_actions = self._cached_actions(s)
+            for a, ai in aai.items():
                 if a not in state_actions:
                     continue
                 nsdist = self._cached_next_state_dist(s, a)
                 for ns, nsp in nsdist.items():
-                    tf[si, ai, ss.index(ns)] = nsp
+                    tf[si, ai, ssi[ns]] = nsp
         return tf
 
     @cached_property
     def action_matrix(self):
         ss = self.state_list
+        ssi = self.state_index
         aa = self.action_list
+        aai = self.action_index
         am = np.zeros((len(ss), len(aa)))
-        for (si, ai), _ in np.ndenumerate(am):
-            s, a = ss[si], aa[ai]
-            if a in self.actions(s):
-                p = 1
-            else:
-                p = 0
-            am[si, ai] = p
+        for s, si in ssi.items():
+            for a, ai in aai.items():
+                if a in self._cached_actions(s):
+                    p = 1
+                else:
+                    p = 0
+                am[si, ai] = p
         return am
-
 
     @cached_property
     def reward_matrix(self):
         ss = self.state_list
+        ssi = self.state_index
         aa = self.action_list
+        aai = self.action_index
         rf = np.zeros((len(ss), len(aa), len(ss)))
-        for si, s in enumerate(ss):
-            state_actions = self.actions(s)
-            for ai, a in enumerate(aa):
+        for s, si in ssi.items():
+            state_actions = self._cached_actions(s)
+            for a, ai in aai.items():
                 if a not in state_actions:
                     continue
                 nsdist = self._cached_next_state_dist(s, a)
                 for ns in nsdist.support:
-                    nsi = ss.index(ns)
-                    rf[si, ai, nsi] = self.reward(s, a, ns)
+                    rf[si, ai, ssi[ns]] = self.reward(s, a, ns)
         return rf
 
     @cached_property
@@ -141,7 +165,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         visited = set(S0)
         while len(frontier) > 0:
             s = frontier.pop()
-            for a in self.actions(s):
+            for a in self._cached_actions(s):
                 for ns in self._cached_next_state_dist(s, a).support:
                     if ns not in visited:
                         frontier.add(ns)

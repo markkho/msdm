@@ -1,9 +1,6 @@
 from msdm.core.distributions import Distribution
-from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess
-from typing import TypeVar, Callable, Iterable
-
-State = TypeVar('State')
-Action = TypeVar('Action')
+from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess, State, Action
+from typing import Callable, Iterable
 
 class QuickTabularMDP(TabularMarkovDecisionProcess):
     def __init__(
