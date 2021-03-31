@@ -5,7 +5,7 @@ import random
 import numpy as np
 
 from msdm.core.assignment import AssignmentMap as Dict
-from msdm.core.algorithmclasses import Plans, Result
+from msdm.core.algorithmclasses import Plans, PlanningResult
 from msdm.core.problemclasses.mdp import MarkovDecisionProcess
 from msdm.core.problemclasses.mdp.policy.partialpolicy import PartialPolicy
 from msdm.core.distributions import DiscreteFactorTable, Distribution
@@ -36,7 +36,7 @@ class LAOStar(Plans):
         A = SimpleNamespace(**{n: a for n, a in locals().items() if n != "self"})
         self.A = A
 
-    def plan_on(self, mdp: MarkovDecisionProcess) -> Result:
+    def plan_on(self, mdp: MarkovDecisionProcess) -> PlanningResult:
         A = self.A
         if A.seed is None:
             seed = random.randint(1, 1e20)
@@ -223,8 +223,15 @@ class LAOStar(Plans):
         for n in sGraph.values():
             pi[n['state']] = Dict([[n['bestaction'], 1.0]])
         pi = PartialPolicy(pi)
-            
-        return Result(
+
+        if laoIter == (A.max_lao_iters - 1):
+            warnings.warn(f"LAO* not converged after {A.max_lao_iters} iterations")
+            converged = False
+        else:
+            converged = True
+
+        return PlanningResult(
+            converged=converged,
             egraph=egraph,
             policy=pi,
             sGraph=sGraph,

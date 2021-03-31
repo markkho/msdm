@@ -21,6 +21,9 @@ class Result(ABC):
             for k, v in vars(self).items()
         )
 
+class PlanningResult(Result):
+    converged : bool
+
 class Plans(Algorithm):
     @abstractmethod
     def plan_on(self, problem: ProblemClass) -> Result:

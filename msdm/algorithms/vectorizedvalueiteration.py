@@ -3,7 +3,7 @@ import warnings
 import numpy as np
 from msdm.core.problemclasses.mdp import TabularPolicy, \
     TabularMarkovDecisionProcess, DeterministicTabularPolicy
-from msdm.core.algorithmclasses import Plans, Result
+from msdm.core.algorithmclasses import Plans, PlanningResult
 
 class VectorizedValueIteration(Plans):
     def __init__(self,
@@ -52,8 +52,7 @@ class VectorizedValueIteration(Plans):
             if np.abs(diff).max() < self.convergence_diff:
                 break
             v = nv
-        if i == (iterations - 1):
-            warnings.warn(f"VI not converged after {iterations} iterations")
+
         if self.entreg:
             pi = softmax((1 / self.temp) * q, axis=-1)
         else:
@@ -65,7 +64,12 @@ class VectorizedValueIteration(Plans):
             pi /= pi.sum(axis=-1, keepdims=True)
 
         # create result object
-        res = Result()
+        res = PlanningResult()
+        if i == (iterations - 1):
+            warnings.warn(f"VI not converged after {iterations} iterations")
+            res.converged = False
+        else:
+            res.converged = True
         res.mdp = mdp
         cls = TabularPolicy if ((pi < 1) & (pi > 0)).any() else DeterministicTabularPolicy
         res.policy = res.pi = cls(mdp.state_list, mdp.action_list, policy_matrix=pi, mdp=mdp)
