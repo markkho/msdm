@@ -8,8 +8,8 @@ from msdm.core.distributions import DiscreteDistribution
 
 logger = logging.getLogger(__name__)
 
-State = TypeVar('State')
-Action = TypeVar('Action')
+State = TypeVar('State', bound=Hashable)
+Action = TypeVar('Action', bound=Hashable)
 
 class TabularMarkovDecisionProcess(MarkovDecisionProcess):
     """
