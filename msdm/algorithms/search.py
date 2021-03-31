@@ -3,7 +3,6 @@ import heapq
 import random
 
 from msdm.core.algorithmclasses import Plans, Result
-from msdm.core.assignment import AssignmentSet, AssignmentMap
 from msdm.core.problemclasses.mdp import DeterministicShortestPathProblem
 from msdm.core.problemclasses.mdp.policy.partialpolicy import PartialPolicy
 
@@ -21,8 +20,8 @@ def path_to_policy(path):
     '''
     Converts a path (a sequence of states from a start to a goal) into a policy.
     '''
-    return PartialPolicy(AssignmentMap([
-        (s, AssignmentMap([(ns, 1)]))
+    return PartialPolicy(dict([
+        (s, dict([(ns, 1)]))
         for s, ns in zip(path[:-1], path[1:])
     ]))
 
@@ -52,8 +51,8 @@ class BreadthFirstSearch(Plans):
 
         queue = collections.deque([start])
 
-        visited = AssignmentSet()
-        camefrom = AssignmentMap()
+        visited = set([])
+        camefrom = dict()
 
         while queue:
             s = queue.popleft()
@@ -101,8 +100,8 @@ class AStarSearch(Plans):
         start = mdp.initial_state()
         heapq.heappush(queue, ((-self.heuristic_value(start), 0, rnd.random()), start))
 
-        visited = AssignmentSet()
-        camefrom = AssignmentMap()
+        visited = set([])
+        camefrom = dict()
 
         while queue:
             (f, g, r), s = heapq.heappop(queue)
