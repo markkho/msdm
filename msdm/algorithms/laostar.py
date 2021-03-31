@@ -3,7 +3,6 @@ import warnings, tqdm
 import random
 import numpy as np
 
-from msdm.core.assignment import AssignmentMap as Dict
 from msdm.core.algorithmclasses import Plans, PlanningResult
 from msdm.core.problemclasses.mdp import MarkovDecisionProcess
 from msdm.core.problemclasses.mdp.policy.partialpolicy import PartialPolicy
@@ -48,7 +47,7 @@ class LAOStar(Plans):
             random.shuffle(actionorder)
             node = {
                 "parents": [], 
-                "actionchildren": Dict(),
+                "actionchildren": dict(),
                 "state": s0, 
                 "value": A.heuristic(s0),
                 "bestaction": actionorder[0],
@@ -156,7 +155,7 @@ class LAOStar(Plans):
                             "visitorder": len(egraph),
                             "expandedorder": -1,
                             "parents": [n, ],
-                            "actionchildren": Dict(),
+                            "actionchildren": dict(),
                             "expanded": False
                         }
                         egraph[ns] = nextnode
@@ -212,9 +211,9 @@ class LAOStar(Plans):
         if A.show_progress:
             pbar.close()
 
-        pi = Dict()
+        pi = dict()
         for n in sGraph.values():
-            pi[n['state']] = Dict([[n['bestaction'], 1.0]])
+            pi[n['state']] = dict([[n['bestaction'], 1.0]])
         pi = PartialPolicy(pi)
 
         if laoIter == (A.max_lao_iters - 1):
