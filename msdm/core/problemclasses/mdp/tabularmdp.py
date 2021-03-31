@@ -83,13 +83,9 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         aai = self.action_index
         tf = np.zeros((len(ss), len(aa), len(ss)))
         for s, si in ssi.items():
-            state_actions = self._cached_actions(s)
-            for a, ai in aai.items():
-                if a not in state_actions:
-                    continue
-                nsdist = self._cached_next_state_dist(s, a)
-                for ns, nsp in nsdist.items():
-                    tf[si, ai, ssi[ns]] = nsp
+            for a in self._cached_actions(s):
+                for ns, nsp in self._cached_next_state_dist(s, a).items():
+                    tf[si, aai[a], ssi[ns]] = nsp
         return tf
 
     @cached_property
@@ -100,12 +96,8 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         aai = self.action_index
         am = np.zeros((len(ss), len(aa)))
         for s, si in ssi.items():
-            for a, ai in aai.items():
-                if a in self._cached_actions(s):
-                    p = 1
-                else:
-                    p = 0
-                am[si, ai] = p
+            for a in self._cached_actions(s):
+                am[si, aai[a]] = 1
         return am
 
     @cached_property
@@ -116,13 +108,9 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         aai = self.action_index
         rf = np.zeros((len(ss), len(aa), len(ss)))
         for s, si in ssi.items():
-            state_actions = self._cached_actions(s)
-            for a, ai in aai.items():
-                if a not in state_actions:
-                    continue
-                nsdist = self._cached_next_state_dist(s, a)
-                for ns in nsdist.support:
-                    rf[si, ai, ssi[ns]] = self.reward(s, a, ns)
+            for a in self._cached_actions(s):
+                for ns in self._cached_next_state_dist(s, a).support:
+                    rf[si, aai[a], ssi[ns]] = self.reward(s, a, ns)
         return rf
 
     @cached_property

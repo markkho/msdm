@@ -1,4 +1,4 @@
-import inspect
+import inspect, functools
 
 def cached_property(fn):
     '''
@@ -20,6 +20,7 @@ def cached_property(fn):
 
     key = '_cached_'+fn.__name__
     @property
+    @functools.wraps(fn)
     def wrapped(self):
         if not hasattr(self, key):
             setattr(self, key, fn(self))
@@ -34,6 +35,7 @@ def method_cache(fn):
     '''
     cache_attr = '_cache_'+fn.__name__
     cache_info_attr = '_cache_info_'+fn.__name__
+    @functools.wraps(fn)
     def wrapped(self, *args, **kwargs):
         # Since the store is object-local, we always have to ensure
         # objects passed in have the cache initialized.
