@@ -1,14 +1,19 @@
-import json, logging
+import logging
 import numpy as np
+from abc import abstractmethod
 from msdm.core.problemclasses.mdp import MarkovDecisionProcess
 from msdm.core.utils.funcutils import method_cache, cached_property
+from msdm.core.distributions import DiscreteDistribution
 
-from msdm.core.assignment.assignmentset import AssignmentSet as Set
 logger = logging.getLogger(__name__)
 
 class TabularMarkovDecisionProcess(MarkovDecisionProcess):
+    @abstractmethod
+    def next_state_dist(self, s, a) -> DiscreteDistribution:
+        pass
+
     @method_cache
-    def _cached_next_state_dist(self, s, a):
+    def _cached_next_state_dist(self, s, a) -> DiscreteDistribution:
         '''
         We prefer using this cached version of next_state_dist when possible.
         '''
@@ -30,17 +35,25 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
 
     @cached_property
     def state_list(self):
+        """
+        List of states. Note that state ordering is only guaranteed to be
+        consistent for a particular TabularMarkovDecisionProcess instance.
+        """
         logger.info("State space unspecified; performing reachability analysis.")
-        return sorted(self.reachable_states(), key=self.hash_state)
+        return list(self.reachable_states())
 
     @cached_property
     def action_list(self):
+        """
+        List of actions. Note that action ordering is only guaranteed to be
+        consistent for a particular TabularMarkovDecisionProcess instance.
+        """
         logger.info("Action space unspecified; performing reachability analysis.")
-        actions = Set([])
+        actions = set([])
         for s in self.state_list:
             for a in self.actions(s):
                 actions.add(a)
-        return sorted(actions, key=self.hash_action)
+        return list(actions)
 
     @cached_property
     def transition_matrix(self):
@@ -53,7 +66,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
                 if a not in state_actions:
                     continue
                 nsdist = self._cached_next_state_dist(s, a)
-                for ns, nsp in zip(nsdist.support, nsdist.probs):
+                for ns, nsp in nsdist.items():
                     tf[si, ai, ss.index(ns)] = nsp
         return tf
 
@@ -121,10 +134,11 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
             return True
         return np.array([is_absorbing(s) for s in self.state_list])
 
+    @method_cache
     def reachable_states(self):
         S0 = self.initial_state_dist().support
-        frontier = Set(S0)
-        visited = Set(S0)
+        frontier = set(S0)
+        visited = set(S0)
         while len(frontier) > 0:
             s = frontier.pop()
             for a in self.actions(s):

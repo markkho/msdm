@@ -50,7 +50,7 @@ class GNTFig6_6(TabularMarkovDecisionProcess):
             return -GNTFig6_6.T[s][a][1]
         return -100 # HACK
 
-class Counter(TabularMarkovDecisionProcess, DeterministicShortestPathProblem):
+class Counter(DeterministicShortestPathProblem, TabularMarkovDecisionProcess):
     '''
     MDP where actions are increment/decrement and goal is to reach some count.
     '''
