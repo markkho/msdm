@@ -6,7 +6,6 @@ from msdm.core.problemclasses.mdp.policy.deterministic_policy import Determinist
 from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess
 from msdm.core.algorithmclasses import Result
 
-from msdm.core.assignment.assignmentmap import AssignmentMap
 from msdm.core.distributions import Distribution
 from msdm.core.distributions.dictdistribution import DictDistribution
 class TabularPolicy(Policy):
@@ -14,9 +13,9 @@ class TabularPolicy(Policy):
         self._states = states
         self._actions = actions
         if policy_matrix is not None:
-            policy_dict = AssignmentMap() if mdp is None else mdp.state_map()
+            policy_dict = dict()
             for si, s in enumerate(states):
-                policy_dict[s] = AssignmentMap() if mdp is None else mdp.action_map()
+                policy_dict[s] = dict()
                 for ai, a in enumerate(actions):
                     if policy_matrix[si, ai] > 0:
                         policy_dict[s][a] = policy_matrix[si, ai]
@@ -52,12 +51,12 @@ class TabularPolicy(Policy):
         res.mdp = mdp
         res.policy = self
         res._valuevec = v
-        vf = AssignmentMap([(s, vi) for s, vi in zip(ss, v)])
+        vf = dict(zip(ss, v))
         res.value = res.V = vf
         res._qvaluemat = q
-        qf = AssignmentMap()
+        qf = dict()
         for si, s in enumerate(ss):
-            qf[s] = AssignmentMap()
+            qf[s] = dict()
             for ai, a in enumerate(aa):
                 qf[s][a] = q[si, ai]
         res.action_value = res.Q = qf

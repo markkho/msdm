@@ -1,6 +1,7 @@
 from scipy.special import softmax, logsumexp
 import warnings
 import numpy as np
+from collections import defaultdict
 from msdm.core.problemclasses.mdp import TabularPolicy, \
     TabularMarkovDecisionProcess, DeterministicTabularPolicy
 from msdm.core.algorithmclasses import Plans, PlanningResult
@@ -74,14 +75,14 @@ class VectorizedValueIteration(Plans):
         cls = TabularPolicy if ((pi < 1) & (pi > 0)).any() else DeterministicTabularPolicy
         res.policy = res.pi = cls(mdp.state_list, mdp.action_list, policy_matrix=pi, mdp=mdp)
         res._valuevec = v
-        vf = mdp.state_map()
+        vf = dict()
         for s, vi in zip(mdp.state_list, v):
             vf[s] = vi
         res.valuefunc = res.V = vf
         res._qvaluemat = q
         res.iterations = i
         res.max_bellman_error = diff
-        qf = mdp.state_action_map()
+        qf = defaultdict(lambda : dict())
         for si, s in enumerate(mdp.state_list):
             for ai, a in enumerate(mdp.action_list):
                 qf[s][a] = q[si, ai]
