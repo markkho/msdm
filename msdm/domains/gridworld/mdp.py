@@ -5,7 +5,9 @@ from frozendict import frozendict
 
 from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess, State
 
-from msdm.core.distributions.dictdistribution import DeterministicDistribution, FiniteDistribution, UniformDistribution
+from msdm.core.distributions.dictdistribution import \
+    FiniteDistribution, DeterministicDistribution, \
+    DictDistribution, UniformDistribution
 
 TERMINALSTATE = frozendict({'x': -1, 'y': -1})
 TERMINALDIST = DeterministicDistribution(TERMINALSTATE)
