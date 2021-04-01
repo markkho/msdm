@@ -7,7 +7,6 @@ from msdm.core.problemclasses.mdp import TabularPolicy
 np.seterr(divide='ignore')
 
 class CoreTestCase(unittest.TestCase):
-
     def test_runningAgentOnMDP(self):
         gw1 = GridWorld(
             tile_array=[
@@ -18,8 +17,7 @@ class CoreTestCase(unittest.TestCase):
             ],
             step_cost=-1,
         )
-        vi = VectorizedValueIteration(temperature=.1,
-                                      entropy_regularization=True)
+        vi = VectorizedValueIteration()
         res = vi.plan_on(gw1)
         stateTraj = res.policy.run_on(gw1).state_traj
         self.assertTrue(stateTraj[-1] in gw1.absorbing_states)

@@ -9,17 +9,15 @@ from msdm.core.algorithmclasses import Plans, PlanningResult
 class VectorizedValueIteration(Plans):
     def __init__(self,
                  iterations=None,
-                 entropy_regularization=False,
-                 convergence_diff=1e-5,
-                 temperature=1.0):
-        self.iters = iterations
-        self.entreg = entropy_regularization
-        self.temp = temperature
-        self._policy = None
+                 convergence_diff=1e-5
+                 ):
+        self.iterations = iterations
         self.convergence_diff = convergence_diff
 
-    def plan_on(self, mdp: TabularMarkovDecisionProcess):
+    def __call__(self, mdp: TabularMarkovDecisionProcess):
+        return self.plan_on(mdp)
 
+    def plan_on(self, mdp: TabularMarkovDecisionProcess):
         ss = mdp.state_list
         tf = mdp.transition_matrix
         rf = mdp.reward_matrix
@@ -27,38 +25,24 @@ class VectorizedValueIteration(Plans):
         rs = mdp.reachable_state_vec
         am = mdp.action_matrix
 
-        iterations = self.iters if self.iters is not None else max(len(ss), int(1e5))
+        iterations = self.iterations
+        if iterations is None:
+            iterations = max(len(ss), int(1e5))
 
-        #available actions - add -inf if it is not available
-        aa = am.copy()
-        assert np.all(aa[np.nonzero(aa)] == 1) # If this is true, then the next line is unnecessary.
-        aa[np.nonzero(aa)] = 1
-        aa = np.log(aa)
-        assert (aa == np.log(am)).all() # if this is true, then we should delete `aa` and just use np.log(am) in place
         terminal_sidx = np.where(1 - nt)[0]
 
         v = np.zeros(len(ss))
         for i in range(iterations):
             q = np.einsum("san,san->sa", tf, rf + mdp.discount_rate * v[None, None, :])
-            if self.entreg:
-                nv = self.temp * logsumexp((1 / self.temp) * q + np.log(am),
-                                          axis=-1)
-                nv[terminal_sidx] = 0 #terminal states are always 0 reward
-            else:
-                nv = np.max(q + aa, axis=-1)
-                nv[terminal_sidx] = 0 #terminal states are always 0 reward
-
+            nv = np.max(q + np.log(am), axis=-1)
+            nv[terminal_sidx] = 0 #terminal states are always 0 reward
             diff = (v - nv)*rs
             if np.abs(diff).max() < self.convergence_diff:
                 break
             v = nv
 
-        if self.entreg:
-            pi = softmax((1 / self.temp) * q + np.log(am), axis=-1)
-            pi = TabularPolicy.from_matrix(mdp.state_list, mdp.action_list, pi)
-        else:
-            validq = q + aa
-            pi = TabularPolicy.from_q_matrix(mdp.state_list, mdp.action_list, validq)
+        validq = q + np.log(am)
+        pi = TabularPolicy.from_q_matrix(mdp.state_list, mdp.action_list, validq)
 
         # create result object
         res = PlanningResult()
