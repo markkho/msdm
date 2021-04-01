@@ -8,7 +8,7 @@ Event = TypeVar('Event')
 
 class Distribution(ABC, Generic[Event]):
     @abstractmethod
-    def sample(self) -> Event:
+    def sample(self, *, rng=random) -> Event:
         pass
 
 class FiniteDistribution(Distribution):
@@ -21,13 +21,13 @@ class FiniteDistribution(Distribution):
     def support(self) -> Iterable[Event]:
         pass
 
-    def sample(self) -> Event:
+    def sample(self, *, rng=random) -> Event:
         support = self.support
         if not isinstance(support, (list, tuple)):
             support = tuple(support)
         if len(support) == 1:
             return support[0]
-        return random.choices(
+        return rng.choices(
             population=support,
             weights=tuple(self.probs),
             k=1
