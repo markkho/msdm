@@ -1,6 +1,7 @@
 from collections import defaultdict
 from msdm.core.distributions.distributions import FiniteDistribution
 import math
+import random
 
 
 class UniformDistribution(FiniteDistribution):
@@ -13,6 +14,8 @@ class UniformDistribution(FiniteDistribution):
         if e in self._support:
             return 1/len(self.support)
         return 0
+    def sample(self):
+        return random.choice(self._support)
 
 class DeterministicDistribution(FiniteDistribution):
     def __init__(self, value):
@@ -24,6 +27,8 @@ class DeterministicDistribution(FiniteDistribution):
         if e == self.value:
             return 1
         return 0
+    def sample(self):
+        return self.value
 
 class DictDistribution(dict, FiniteDistribution):
     @classmethod

@@ -5,10 +5,10 @@ from frozendict import frozendict
 
 from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess, State
 
-from msdm.core.distributions.dictdistribution import DictDistribution
+from msdm.core.distributions.dictdistribution import DeterministicDistribution, FiniteDistribution, UniformDistribution
 
 TERMINALSTATE = frozendict({'x': -1, 'y': -1})
-TERMINALDIST = DictDistribution({TERMINALSTATE: 1})
+TERMINALDIST = DeterministicDistribution(TERMINALSTATE)
 
 class GridWorld(TabularMarkovDecisionProcess):
     def __init__(self,
@@ -104,7 +104,7 @@ class GridWorld(TabularMarkovDecisionProcess):
     def is_terminal(self, s):
         return s == TERMINALSTATE
 
-    def next_state_dist(self, s, a) -> DictDistribution:
+    def next_state_dist(self, s, a) -> FiniteDistribution:
         if self.is_terminal(s):
             return TERMINALDIST
         if s in self.absorbing_states:
@@ -117,18 +117,18 @@ class GridWorld(TabularMarkovDecisionProcess):
         ns = frozendict({'x': nx, 'y': ny})
 
         if ns not in self._states:
-            bdist = DictDistribution({s: 1})
+            bdist = DeterministicDistribution(s)
         elif ns in self.walls:
-            bdist = DictDistribution({s: 1})
+            bdist = DeterministicDistribution(s)
         elif ns == s:
-            bdist = DictDistribution({s: 1})
+            bdist = DeterministicDistribution(s)
         elif self.success_prob != 1:
             bdist = DictDistribution({
                 s: 1 - self.success_prob,
                 ns: self.success_prob
             })
         else:
-            bdist = DictDistribution({ns: 1})
+            bdist = DeterministicDistribution(ns)
 
         return bdist
 
@@ -143,9 +143,8 @@ class GridWorld(TabularMarkovDecisionProcess):
             return [frozendict({'dx': 0, 'dy': 0}), ]
         return [a for a in self._actions]
 
-    def initial_state_dist(self) -> DictDistribution:
-        n_s0 = len(self.initial_states)
-        return DictDistribution({s: 1/n_s0 for s in self.initial_states})
+    def initial_state_dist(self) -> FiniteDistribution:
+        return UniformDistribution(self.initial_states)
 
     def plot(self,
              all_elements=False,
