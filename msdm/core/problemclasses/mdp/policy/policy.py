@@ -8,6 +8,9 @@ class Policy(ABC):
     def action_dist(self, s) -> Distribution:
         pass
 
+    def action(self, s):
+        return self.action_dist(s).sample()
+
     def run_on(self,
                mdp: MarkovDecisionProcess,
                initial_state=None,

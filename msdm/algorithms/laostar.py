@@ -4,8 +4,8 @@ import random
 import numpy as np
 
 from msdm.core.algorithmclasses import Plans, PlanningResult
-from msdm.core.problemclasses.mdp import MarkovDecisionProcess
-from msdm.core.problemclasses.mdp.policy.partialpolicy import PartialPolicy
+from msdm.core.problemclasses.mdp import MarkovDecisionProcess, TabularPolicy
+from msdm.core.distributions.dictdistribution import DeterministicDistribution
 
 class LAOStar(Plans):
     """
@@ -213,8 +213,8 @@ class LAOStar(Plans):
 
         pi = dict()
         for n in sGraph.values():
-            pi[n['state']] = dict([[n['bestaction'], 1.0]])
-        pi = PartialPolicy(pi)
+            pi[n['state']] = DeterministicDistribution(n['bestaction'])
+        pi = TabularPolicy(pi)
 
         if laoIter == (A.max_lao_iters - 1):
             warnings.warn(f"LAO* not converged after {A.max_lao_iters} iterations")

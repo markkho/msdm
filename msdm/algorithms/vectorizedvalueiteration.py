@@ -2,8 +2,8 @@ from scipy.special import softmax, logsumexp
 import warnings
 import numpy as np
 from collections import defaultdict
-from msdm.core.problemclasses.mdp import TabularPolicy, \
-    TabularMarkovDecisionProcess, DeterministicTabularPolicy
+from msdm.core.problemclasses.mdp import \
+    TabularMarkovDecisionProcess, TabularPolicy
 from msdm.core.algorithmclasses import Plans, PlanningResult
 
 class VectorizedValueIteration(Plans):
@@ -72,8 +72,10 @@ class VectorizedValueIteration(Plans):
         else:
             res.converged = True
         res.mdp = mdp
-        cls = TabularPolicy if ((pi < 1) & (pi > 0)).any() else DeterministicTabularPolicy
-        res.policy = res.pi = cls(mdp.state_list, mdp.action_list, policy_matrix=pi, mdp=mdp)
+        res.policy = res.pi = \
+            TabularPolicy.from_matrix(mdp.state_list, mdp.action_list, pi)
+        # cls = OldTabularPolicy if ((pi < 1) & (pi > 0)).any() else DeterministicTabularPolicy
+        # res.policy = res.pi = cls(mdp.state_list, mdp.action_list, policy_matrix=pi, mdp=mdp)
         res._valuevec = v
         vf = dict()
         for s, vi in zip(mdp.state_list, v):

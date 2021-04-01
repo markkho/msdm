@@ -297,8 +297,8 @@ class GridWorldPlotter:
         return self
 
     def plot_policy(self, policy: Union[TabularPolicy, dict]) -> "GridWorldPlotter":
-        if isinstance(policy, TabularPolicy):
-            policy = policy.policy_dict
+        # if isinstance(policy, TabularPolicy):
+        #     policy = policy.policy_dict
         return self.plot_state_action_map(
             state_action_map=policy,
             plot_over_walls=False,

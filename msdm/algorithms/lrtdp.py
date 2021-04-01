@@ -3,9 +3,9 @@ import copy
 import warnings
 from collections import defaultdict
 from msdm.core.utils.hashdictionary import defaultdict2
-from msdm.core.problemclasses.mdp import MarkovDecisionProcess
-from msdm.core.problemclasses.mdp.policy.partialpolicy import PartialPolicy
+from msdm.core.problemclasses.mdp import MarkovDecisionProcess, TabularPolicy
 from msdm.core.algorithmclasses import Plans, PlanningResult
+from msdm.core.distributions.dictdistribution import DeterministicDistribution
 
 class LRTDP(Plans):
     '''
@@ -41,15 +41,15 @@ class LRTDP(Plans):
             mdp, heuristic=self.heuristic, iterations=self.iterations
         )
         res = self.res
-        res.policy = defaultdict(lambda : dict())
+        res.policy = {}
         res.Q = defaultdict(lambda : dict())
         for s in sum(self.res.trials, []) + [state for state, solved in res.solved.items() if solved]:
             if s in res.policy:
                 continue
-            res.policy[s][self.policy(mdp, s)] = 1
+            res.policy[s] = self.policy(mdp, s) #DeterministicDistribution(self.policy(mdp, s))
             for a in mdp.actions(s):
                 res.Q[s][a] = self.Q(mdp, s, a)
-        res.policy = PartialPolicy(res.policy)
+        res.policy = TabularPolicy.from_deterministic_map(res.policy)
 
         #clear result
         self.res = None

@@ -4,7 +4,7 @@ import random
 
 from msdm.core.algorithmclasses import Plans, Result
 from msdm.core.problemclasses.mdp import DeterministicShortestPathProblem
-from msdm.core.problemclasses.mdp.policy.partialpolicy import PartialPolicy
+from msdm.core.problemclasses.mdp import TabularPolicy
 
 def reconstruct_path(camefrom, start, terminal_state):
     '''
@@ -20,10 +20,7 @@ def path_to_policy(path):
     '''
     Converts a path (a sequence of states from a start to a goal) into a policy.
     '''
-    return PartialPolicy(dict([
-        (s, dict([(ns, 1)]))
-        for s, ns in zip(path[:-1], path[1:])
-    ]))
+    return TabularPolicy.from_deterministic_map(dict(zip(path[:-1], path[1:])))
 
 def make_shuffled(rnd):
     def shuffled(iterable):
