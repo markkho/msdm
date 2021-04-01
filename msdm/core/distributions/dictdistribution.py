@@ -1,6 +1,4 @@
-from collections import defaultdict
 from msdm.core.distributions.distributions import FiniteDistribution
-import math
 import random
 
 
@@ -45,26 +43,3 @@ class DictDistribution(dict, FiniteDistribution):
 
     def prob(self, e):
         return self.get(e, 0.0)
-
-    def __and__(self, other: "DictDistribution"):
-        """Conjunction"""
-        newdist = defaultdict(float)
-        norm = 0
-        for e in set(self.support) & set(other.support):
-            newdist[e] += self.score(e)
-            newdist[e] += other.score(e)
-            norm += math.exp(newdist[e])
-        lognorm = math.log(norm)
-        return DictDistribution({e: math.exp(l - lognorm) for e, l in newdist.items()})
-
-    def __or__(self, other: "DictDistribution"):
-        """Disjunction/Mixture"""
-        newdist = defaultdict(float)
-        for e in self.support:
-            newdist[e] += self[e]
-        for e in other.support:
-            newdist[e] += other[e]
-        return DictDistribution(newdist)
-
-    def __mul__(self, num):
-        return DictDistribution({e: p*num for e, p in dict.items(self)})
