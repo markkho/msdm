@@ -21,7 +21,6 @@ class LAOStar(Plans):
                  max_lao_iters=100,
                  policy_evaluation_iters=100,
                  policy_iteration_iters=100,
-                 discount_rate=1.0,
                  seed=None):
         if heuristic is None:
             heuristic = lambda s : 0.0
@@ -36,8 +35,7 @@ class LAOStar(Plans):
             seed = A.seed
         random.seed(seed)
         
-        # discount_rate = 1 - mdp.termination_prob
-        discount_rate = A.discount_rate
+        discount_rate = mdp.discount_rate
         #initialize explicit graph
         if A.egraph is None:
             egraph = {} #explicit graph
@@ -68,8 +66,7 @@ class LAOStar(Plans):
                 maxav = -np.inf
                 for a in aa:
                     aval = 0
-                    nsdist = mdp.next_state_dist(s, a)
-                    for ns, p in zip(nsdist.support, nsdist.probs):
+                    for ns, p in mdp.next_state_dist(s, a).items():
                         aval += p*(mdp.reward(s, a, ns) + discount_rate * egraph[ns]["value"])
                     if aval > maxav:
                         maxav = aval
@@ -89,8 +86,7 @@ class LAOStar(Plans):
                     assert n['expanded']
                     s, a = n["state"], n["bestaction"]
                     expval = 0
-                    nsdist = mdp.next_state_dist(s, a)
-                    for ns, p in zip(nsdist.support, nsdist.probs):
+                    for ns, p in mdp.next_state_dist(s, a).items():
                         nextnode = egraph[ns]
                         expval += p*(mdp.reward(s, a, ns) + discount_rate * nextnode["value"])
                     valchange = np.max([np.abs(n["value"] - expval), valchange])
