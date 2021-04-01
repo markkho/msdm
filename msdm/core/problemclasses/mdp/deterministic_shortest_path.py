@@ -1,6 +1,6 @@
 from abc import abstractmethod
 from msdm.core.problemclasses.mdp import MarkovDecisionProcess
-from msdm.core.distributions import Distribution, Multinomial, DeterministicDistribution
+from msdm.core.distributions import Distribution, DeterministicDistribution
 
 class DeterministicShortestPathProblem(MarkovDecisionProcess):
     """

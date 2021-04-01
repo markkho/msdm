@@ -1,7 +1,9 @@
 from typing import Iterable
 
 from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess, DeterministicShortestPathProblem
-from msdm.core.distributions import DiscreteFactorTable, Distribution, Multinomial, DictDistribution
+from msdm.core.distributions import \
+    Distribution, DictDistribution,\
+    DeterministicDistribution, UniformDistribution
 
 class GNTFig6_6(TabularMarkovDecisionProcess):
     T = [
@@ -28,7 +30,7 @@ class GNTFig6_6(TabularMarkovDecisionProcess):
     Acyclic MDP from Ghallab, Nau, Traverso Figure 6.6
     '''
     def initial_state_dist(self) -> Distribution:
-        return DiscreteFactorTable([0])
+        return DeterministicDistribution(0)
 
     def is_terminal(self, s):
         return s in (12, 15, 16)
@@ -43,7 +45,7 @@ class GNTFig6_6(TabularMarkovDecisionProcess):
             ns = GNTFig6_6.T[s][a][0]
         else:
             ns = [s]
-        return DiscreteFactorTable(ns)
+        return UniformDistribution(ns)
 
     def reward(self, s, a, ns) -> float:
         if a < len(GNTFig6_6.T[s]):

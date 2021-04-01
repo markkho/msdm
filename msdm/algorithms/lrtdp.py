@@ -1,11 +1,10 @@
-import numpy as np
+import random
 import copy
 import warnings
 from collections import defaultdict
 from msdm.core.utils.dictutils import defaultdict2
 from msdm.core.problemclasses.mdp import MarkovDecisionProcess, TabularPolicy
 from msdm.core.algorithmclasses import Plans, PlanningResult
-from msdm.core.distributions.dictdistribution import DeterministicDistribution
 
 class LRTDP(Plans):
     '''
@@ -33,10 +32,10 @@ class LRTDP(Plans):
     def plan_on(self, mdp: MarkovDecisionProcess):
         self.res = PlanningResult()
         if self.seed is None:
-            self.res.seed = np.random.randint(int(2**30))
+            self.res.seed = random.randint(0, int(2**30))
         else:
             self.res.seed = self.seed
-        np.random.seed(self.res.seed)
+        self.rng = random.Random(self.seed)
         self.lrtdp(
             mdp, heuristic=self.heuristic, iterations=self.iterations
         )
@@ -46,7 +45,7 @@ class LRTDP(Plans):
         for s in sum(self.res.trials, []) + [state for state, solved in res.solved.items() if solved]:
             if s in res.policy:
                 continue
-            res.policy[s] = self.policy(mdp, s) #DeterministicDistribution(self.policy(mdp, s))
+            res.policy[s] = self.policy(mdp, s)
             for a in mdp.actions(s):
                 res.Q[s][a] = self.Q(mdp, s, a)
         res.policy = TabularPolicy.from_deterministic_map(res.policy)
@@ -72,7 +71,7 @@ class LRTDP(Plans):
         for i in range(iterations):
             if all(self.res.solved[s] for s in mdp.initial_state_dist().support):
                 return
-            self.lrtdp_trial(mdp, mdp.initial_state_dist().sample())
+            self.lrtdp_trial(mdp, mdp.initial_state_dist().sample(rng=self.rng))
         if i == (iterations - 1):
             warnings.warn(f"LRTDP not converged after {iterations} iterations")
             self.res.converged = False
@@ -84,7 +83,7 @@ class LRTDP(Plans):
         visited = [s, ]
         while not self.res.solved[s]:
             self._bellman_update(mdp, s)
-            s = mdp.next_state_dist(s, self.policy(mdp, s)).sample()
+            s = mdp.next_state_dist(s, self.policy(mdp, s)).sample(rng=self.rng)
             visited.append(s)
 
             # Terminal states are solved.
@@ -148,8 +147,8 @@ class LRTDP(Plans):
             action_list = self.res.action_orders[s]
         else:
             if self.randomize_action_order:
-                aa = mdp.actions(s)
-                action_list = [aa[i] for i in np.random.permutation(len(aa))]
+                action_list = list(mdp.actions(s))
+                self.rng.shuffle(action_list)
             else:
                 action_list = mdp.actions(s)
             self.res.action_orders[s] = action_list

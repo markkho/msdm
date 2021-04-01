@@ -3,7 +3,7 @@ import warnings
 import numpy as np
 import pandas as pd
 from scipy.special import softmax
-from msdm.core.distributions import DiscreteFactorTable as Pr, Multinomial, DictDistribution, UniformDistribution, DeterministicDistribution
+from msdm.core.distributions import DiscreteFactorTable, DictDistribution, UniformDistribution, DeterministicDistribution
 
 def toDF(p):
     df = pd.DataFrame(p.support)
@@ -12,12 +12,11 @@ def toDF(p):
     return df
 
 np.seterr(divide='ignore')
+Pr = DiscreteFactorTable
 
 class DistributionTestCase(unittest.TestCase):
     def test_basics(self):
-        DiscreteFactorTable = Pr
-        warnings.filterwarnings("ignore", category=PendingDeprecationWarning)
-        for cls in [Multinomial, DiscreteFactorTable]:
+        for cls in [DiscreteFactorTable]:
             print(cls)
             dist = cls({0: 0, 1: 1}) # Can construct with a logit dict
             assert dist == cls([0, 1], logits=[0, 1]) # or explicitly
@@ -46,7 +45,6 @@ class DistributionTestCase(unittest.TestCase):
 
             # Testing uniform distribution
             assert cls([0, 1, 2]).isclose(cls([0, 1, 2], logits=[1, 1, 1]))
-        warnings.filterwarnings("default", category=PendingDeprecationWarning)
 
     def test_dictdistribution(self):
         dd1 = DictDistribution(a=.1, b=.2, c=.7)
@@ -79,7 +77,7 @@ class DistributionTestCase(unittest.TestCase):
 
     def test_sample(self):
         warnings.filterwarnings("ignore", category=PendingDeprecationWarning)
-        for cls in [Multinomial, Pr]:
+        for cls in [DiscreteFactorTable]:
             np.random.seed(42)
             assert cls([]).sample() is None
             assert cls([0]).sample() == 0
