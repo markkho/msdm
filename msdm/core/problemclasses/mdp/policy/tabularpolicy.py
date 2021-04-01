@@ -1,4 +1,4 @@
-from typing import Mapping, Hashable, Iterable
+from typing import Mapping, Hashable, Sequence
 import numpy as np
 import math
 

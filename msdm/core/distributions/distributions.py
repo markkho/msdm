@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Iterable, Any, TypeVar, Generic, Tuple
+from typing import Sequence, Any, TypeVar, Generic, Tuple
 import random
 import math
 from collections import defaultdict
@@ -11,14 +11,14 @@ class Distribution(ABC, Generic[Event]):
     def sample(self, *, rng=random) -> Event:
         pass
 
-class FiniteDistribution(Distribution):
+class FiniteDistribution(Distribution[Event]):
     @abstractmethod
     def prob(self, e: Event) -> float:
         pass
 
     @property
     @abstractmethod
-    def support(self) -> Iterable[Event]:
+    def support(self) -> Sequence[Event]:
         pass
 
     def sample(self, *, rng=random) -> Event:
@@ -33,12 +33,12 @@ class FiniteDistribution(Distribution):
             k=1
         )[0]
 
-    def items(self) -> Iterable[Tuple[Event, float]]:
+    def items(self) -> Sequence[Tuple[Event, float]]:
         for e in self.support:
             yield e, self.prob(e)
 
     @property
-    def probs(self) -> Iterable[float]:
+    def probs(self) -> Sequence[float]:
         yield from (self.prob(e) for e in self.support)
 
     def score(self, e: Event) -> float:
@@ -50,7 +50,7 @@ class FiniteDistribution(Distribution):
     def __and__(self, other: "FiniteDistribution[Event]") -> "FiniteDistribution[Event]":
         """Conjunction"""
         newdist = defaultdict(float)
-        norm = 0
+        norm = 0.
         for e in set(self.support) & set(other.support):
             newdist[e] += self.score(e)
             newdist[e] += other.score(e)

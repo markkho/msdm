@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-from typing import Iterable
+from typing import Sequence
 from msdm.core.utils.gridstringutils import  string_to_element_array
 from frozendict import frozendict
 
@@ -72,7 +72,7 @@ class GridWorld(TabularMarkovDecisionProcess):
         self._width = len(elementArray[0])
 
     @property
-    def state_list(self) -> Iterable[State]:
+    def state_list(self) -> Sequence[State]:
         return self._states
 
     @property
@@ -140,7 +140,7 @@ class GridWorld(TabularMarkovDecisionProcess):
         f = self._locFeatures.get(ns, "")
         return self._featureRewards.get(f, 0.0) + self.step_cost
 
-    def actions(self, s) -> Iterable:
+    def actions(self, s) -> Sequence:
         if self.is_terminal(s):
             return [frozendict({'dx': 0, 'dy': 0}), ]
         return [a for a in self._actions]

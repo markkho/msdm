@@ -1,4 +1,4 @@
-from typing import Iterable
+from typing import Sequence
 
 from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess, DeterministicShortestPathProblem
 from msdm.core.distributions import \
@@ -35,7 +35,7 @@ class GNTFig6_6(TabularMarkovDecisionProcess):
     def is_terminal(self, s):
         return s in (12, 15, 16)
 
-    def actions(self, s) -> Iterable:
+    def actions(self, s) -> Sequence:
         return [0, 1, 2]
         # dests = GNTFig6_6.T[s]
         # return [a for a in range(len(dests)) if dests[a][0]]

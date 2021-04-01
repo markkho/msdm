@@ -1,6 +1,6 @@
 from msdm.core.distributions import Distribution, DeterministicDistribution
 from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess, State, Action
-from typing import Callable, Iterable, Union
+from typing import Callable, Sequence, Union
 
 class QuickTabularMDP(TabularMarkovDecisionProcess):
     def __init__(
@@ -8,7 +8,7 @@ class QuickTabularMDP(TabularMarkovDecisionProcess):
         next_state_dist: Callable[[State, Action], Distribution[State]]=None,
         *,
         reward: Union[float, Callable[[State, Action, State], float]],
-        actions: Union[Iterable[Action], Callable[[State], Iterable[Action]]],
+        actions: Union[Sequence[Action], Callable[[State], Sequence[Action]]],
         initial_state_dist: Union[Distribution[State], Callable[[], Distribution[State]]]=None,
         is_terminal: Callable[[State], bool],
         # Deterministic variants.

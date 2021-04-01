@@ -1,6 +1,5 @@
 from abc import abstractmethod
-from collections.abc import Sequence
-from typing import TypeVar, Generic, Iterable
+from typing import TypeVar, Generic, Sequence
 
 from msdm.core.problemclasses.problemclass import ProblemClass
 from msdm.core.distributions import Distribution
@@ -21,7 +20,7 @@ class MarkovDecisionProcess(ProblemClass, Generic[State, Action]):
         pass
 
     @abstractmethod
-    def actions(self, s: State) -> Iterable[Action]:
+    def actions(self, s: State) -> Sequence[Action]:
         pass
 
     @abstractmethod
