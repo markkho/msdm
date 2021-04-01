@@ -1,7 +1,7 @@
 import logging
 import numpy as np
 from abc import abstractmethod
-from typing import Iterable, Hashable, Mapping, TypeVar
+from typing import Collection, Sequence, Hashable, Mapping, TypeVar
 from msdm.core.problemclasses.mdp import MarkovDecisionProcess
 from msdm.core.utils.funcutils import method_cache, cached_property
 from msdm.core.distributions import FiniteDistribution
@@ -33,7 +33,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         return self.next_state_dist(s, a)
 
     @method_cache
-    def _cached_actions(self, s) -> Iterable[Action]:
+    def _cached_actions(self, s) -> Sequence[Action]:
         return self.actions(s)
 
     def as_matrices(self):
@@ -50,7 +50,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         }
 
     @cached_property
-    def state_list(self) -> Iterable[State]:
+    def state_list(self) -> Sequence[State]:
         """
         List of states. Note that state ordering is only guaranteed to be
         consistent for a particular TabularMarkovDecisionProcess instance.
@@ -63,7 +63,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         return {s: i for i, s in enumerate(self.state_list)}
 
     @cached_property
-    def action_list(self) -> Iterable[Action]:
+    def action_list(self) -> Sequence[Action]:
         """
         List of actions. Note that action ordering is only guaranteed to be
         consistent for a particular TabularMarkovDecisionProcess instance.
@@ -151,7 +151,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         return np.array([is_absorbing(s) for s in self.state_list])
 
     @method_cache
-    def reachable_states(self) -> Iterable[State]:
+    def reachable_states(self) -> Collection[State]:
         S0 = self.initial_state_dist().support
         frontier = set(S0)
         visited = set(S0)
