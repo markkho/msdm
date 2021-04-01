@@ -49,6 +49,7 @@ class LRTDP(Plans):
             for a in mdp.actions(s):
                 res.Q[s][a] = self.Q(mdp, s, a)
         res.policy = TabularPolicy.from_deterministic_map(res.policy)
+        res.initial_value = sum([res.V[s0]*p for s0, p in mdp.initial_state_dist().items()])
 
         #clear result
         self.res = None

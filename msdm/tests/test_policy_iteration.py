@@ -2,7 +2,7 @@ import unittest
 import numpy as np
 from frozendict import frozendict
 from msdm.core.distributions import DictDistribution
-from msdm.algorithms import ValueIteration, PolicyIteration
+from msdm.algorithms import ValueIteration, PolicyIteration, LRTDP
 from msdm.tests.domains import Counter, GNTFig6_6, Geometric, VaryingActionNumber
 from msdm.domains import GridWorld
 
@@ -70,7 +70,8 @@ class MyTestCase(unittest.TestCase):
             ])
         pi_res = PolicyIteration()(gw)
         vi_res = ValueIteration()(gw)
-        assert pi_res.initial_value == vi_res.initial_value
+        lrtdp = LRTDP()(gw)
+        assert pi_res.initial_value == vi_res.initial_value == lrtdp.initial_value
 
 if __name__ == '__main__':
     unittest.main()

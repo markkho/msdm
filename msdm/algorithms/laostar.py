@@ -18,7 +18,7 @@ class LAOStar(Plans):
                  egraph=None,
                  show_warning=False,
                  show_progress=True,
-                 max_lao_iters=100,
+                 max_lao_iters=int(1e5),
                  policy_evaluation_iters=100,
                  policy_iteration_iters=100,
                  seed=None):
@@ -218,6 +218,8 @@ class LAOStar(Plans):
         else:
             converged = True
 
+        initial_value = sum([sGraph[s0]['value']*p for s0, p in mdp.initial_state_dist().items()])
+
         return PlanningResult(
             converged=converged,
             egraph=egraph,
@@ -225,5 +227,6 @@ class LAOStar(Plans):
             sGraph=sGraph,
             laoIter=laoIter,
             nonterminaltips=ntt,
+            initial_value=initial_value,
             seed=seed
         )

@@ -25,6 +25,9 @@ class PlanningResult(Result):
     converged : bool
 
 class Plans(Algorithm):
+    def __call__(self, problem: ProblemClass):
+        return self.plan_on(problem)
+
     @abstractmethod
     def plan_on(self, problem: ProblemClass) -> Result:
         pass

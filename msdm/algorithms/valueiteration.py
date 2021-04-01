@@ -14,9 +14,6 @@ class ValueIteration(Plans):
         self.iterations = iterations
         self.convergence_diff = convergence_diff
 
-    def __call__(self, mdp: TabularMarkovDecisionProcess):
-        return self.plan_on(mdp)
-
     def plan_on(self, mdp: TabularMarkovDecisionProcess):
         ss = mdp.state_list
         tf = mdp.transition_matrix
