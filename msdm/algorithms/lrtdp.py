@@ -2,7 +2,7 @@ import numpy as np
 import copy
 import warnings
 from collections import defaultdict
-from msdm.core.utils.hashdictionary import defaultdict2
+from msdm.core.utils.dictutils import defaultdict2
 from msdm.core.problemclasses.mdp import MarkovDecisionProcess, TabularPolicy
 from msdm.core.algorithmclasses import Plans, PlanningResult
 from msdm.core.distributions.dictdistribution import DeterministicDistribution
