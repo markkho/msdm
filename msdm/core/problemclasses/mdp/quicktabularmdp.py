@@ -1,23 +1,37 @@
-from msdm.core.distributions import Distribution
+from msdm.core.distributions import Distribution, DeterministicDistribution
 from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess, State, Action
-from typing import Callable, Iterable
+from typing import Callable, Iterable, Union
 
 class QuickTabularMDP(TabularMarkovDecisionProcess):
     def __init__(
         self,
-        next_state_dist: Callable[[State, Action], Distribution],
-        reward: Callable[[State, Action, State], float],
-        actions: Callable[[State], Iterable],
-        initial_state_dist: Callable[[], Distribution],
+        next_state_dist: Callable[[State, Action], Distribution[State]]=None,
+        *,
+        reward: Union[float, Callable[[State, Action, State], float]],
+        actions: Union[Iterable[Action], Callable[[State], Iterable[Action]]],
+        initial_state_dist: Union[Distribution[State], Callable[[], Distribution[State]]]=None,
         is_terminal: Callable[[State], bool],
+        # Deterministic variants.
+        next_state: Callable[[State, Action], State]=None,
+        initial_state: State=None,
         discount_rate=1.0,
         hash_state=None,
         hash_action=None
     ):
-        self._next_state_dist = next_state_dist
-        self._reward = reward
-        self._actions = actions
-        self._initial_state_dist = initial_state_dist
+        assert next_state_dist is not None or next_state is not None, 'Must supply a function for next states.'
+        assert initial_state_dist is not None or initial_state is not None, 'Must supply a function for initial states.'
+        if next_state is None:
+            self._next_state_dist = next_state_dist
+        else:
+            self._next_state_dist = lambda s, a: DeterministicDistribution(next_state(s, a))
+        self._reward = reward if callable(reward) else lambda s, a, ns: reward
+        self._actions = actions if callable(actions) else lambda s: actions
+        if initial_state is not None:
+            self._initial_state_dist = lambda: DeterministicDistribution(initial_state)
+        elif callable(initial_state_dist):
+            self._initial_state_dist = initial_state_dist
+        else:
+            self._initial_state_dist = lambda: initial_state_dist
         self._is_terminal = is_terminal
         self.discount_rate = discount_rate
         if hash_state is None:
