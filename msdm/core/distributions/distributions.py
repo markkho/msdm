@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Iterable, Any
 import random
 import math
+from collections import defaultdict
 
 class Distribution(ABC):
     @abstractmethod
@@ -20,13 +21,13 @@ class FiniteDistribution(Distribution):
 
     def sample(self) -> Any:
         support = self.support
-        if not isinstance(support, list):
-            support = list(support)
+        if not isinstance(support, (list, tuple)):
+            support = tuple(support)
         if len(support) == 1:
             return support[0]
         return random.choices(
             population=support,
-            weights=list(self.probs),
+            weights=tuple(self.probs),
             k=1
         )[0]
 
@@ -44,16 +45,28 @@ class FiniteDistribution(Distribution):
             return -float('inf')
         return math.log(p)
 
-    def __and__(self, other):
-        pass
+    def __and__(self, other: "DictDistribution"):
+        """Conjunction"""
+        newdist = defaultdict(float)
+        norm = 0
+        for e in set(self.support) & set(other.support):
+            newdist[e] += self.score(e)
+            newdist[e] += other.score(e)
+            norm += math.exp(newdist[e])
+        lognorm = math.log(norm)
+        return DictDistribution({e: math.exp(l - lognorm) for e, l in newdist.items()})
 
-    def __or__(self, other):
-        #can implement
-        pass
+    def __or__(self, other: "DictDistribution"):
+        """Disjunction/Mixture"""
+        newdist = defaultdict(float)
+        for e, p in self.items():
+            newdist[e] += p
+        for e, p in other.items():
+            newdist[e] += p
+        return DictDistribution(newdist)
 
     def __mul__(self, num):
-        #can implement
-        pass
+        return DictDistribution({e: p*num for e, p in self.items()})
 
     def __repr__(self):
         e_p = ", ".join([f"{e}: {p}" for e, p in self.items()])
@@ -68,3 +81,6 @@ class FiniteDistribution(Distribution):
             if not math.isclose(p, mapped.get(s, 0.0)):
                 return False
         return True
+
+# Importing down here to avoid a cyclic reference.
+from msdm.core.distributions.dictdistribution import DictDistribution

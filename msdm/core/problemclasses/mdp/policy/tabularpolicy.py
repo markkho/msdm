@@ -7,7 +7,7 @@ from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess
 from msdm.core.algorithmclasses import Result
 
 from msdm.core.distributions.dictdistribution import DictDistribution, \
-    DeterministicDistribution
+    DeterministicDistribution, UniformDistribution
 
 class TabularPolicy(dict, Policy):
     def action_dist(self, s):
@@ -27,6 +27,23 @@ class TabularPolicy(dict, Policy):
         return TabularPolicy(policy)
 
     @classmethod
+    def from_q_matrix(cls, states, actions, q: np.array):
+        assert q.shape == (len(states), len(actions))
+
+        policy_ismax = q == np.max(q, axis=-1, keepdims=True)
+        # per-state count of actions with max value.
+        policy_counts = policy_ismax.sum(axis=-1)
+
+        policy = {}
+        for si, s in enumerate(states):
+            binary_policy = policy_ismax[si]
+            if policy_counts[si] == 1:
+                policy[s] = DeterministicDistribution(actions[binary_policy.argmax()])
+            else:
+                policy[s] = UniformDistribution([actions[ai] for ai in np.where(binary_policy)[0]])
+        return TabularPolicy(policy)
+
+    @classmethod
     def from_deterministic_map(cls, dictionary: Mapping):
         policy = {}
         for s, p in dictionary.items():
@@ -39,7 +56,7 @@ class TabularPolicy(dict, Policy):
         for si, s in enumerate(states):
             adist = self.action_dist(s)
             for ai, a in enumerate(actions):
-                matrix[si, ai] = adist.get(a, 0.0)
+                matrix[si, ai] = adist.prob(a)
         return matrix
 
     def evaluate_on(self,

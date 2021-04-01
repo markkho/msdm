@@ -3,7 +3,7 @@ import warnings
 import numpy as np
 import pandas as pd
 from scipy.special import softmax
-from msdm.core.distributions import DiscreteFactorTable as Pr, Multinomial, DictDistribution
+from msdm.core.distributions import DiscreteFactorTable as Pr, Multinomial, DictDistribution, UniformDistribution, DeterministicDistribution
 
 def toDF(p):
     df = pd.DataFrame(p.support)
@@ -58,6 +58,20 @@ class DistributionTestCase(unittest.TestCase):
         assert (dd1 & dd2) == {'b': 2/3, 'a': 1/3}
 
         assert (dd1 & dd2).isclose(DictDistribution({'b': 2/3, 'a': 1/3}))
+
+    def test_or_mul(self):
+        avals = [DictDistribution({'a': 1}), UniformDistribution(['a']), DeterministicDistribution('a')]
+        bvals = [DictDistribution({'b': 1}), UniformDistribution(['b']), DeterministicDistribution('b')]
+        for adist in avals:
+            assert (adist * 0.5).isclose(DictDistribution({'a': 0.5}))
+            for bdist in bvals:
+                assert (adist * 0.5 | bdist * 0.5).isclose(UniformDistribution(['a', 'b']))
+
+    def test_and(self):
+        ds = [DictDistribution({'a': 0.5, 'b': 0.5}), UniformDistribution(['a', 'b'])]
+        for d in ds:
+            res = d & DictDistribution({'a': 0.5, 'b': 0.25, 'c': 0.25})
+            assert res.isclose(DictDistribution({'a': 2/3, 'b': 1/3}))
 
     def test_uniform_and_deterministic_dist(self):
         assert DictDistribution(a=0.5, b=0.5).isclose(DictDistribution.uniform(['a', 'b']))
