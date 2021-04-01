@@ -20,13 +20,15 @@ class DeterministicDistribution(FiniteDistribution):
         self.value = value
     @property
     def support(self):
-        return [self.value]
+        return (self.value,)
     def prob(self, e):
         if e == self.value:
             return 1
         return 0
     def sample(self):
         return self.value
+    def items(self):
+        yield self.value, 1
 
 class DictDistribution(dict, FiniteDistribution):
     @classmethod

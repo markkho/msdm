@@ -21,13 +21,13 @@ class FiniteDistribution(Distribution):
 
     def sample(self) -> Any:
         support = self.support
-        if not isinstance(support, list):
-            support = list(support)
+        if not isinstance(support, (list, tuple)):
+            support = tuple(support)
         if len(support) == 1:
             return support[0]
         return random.choices(
             population=support,
-            weights=list(self.probs),
+            weights=tuple(self.probs),
             k=1
         )[0]
 
