@@ -9,12 +9,10 @@ from msdm.core.algorithmclasses import Plans, PlanningResult
 class VectorizedValueIteration(Plans):
     def __init__(self,
                  iterations=None,
-                 discount_rate=1.0,
                  entropy_regularization=False,
                  convergence_diff=1e-5,
                  temperature=1.0):
         self.iters = iterations
-        self.dr = discount_rate
         self.entreg = entropy_regularization
         self.temp = temperature
         self._policy = None
@@ -40,7 +38,7 @@ class VectorizedValueIteration(Plans):
 
         v = np.zeros(len(ss))
         for i in range(iterations):
-            q = np.einsum("san,san->sa", tf, rf + self.dr * v[None, None, :])
+            q = np.einsum("san,san->sa", tf, rf + mdp.discount_rate * v[None, None, :])
             if self.entreg:
                 nv = self.temp * logsumexp((1 / self.temp) * q + np.log(am),
                                           axis=-1)

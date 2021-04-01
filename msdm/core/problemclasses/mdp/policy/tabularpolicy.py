@@ -7,7 +7,7 @@ from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess
 from msdm.core.algorithmclasses import Result
 
 from msdm.core.distributions.dictdistribution import DictDistribution, \
-    DeterministicDistribution, UniformDistribution
+    DeterministicDistribution
 
 class TabularPolicy(dict, Policy):
     def action_dist(self, s):

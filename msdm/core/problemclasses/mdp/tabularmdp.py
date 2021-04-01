@@ -1,7 +1,7 @@
 import logging
 import numpy as np
 from abc import abstractmethod
-from typing import Collection, Sequence, Hashable, Mapping, TypeVar
+from typing import Set, Sequence, Hashable, Mapping, TypeVar
 from msdm.core.problemclasses.mdp import MarkovDecisionProcess
 from msdm.core.utils.funcutils import method_cache, cached_property
 from msdm.core.distributions import FiniteDistribution
@@ -151,7 +151,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         return np.array([is_absorbing(s) for s in self.state_list])
 
     @method_cache
-    def reachable_states(self) -> Collection[State]:
+    def reachable_states(self) -> Set[State]:
         S0 = self.initial_state_dist().support
         frontier = set(S0)
         visited = set(S0)

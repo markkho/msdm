@@ -54,8 +54,9 @@ class CoreTestCase(unittest.TestCase):
             actions            = lambda s: (-1, 0, 1),
             initial_state_dist = lambda : DD({5: .5, 6: .5}),
             is_terminal        = lambda s: s == TERMINAL,
+            discount_rate=.99
         )
-        res = VectorizedValueIteration(discount_rate=.99).plan_on(mdp)
+        res = VectorizedValueIteration().plan_on(mdp)
         pi = [res.policy.action_dist(s).sample() for s in range(1, 10)]
         assert all([a == 1 for a in pi])
 

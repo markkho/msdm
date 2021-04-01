@@ -20,7 +20,7 @@ class GridWorld(TabularMarkovDecisionProcess):
                  initial_features=("s",),
                  step_cost=-1,
                  success_prob=1.0,
-                 termination_prob=0.0
+                 discount_rate=1.0
                  ):
         super().__init__()
         parseParams = {"colsep": "", "rowsep": "\n", "elementsep": "."}
@@ -65,7 +65,7 @@ class GridWorld(TabularMarkovDecisionProcess):
             feature_rewards = {'g': 0}
         self._featureRewards = feature_rewards
         self.step_cost = step_cost
-        self.termination_prob = termination_prob #basically discount rate
+        self.discount_rate = discount_rate
         self._height = len(elementArray)
         self._width = len(elementArray[0])
 
@@ -129,8 +129,6 @@ class GridWorld(TabularMarkovDecisionProcess):
             })
         else:
             bdist = DictDistribution({ns: 1})
-        if self.termination_prob:
-            bdist = bdist * (1 - self.termination_prob) | TERMINALDIST * self.termination_prob
 
         return bdist
 

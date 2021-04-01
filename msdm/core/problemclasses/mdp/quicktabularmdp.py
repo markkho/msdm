@@ -10,6 +10,7 @@ class QuickTabularMDP(TabularMarkovDecisionProcess):
         actions: Callable[[State], Iterable],
         initial_state_dist: Callable[[], Distribution],
         is_terminal: Callable[[State], bool],
+        discount_rate=1.0,
         hash_state=None,
         hash_action=None
     ):
@@ -18,6 +19,7 @@ class QuickTabularMDP(TabularMarkovDecisionProcess):
         self._actions = actions
         self._initial_state_dist = initial_state_dist
         self._is_terminal = is_terminal
+        self.discount_rate = discount_rate
         if hash_state is None:
             hash_state = lambda s: s
         if hash_action is None:

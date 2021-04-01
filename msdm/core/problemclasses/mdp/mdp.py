@@ -1,12 +1,13 @@
 from abc import abstractmethod
-from collections.abc import Hashable, Mapping, Iterable
+from collections.abc import Sequence
 
 from msdm.core.problemclasses.problemclass import ProblemClass
 from msdm.core.distributions import Distribution
-from msdm.core.utils.hashdictionary import HashDictionary, DefaultHashDictionary, defaultdict2
 
 
 class MarkovDecisionProcess(ProblemClass):
+    discount_rate : float = 1.0
+
     @abstractmethod
     def next_state_dist(self, s, a) -> Distribution:
         pass
@@ -16,7 +17,7 @@ class MarkovDecisionProcess(ProblemClass):
         pass
 
     @abstractmethod
-    def actions(self, s) -> Iterable:
+    def actions(self, s) -> Sequence:
         pass
 
     @abstractmethod
