@@ -3,7 +3,7 @@ from typing import Iterable
 from msdm.core.utils.gridstringutils import  string_to_element_array
 from frozendict import frozendict
 
-from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess
+from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess, State
 
 from msdm.core.distributions.dictdistribution import DictDistribution
 
@@ -68,6 +68,10 @@ class GridWorld(TabularMarkovDecisionProcess):
         self.termination_prob = termination_prob #basically discount rate
         self._height = len(elementArray)
         self._width = len(elementArray[0])
+
+    @property
+    def state_list(self) -> Iterable[State]:
+        return self._states
 
     @property
     def height(self):
