@@ -53,3 +53,6 @@ class VITestCase(unittest.TestCase):
                 frozendict({'dy': 1, 'dx': 0}): 1/2,
                 frozendict({'dy': -1, 'dx': 0}): 0
         }))
+        assert res.policy.action_dist(frozendict(x=0, y=1)).isclose(DictDistribution({
+                frozendict({'dx': 1, 'dy': 0}): 1,
+        }))

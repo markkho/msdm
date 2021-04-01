@@ -34,6 +34,7 @@ class VectorizedValueIteration(Plans):
         assert np.all(aa[np.nonzero(aa)] == 1) # If this is true, then the next line is unnecessary.
         aa[np.nonzero(aa)] = 1
         aa = np.log(aa)
+        assert (aa == np.log(am)).all() # if this is true, then we should delete `aa` and just use np.log(am) in place
         terminal_sidx = np.where(1 - nt)[0]
 
         v = np.zeros(len(ss))
@@ -53,14 +54,11 @@ class VectorizedValueIteration(Plans):
             v = nv
 
         if self.entreg:
-            pi = softmax((1 / self.temp) * q, axis=-1)
+            pi = softmax((1 / self.temp) * q + np.log(am), axis=-1)
+            pi = TabularPolicy.from_matrix(mdp.state_list, mdp.action_list, pi)
         else:
-            # This ensures we assign equal probability to actions that result
-            # in the same q-values.
-            pi = np.zeros_like(q)
             validq = q + aa
-            pi[validq == np.max(validq, axis=-1, keepdims=True)] = 1
-            pi /= pi.sum(axis=-1, keepdims=True)
+            pi = TabularPolicy.from_q_matrix(mdp.state_list, mdp.action_list, validq)
 
         # create result object
         res = PlanningResult()
@@ -70,10 +68,7 @@ class VectorizedValueIteration(Plans):
         else:
             res.converged = True
         res.mdp = mdp
-        res.policy = res.pi = \
-            TabularPolicy.from_matrix(mdp.state_list, mdp.action_list, pi)
-        # cls = OldTabularPolicy if ((pi < 1) & (pi > 0)).any() else DeterministicTabularPolicy
-        # res.policy = res.pi = cls(mdp.state_list, mdp.action_list, policy_matrix=pi, mdp=mdp)
+        res.policy = res.pi = pi
         res._valuevec = v
         vf = dict()
         for s, vi in zip(mdp.state_list, v):
