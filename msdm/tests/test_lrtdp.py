@@ -1,6 +1,6 @@
 import unittest
 
-from msdm.algorithms import VectorizedValueIteration, LRTDP
+from msdm.algorithms import ValueIteration, LRTDP
 from msdm.tests.domains import GNTFig6_6, Counter
 from msdm.domains import GridWorld
 
@@ -63,7 +63,7 @@ class LRTDPTestCase(unittest.TestCase):
     def assert_equal_value_iteration(self, planner, mdp):
         lrtdp_res = planner.plan_on(mdp)
 
-        vi = VectorizedValueIteration()
+        vi = ValueIteration()
         vi_res = vi.plan_on(mdp)
 
         # Ensure our VI Q values are a lower bound to the LRTDP ones.

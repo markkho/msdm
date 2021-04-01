@@ -13,6 +13,7 @@ TERMINALSTATE = frozendict({'x': -1, 'y': -1})
 TERMINALDIST = DeterministicDistribution(TERMINALSTATE)
 
 class GridWorld(TabularMarkovDecisionProcess):
+    """A simple gridworld domain"""
     def __init__(self,
                  tile_array,
                  feature_rewards=None,

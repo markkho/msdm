@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 from msdm.domains import GridWorld
-from msdm.algorithms import VectorizedValueIteration
+from msdm.algorithms import ValueIteration
 from msdm.core.problemclasses.mdp import TabularPolicy
 
 np.seterr(divide='ignore')
@@ -17,7 +17,7 @@ class CoreTestCase(unittest.TestCase):
             ],
             step_cost=-1,
         )
-        vi = VectorizedValueIteration()
+        vi = ValueIteration()
         res = vi.plan_on(gw1)
         stateTraj = res.policy.run_on(gw1).state_traj
         self.assertTrue(stateTraj[-1] in gw1.absorbing_states)
@@ -33,7 +33,7 @@ class CoreTestCase(unittest.TestCase):
             ],
             step_cost=-1,
         )
-        vi = VectorizedValueIteration()
+        vi = ValueIteration()
         res = vi.plan_on(gw1)
         res.policy : TabularPolicy
         eval_res = res.policy.evaluate_on(gw1)
@@ -64,7 +64,7 @@ class CoreTestCase(unittest.TestCase):
                 discount_rate      = .99
             ),
         ]:
-            res = VectorizedValueIteration().plan_on(mdp)
+            res = ValueIteration().plan_on(mdp)
             pi = [res.policy.action_dist(s).sample() for s in range(1, 10)]
             assert all([a == 1 for a in pi])
 

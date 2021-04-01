@@ -2,7 +2,7 @@ import unittest
 import numpy as np
 from msdm.domains import GridWorld
 from msdm.domains.gridgame.tabulargridgame import TabularGridGame
-from msdm.algorithms import VectorizedValueIteration
+from msdm.algorithms import ValueIteration
 
 np.seterr(divide='ignore')
 

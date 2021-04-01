@@ -37,6 +37,10 @@ class FiniteDistribution(Distribution[Event]):
         for e in self.support:
             yield e, self.prob(e)
 
+    def values(self) -> Sequence[float]:
+        for e in self.support:
+            yield self.prob(e)
+
     @property
     def probs(self) -> Sequence[float]:
         yield from (self.prob(e) for e in self.support)
