@@ -21,6 +21,10 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
     def next_state_dist(self, s, a) -> FiniteDistribution:
         pass
 
+    @abstractmethod
+    def initial_state_dist(self) -> FiniteDistribution:
+        pass
+
     @method_cache
     def _cached_next_state_dist(self, s, a) -> FiniteDistribution:
         '''
@@ -147,7 +151,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         return np.array([is_absorbing(s) for s in self.state_list])
 
     @method_cache
-    def reachable_states(self):
+    def reachable_states(self) -> Iterable[State]:
         S0 = self.initial_state_dist().support
         frontier = set(S0)
         visited = set(S0)
