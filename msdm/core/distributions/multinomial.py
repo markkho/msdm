@@ -8,9 +8,9 @@ np.seterr(divide='ignore')
 logger = logging.getLogger(__name__)
 logger.info("Ignoring division by zero errors")
 
-from msdm.core.distributions.distributions import DiscreteDistribution
+from msdm.core.distributions.distributions import FiniteDistribution
 
-class Multinomial(DiscreteDistribution):
+class Multinomial(FiniteDistribution):
     def __init__(self, support, logits=None, probs=None, scores=None):
         warnings.warn(
             "Multinomial will be deprecated after June 2021. Switch to DictDistribution.",

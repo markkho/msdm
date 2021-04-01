@@ -4,7 +4,7 @@ from abc import abstractmethod
 from typing import Iterable, Hashable, Mapping, TypeVar
 from msdm.core.problemclasses.mdp import MarkovDecisionProcess
 from msdm.core.utils.funcutils import method_cache, cached_property
-from msdm.core.distributions import DiscreteDistribution
+from msdm.core.distributions import FiniteDistribution
 
 logger = logging.getLogger(__name__)
 
@@ -18,11 +18,11 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
     """
 
     @abstractmethod
-    def next_state_dist(self, s, a) -> DiscreteDistribution:
+    def next_state_dist(self, s, a) -> FiniteDistribution:
         pass
 
     @method_cache
-    def _cached_next_state_dist(self, s, a) -> DiscreteDistribution:
+    def _cached_next_state_dist(self, s, a) -> FiniteDistribution:
         '''
         We prefer using this cached version of next_state_dist when possible.
         '''

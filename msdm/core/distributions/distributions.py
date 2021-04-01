@@ -1,35 +1,24 @@
 from abc import ABC, abstractmethod
-from collections import defaultdict
+from typing import Iterable, Any
 import random
 import math
-import numpy as np
 
 class Distribution(ABC):
     @abstractmethod
     def sample(self):
         pass
 
-class DiscreteDistribution(Distribution):
-    @abstractmethod
-    def items(self): #yields elements and probabilities
-        pass
-
-    @property
-    @abstractmethod
-    def probs(self):
-        pass
-
 class FiniteDistribution(Distribution):
     @abstractmethod
-    def prob(self, e):
+    def prob(self, e) -> float:
         pass
 
     @property
     @abstractmethod
-    def support(self):
+    def support(self) -> Iterable:
         pass
 
-    def sample(self):
+    def sample(self) -> Any:
         support = self.support
         if not isinstance(support, list):
             support = list(support)
@@ -58,11 +47,11 @@ class FiniteDistribution(Distribution):
     def __and__(self, other):
         pass
 
-    def __or__(self):
+    def __or__(self, other):
         #can implement
         pass
 
-    def __mul__(self):
+    def __mul__(self, num):
         #can implement
         pass
 
@@ -76,6 +65,6 @@ class FiniteDistribution(Distribution):
             for s, p in self.items()
         }
         for s, p in other.items():
-            if not np.isclose(p, mapped.get(s, 0.0)):
+            if not math.isclose(p, mapped.get(s, 0.0)):
                 return False
         return True
