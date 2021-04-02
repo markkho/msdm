@@ -50,9 +50,10 @@ class DistributionTestCase(unittest.TestCase):
 
     def test_softmax_distribution(self):
         scores = {'a': 100, 'b': 100, 'c': 90, 'd': 50}
+        rng = random.Random(12345)
         for _ in range(20):
-            r = random.randint(0, 1000)
-            new_scores = {e: s - r for e, s in scores.items()}
+            r = rng.randint(-10000, 10000)
+            new_scores = {e: s + r for e, s in scores.items()}
             assert SoftmaxDistribution(scores).isclose(SoftmaxDistribution(new_scores))
             assert sum(SoftmaxDistribution(new_scores).values()) == 1.0
 
