@@ -9,10 +9,12 @@ from msdm.core.algorithmclasses import Plans, PlanningResult
 class ValueIteration(Plans):
     def __init__(self,
                  iterations=None,
-                 convergence_diff=1e-5
+                 convergence_diff=1e-5,
+                 check_unreachable_convergence=True
                  ):
         self.iterations = iterations
         self.convergence_diff = convergence_diff
+        self.check_unreachable_convergence = check_unreachable_convergence
 
     def plan_on(self, mdp: TabularMarkovDecisionProcess):
         ss = mdp.state_list
@@ -33,7 +35,10 @@ class ValueIteration(Plans):
             q = np.einsum("san,san->sa", tf, rf + mdp.discount_rate * v[None, None, :])
             nv = np.max(q + np.log(am), axis=-1)
             nv[terminal_sidx] = 0 #terminal states are always 0 reward
-            diff = (v - nv)*rs
+            if self.check_unreachable_convergence:
+                diff = (v - nv)
+            else:
+                diff = (v - nv)*rs
             if np.abs(diff).max() < self.convergence_diff:
                 break
             v = nv

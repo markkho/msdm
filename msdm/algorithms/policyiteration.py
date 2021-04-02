@@ -6,12 +6,13 @@ from msdm.core.problemclasses.mdp import \
 from msdm.core.algorithmclasses import Plans, PlanningResult
 
 class PolicyIteration(Plans):
-    def __init__(self, iterations=None):
+    def __init__(self, iterations=None,
+                 check_unreachable_convergence=True):
         self.iterations = iterations
+        self.check_unreachable_convergence = check_unreachable_convergence
 
     def plan_on(self, mdp: TabularMarkovDecisionProcess):
         ss = mdp.state_list
-        s0 = mdp.initial_state_vec
         tf = mdp.transition_matrix
         rf = mdp.reward_matrix
         nt = mdp.nonterminal_state_vec
@@ -33,7 +34,12 @@ class PolicyIteration(Plans):
 
             new_pi = np.zeros_like(pi)
             np.put_along_axis(new_pi, (q + np.log(am)).argmax(axis=1)[:, None], values=1, axis=1)
-            if (new_pi[rs, :] == pi[rs, :]).all():
+
+            if self.check_unreachable_convergence:
+                converged = (new_pi == pi).all()
+            else:
+                converged = (new_pi[rs, :] == pi[rs, :]).all()
+            if converged:
                 break
             pi = new_pi
 
@@ -61,6 +67,5 @@ class PolicyIteration(Plans):
             for ai, a in enumerate(mdp.action_list):
                 qf[s][a] = q[si, ai]
         res.actionvaluefunc = res.Q = qf
-        # res.initial_value = s0 @ v
         res.initial_value = sum([res.V[s0]*p for s0, p in mdp.initial_state_dist().items()])
         return res
