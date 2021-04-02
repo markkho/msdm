@@ -21,17 +21,20 @@ class FiniteDistribution(Distribution[Event]):
     def support(self) -> Sequence[Event]:
         pass
 
-    def sample(self, *, rng=random) -> Event:
+    def sample(self, *, rng=random, k=1) -> Event:
         support = self.support
         if not isinstance(support, (list, tuple)):
             support = tuple(support)
         if len(support) == 1:
             return support[0]
-        return rng.choices(
+        s = rng.choices(
             population=support,
             weights=tuple(self.probs),
-            k=1
-        )[0]
+            k=k
+        )
+        if k == 1:
+            return s[0]
+        return s
 
     def items(self) -> Sequence[Tuple[Event, float]]:
         for e in self.support:
