@@ -6,3 +6,4 @@ tqdm
 pandas
 sparse
 git+https://github.com/Marco-Sulla/python-frozendict@v2.0.1
+termcolor
