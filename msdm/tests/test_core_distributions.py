@@ -1,9 +1,11 @@
 import unittest
 import warnings
+import random
 import numpy as np
 import pandas as pd
 from scipy.special import softmax
-from msdm.core.distributions import DiscreteFactorTable, DictDistribution, UniformDistribution, DeterministicDistribution
+from msdm.core.distributions import DiscreteFactorTable, DictDistribution,\
+    UniformDistribution, DeterministicDistribution, SoftmaxDistribution
 
 def toDF(p):
     df = pd.DataFrame(p.support)
@@ -45,6 +47,15 @@ class DistributionTestCase(unittest.TestCase):
 
             # Testing uniform distribution
             assert cls([0, 1, 2]).isclose(cls([0, 1, 2], logits=[1, 1, 1]))
+
+    def test_softmax_distribution(self):
+        scores = {'a': 100, 'b': 100, 'c': 90, 'd': 50}
+        rng = random.Random(12345)
+        for _ in range(20):
+            r = rng.randint(-10000, 10000)
+            new_scores = {e: s + r for e, s in scores.items()}
+            assert SoftmaxDistribution(scores).isclose(SoftmaxDistribution(new_scores))
+            assert sum(SoftmaxDistribution(new_scores).values()) == 1.0
 
     def test_dictdistribution(self):
         dd1 = DictDistribution(a=.1, b=.2, c=.7)
