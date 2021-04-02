@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 from typing import Sequence
 from msdm.core.utils.gridstringutils import  string_to_element_array
 from frozendict import frozendict
+from termcolor import colored
 
 from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess, State
 
@@ -26,6 +27,7 @@ class GridWorld(TabularMarkovDecisionProcess):
                  discount_rate=1.0
                  ):
         super().__init__()
+        self.tile_array = tile_array
         parseParams = {"colsep": "", "rowsep": "\n", "elementsep": "."}
         if not isinstance(tile_array, str):
             tile_array = "\n".join(tile_array)
@@ -191,3 +193,52 @@ class GridWorld(TabularMarkovDecisionProcess):
 
     def hash_action(self, a):
         return a['dx'], a['dy']
+
+    def ascii_state(self,
+                    state=None,
+                    ignore=('.',),
+                    colors=None,
+                    on_colors=None,
+                    agentcolor='magenta'):
+        if on_colors is None:
+            on_colors = {}
+        if colors is None:
+            colors = {}
+        tiles = []
+        for _ in range(self.height):
+            tiles.append([])
+            for _ in range(self.width):
+                tiles[-1].append(colored('  ', on_color='on_white'))
+
+        for s in self.state_list:
+            if self.is_terminal(s):
+                continue
+            x, y = s['x'], s['y']
+            y_ = self.height - y - 1
+            icon = self.tile_array[y_][x]
+            if icon in ignore:
+                tile_params = {'text': f' ', 'on_color': 'on_white'}
+            else:
+                tile_params = {'text': f'{icon}', 'color': 'white'}
+                if (icon in on_colors) or (icon in colors):
+                    if icon in on_colors:
+                        tile_params.update({'on_color': on_colors[icon]})
+                    if icon in colors:
+                        tile_params.update({'color': colors[icon]})
+                elif s in self._walls:
+                    tile_params.update({'color': 'white', 'on_color': 'on_grey'})
+                else:
+                    tile_params.update({'on_color': 'on_white'})
+
+            if s == state:
+                agent = colored('@', color=agentcolor,
+                                on_color=tile_params['on_color'],
+                                attrs=['bold'])
+                tile = colored(**tile_params) + agent
+            else:
+                tile_params['text'] = tile_params['text'] + ' '
+                tile = colored(**tile_params)
+            tiles[y_][x] = tile
+
+        viz = '\n'.join([''.join(row) for row in tiles])
+        return viz
