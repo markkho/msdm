@@ -59,11 +59,13 @@ class GridWorld(TabularMarkovDecisionProcess):
             frozendict({'dy': 1, 'dx': 0}),
             frozendict({'dy': -1, 'dx': 0})
         ]
-        self._actions = sorted(actions, key=self.hash_action)
-        self._states = sorted(states, key=self.hash_state)
-        self._initStates = sorted(initStates, key=self.hash_state)
-        self._absorbingStates = sorted(absorbingStates, key=self.hash_state)
-        self._walls = sorted(walls, key=self.hash_state)
+        hash_state = lambda s: (s['x'], s['y'])
+        hash_action = lambda a: (a['dx'], a['dy'])
+        self._actions = sorted(actions, key=hash_action)
+        self._states = sorted(states, key=hash_state)
+        self._initStates = sorted(initStates, key=hash_state)
+        self._absorbingStates = sorted(absorbingStates, key=hash_state)
+        self._walls = sorted(walls, key=hash_state)
         self._locFeatures = locFeatures
         self.success_prob = success_prob
         if feature_rewards is None:
@@ -187,12 +189,6 @@ class GridWorld(TabularMarkovDecisionProcess):
         gwp.plot_outer_box()
 
         return gwp
-
-    def hash_state(self, s):
-        return s['x'], s['y']
-
-    def hash_action(self, a):
-        return a['dx'], a['dy']
 
     def ascii_state(self,
                     state=None,

@@ -14,9 +14,7 @@ class QuickTabularMDP(TabularMarkovDecisionProcess):
         # Deterministic variants.
         next_state: Callable[[State, Action], State]=None,
         initial_state: State=None,
-        discount_rate=1.0,
-        hash_state=None,
-        hash_action=None
+        discount_rate=1.0
     ):
         assert next_state_dist is not None or next_state is not None, 'Must supply a function for next states.'
         assert initial_state_dist is not None or initial_state is not None, 'Must supply a function for initial states.'
@@ -34,12 +32,6 @@ class QuickTabularMDP(TabularMarkovDecisionProcess):
             self._initial_state_dist = lambda: initial_state_dist
         self._is_terminal = is_terminal
         self.discount_rate = discount_rate
-        if hash_state is None:
-            hash_state = lambda s: s
-        if hash_action is None:
-            hash_action = lambda s: s
-        self._hash_state = hash_state
-        self._hash_action = hash_action
 
     def next_state_dist(self, s, a):
         return self._next_state_dist(s, a)
@@ -56,10 +48,3 @@ class QuickTabularMDP(TabularMarkovDecisionProcess):
     def is_terminal(self, s):
         return self._is_terminal(s)
 
-    def hash_state(self, s):
-        return self._hash_state(s)
-
-    def hash_action(self, a):
-        return self._hash_action(a)
-
-# test case
