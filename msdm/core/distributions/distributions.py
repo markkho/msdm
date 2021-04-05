@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Sequence, Any, TypeVar, Generic, Tuple
+from typing import Sequence, Any, TypeVar, Generic, Tuple, Callable
 import random
 import math
 from collections import defaultdict
@@ -90,6 +90,12 @@ class FiniteDistribution(Distribution[Event]):
             if not math.isclose(p, mapped.get(s, 0.0)):
                 return False
         return True
+
+    def marginalize(self, projection: Callable[[Event], Event]):
+        newdist = defaultdict(lambda : 0)
+        for e, p in self.items():
+            newdist[projection(e)] += p
+        return DictDistribution(newdist)
 
 # Importing down here to avoid a cyclic reference.
 from msdm.core.distributions.dictdistribution import DictDistribution
