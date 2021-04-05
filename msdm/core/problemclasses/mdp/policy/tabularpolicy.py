@@ -59,16 +59,14 @@ class TabularPolicy(dict, Policy):
                 matrix[si, ai] = adist.prob(a)
         return matrix
 
-    def evaluate_on(self,
-                    mdp: TabularMarkovDecisionProcess,
-                    discount_rate = 1.0) -> Result:
+    def evaluate_on(self, mdp: TabularMarkovDecisionProcess) -> Result:
         mats = mdp.as_matrices()
         ss, aa, s0, tf, rf, rs, nt = \
             [mats[k] for k in ['ss', 'aa', 's0', 'tf', 'rf', 'rs', 'nt']]
         pi = self.as_matrix(ss, aa)
         mp = (rs[:, None] * (tf[:, :, :] * pi[:, :, None]).sum(1)) * nt[None, :]
         s_rf = (pi[:, :, None] * tf[:, :, :] * rf[:, :, :]).sum(axis=(1, 2))
-        v = np.linalg.solve(np.eye(len(s0)) - discount_rate * mp, s_rf)
+        v = np.linalg.solve(np.eye(len(s0)) - mdp.discount_rate * mp, s_rf)
         q = (tf[:, :, :] * (rf[:, :, :] + v[None, None, :])).sum(axis=2)
 
         res = Result()
