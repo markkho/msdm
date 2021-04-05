@@ -1,12 +1,16 @@
 from abc import ABC, abstractmethod
-from msdm.core.problemclasses.mdp.mdp import MarkovDecisionProcess
+from msdm.core.problemclasses.mdp.mdp import MarkovDecisionProcess, State, Action
 from msdm.core.distributions import Distribution
 from msdm.core.algorithmclasses import Result
+from typing import TypeVar
 
 class Policy(ABC):
     @abstractmethod
-    def action_dist(self, s) -> Distribution:
+    def action_dist(self, s: State) -> Distribution[Action]:
         pass
+
+    def action(self, s: State) -> Action:
+        return self.action_dist(s).sample()
 
     def run_on(self,
                mdp: MarkovDecisionProcess,

@@ -24,7 +24,7 @@ gw = GridWorld(
     ],
     feature_rewards={'g': 0, 'x': -100, 'h': -5},
     step_cost=-1,
-    termination_prob=.0
+    discount_rate=1.0
 )
 # HACK: GridWorld isn't deterministic, so layering that in here. Consider making a wrapper/adaptor class to do this instead?
 gw.initial_state = lambda: deterministic(gw.initial_state_dist())

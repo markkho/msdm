@@ -1,6 +1,6 @@
 import unittest
 
-from msdm.algorithms import VectorizedValueIteration, LRTDP
+from msdm.algorithms import ValueIteration, LRTDP
 from msdm.tests.domains import GNTFig6_6, Counter
 from msdm.domains import GridWorld
 
@@ -43,7 +43,7 @@ class LRTDPTestCase(unittest.TestCase):
             ],
             feature_rewards={'g': 0},
             step_cost=-1,
-            termination_prob=.0
+            discount_rate=1.0
         )
 
         goal = mdp.absorbing_states[0]
@@ -63,7 +63,7 @@ class LRTDPTestCase(unittest.TestCase):
     def assert_equal_value_iteration(self, planner, mdp):
         lrtdp_res = planner.plan_on(mdp)
 
-        vi = VectorizedValueIteration()
+        vi = ValueIteration()
         vi_res = vi.plan_on(mdp)
 
         # Ensure our VI Q values are a lower bound to the LRTDP ones.
@@ -83,7 +83,9 @@ class LRTDPTestCase(unittest.TestCase):
             if i > MAX_ITERATIONS:
                 assert False, f"Unable to compare policies after {MAX_ITERATIONS} iterations"
             s = reachable.pop()
-            for ns in mdp.next_state_dist(s, policy(s)).support:
+            for ns, p in mdp.next_state_dist(s, policy(s)).items():
+                if p == 0:
+                    continue
                 if not mdp.is_terminal(ns):
                     reachable.append(ns)
 

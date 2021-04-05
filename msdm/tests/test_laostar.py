@@ -21,7 +21,7 @@ class LAOStarTestCase(unittest.TestCase):
             ],
             feature_rewards={'g': 0},
             step_cost=-1,
-            termination_prob=.0
+            discount_rate=1.0
         )
         mdp = gw
 

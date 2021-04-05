@@ -1,7 +1,9 @@
-from typing import Iterable
+from typing import Sequence
 
 from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess, DeterministicShortestPathProblem
-from msdm.core.distributions import DiscreteFactorTable, Distribution, Multinomial, DictDistribution
+from msdm.core.distributions import \
+    Distribution, DictDistribution,\
+    DeterministicDistribution, UniformDistribution
 
 class GNTFig6_6(TabularMarkovDecisionProcess):
     T = [
@@ -28,12 +30,12 @@ class GNTFig6_6(TabularMarkovDecisionProcess):
     Acyclic MDP from Ghallab, Nau, Traverso Figure 6.6
     '''
     def initial_state_dist(self) -> Distribution:
-        return DiscreteFactorTable([0])
+        return DeterministicDistribution(0)
 
     def is_terminal(self, s):
         return s in (12, 15, 16)
 
-    def actions(self, s) -> Iterable:
+    def actions(self, s) -> Sequence:
         return [0, 1, 2]
         # dests = GNTFig6_6.T[s]
         # return [a for a in range(len(dests)) if dests[a][0]]
@@ -43,14 +45,14 @@ class GNTFig6_6(TabularMarkovDecisionProcess):
             ns = GNTFig6_6.T[s][a][0]
         else:
             ns = [s]
-        return DiscreteFactorTable(ns)
+        return UniformDistribution(ns)
 
     def reward(self, s, a, ns) -> float:
         if a < len(GNTFig6_6.T[s]):
             return -GNTFig6_6.T[s][a][1]
         return -100 # HACK
 
-class Counter(TabularMarkovDecisionProcess, DeterministicShortestPathProblem):
+class Counter(DeterministicShortestPathProblem, TabularMarkovDecisionProcess):
     '''
     MDP where actions are increment/decrement and goal is to reach some count.
     '''

@@ -1,14 +1,14 @@
 import unittest
-
 import numpy as np
 from frozendict import frozendict
 from msdm.core.distributions import DictDistribution
-from msdm.algorithms import ValueIteration
+from msdm.algorithms import ValueIteration, PolicyIteration, LRTDP
 from msdm.tests.domains import Counter, GNTFig6_6, Geometric, VaryingActionNumber
 from msdm.domains import GridWorld
 
-class VITestCase(unittest.TestCase):
-    def test_value_iteration(self):
+
+class MyTestCase(unittest.TestCase):
+    def test_policy_iteration(self):
         mdp = Counter(3)
         res = ValueIteration().plan_on(mdp)
         out = res.policy.run_on(mdp)
@@ -18,12 +18,12 @@ class VITestCase(unittest.TestCase):
         assert res.policy.action(1) == 1
         assert res.policy.action(2) == 1
 
-    def test_value_iteration_geometric(self):
+    def test_policy_iteration_geometric(self):
         mdp = Geometric(p=1/13)
         res = ValueIteration(iterations=500).plan_on(mdp)
         assert np.isclose(res.V[0], -13), res.V
 
-    def test_value_iteration_varying_action_number(self):
+    def test_policy_iteration_varying_action_number(self):
         mdp = VaryingActionNumber()
         res = ValueIteration().plan_on(mdp)
         assert np.isclose(res.V[0], -2), res.V
@@ -56,3 +56,22 @@ class VITestCase(unittest.TestCase):
         assert res.policy.action_dist(frozendict(x=0, y=1)).isclose(DictDistribution({
                 frozendict({'dx': 1, 'dy': 0}): 1,
         }))
+
+    def test_policy_iteration_gridworld(self):
+        gw = GridWorld(
+            tile_array=[
+                '......g',
+                '...####',
+                '..##...',
+                '..#....',
+                '.......',
+                '####...',
+                's......',
+            ])
+        pi_res = PolicyIteration()(gw)
+        vi_res = ValueIteration()(gw)
+        lrtdp = LRTDP()(gw)
+        assert pi_res.initial_value == vi_res.initial_value == lrtdp.initial_value
+
+if __name__ == '__main__':
+    unittest.main()

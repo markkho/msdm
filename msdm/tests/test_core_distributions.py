@@ -1,9 +1,11 @@
 import unittest
 import warnings
+import random
 import numpy as np
 import pandas as pd
 from scipy.special import softmax
-from msdm.core.distributions import DiscreteFactorTable as Pr, Multinomial, DictDistribution
+from msdm.core.distributions import DiscreteFactorTable, DictDistribution,\
+    UniformDistribution, DeterministicDistribution, SoftmaxDistribution
 
 def toDF(p):
     df = pd.DataFrame(p.support)
@@ -12,12 +14,11 @@ def toDF(p):
     return df
 
 np.seterr(divide='ignore')
+Pr = DiscreteFactorTable
 
 class DistributionTestCase(unittest.TestCase):
     def test_basics(self):
-        DiscreteFactorTable = Pr
-        warnings.filterwarnings("ignore", category=PendingDeprecationWarning)
-        for cls in [Multinomial, DiscreteFactorTable]:
+        for cls in [DiscreteFactorTable]:
             print(cls)
             dist = cls({0: 0, 1: 1}) # Can construct with a logit dict
             assert dist == cls([0, 1], logits=[0, 1]) # or explicitly
@@ -46,7 +47,15 @@ class DistributionTestCase(unittest.TestCase):
 
             # Testing uniform distribution
             assert cls([0, 1, 2]).isclose(cls([0, 1, 2], logits=[1, 1, 1]))
-        warnings.filterwarnings("default", category=PendingDeprecationWarning)
+
+    def test_softmax_distribution(self):
+        scores = {'a': 100, 'b': 100, 'c': 90, 'd': 50}
+        rng = random.Random(12345)
+        for _ in range(20):
+            r = rng.randint(-10000, 10000)
+            new_scores = {e: s + r for e, s in scores.items()}
+            assert SoftmaxDistribution(scores).isclose(SoftmaxDistribution(new_scores))
+            assert sum(SoftmaxDistribution(new_scores).values()) == 1.0
 
     def test_dictdistribution(self):
         dd1 = DictDistribution(a=.1, b=.2, c=.7)
@@ -59,9 +68,27 @@ class DistributionTestCase(unittest.TestCase):
 
         assert (dd1 & dd2).isclose(DictDistribution({'b': 2/3, 'a': 1/3}))
 
+    def test_or_mul(self):
+        avals = [DictDistribution({'a': 1}), UniformDistribution(['a']), DeterministicDistribution('a')]
+        bvals = [DictDistribution({'b': 1}), UniformDistribution(['b']), DeterministicDistribution('b')]
+        for adist in avals:
+            assert (adist * 0.5).isclose(DictDistribution({'a': 0.5}))
+            for bdist in bvals:
+                assert (adist * 0.5 | bdist * 0.5).isclose(UniformDistribution(['a', 'b']))
+
+    def test_and(self):
+        ds = [DictDistribution({'a': 0.5, 'b': 0.5}), UniformDistribution(['a', 'b'])]
+        for d in ds:
+            res = d & DictDistribution({'a': 0.5, 'b': 0.25, 'c': 0.25})
+            assert res.isclose(DictDistribution({'a': 2/3, 'b': 1/3}))
+
+    def test_uniform_and_deterministic_dist(self):
+        assert DictDistribution(a=0.5, b=0.5).isclose(DictDistribution.uniform(['a', 'b']))
+        assert DictDistribution(a=1).isclose(DictDistribution.deterministic('a'))
+
     def test_sample(self):
         warnings.filterwarnings("ignore", category=PendingDeprecationWarning)
-        for cls in [Multinomial, Pr]:
+        for cls in [DiscreteFactorTable]:
             np.random.seed(42)
             assert cls([]).sample() is None
             assert cls([0]).sample() == 0

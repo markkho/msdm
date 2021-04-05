@@ -1,91 +1,32 @@
 from abc import abstractmethod
-from collections.abc import Hashable, Mapping, Iterable
+from typing import TypeVar, Generic, Sequence
 
 from msdm.core.problemclasses.problemclass import ProblemClass
 from msdm.core.distributions import Distribution
-from msdm.core.utils.hashdictionary import HashDictionary, DefaultHashDictionary, defaultdict2
 
 
-class MarkovDecisionProcess(ProblemClass):
+State = TypeVar('State')
+Action = TypeVar('Action')
+
+class MarkovDecisionProcess(ProblemClass, Generic[State, Action]):
+    discount_rate : float = 1.0
+
     @abstractmethod
-    def next_state_dist(self, s, a) -> Distribution:
+    def next_state_dist(self, s: State, a: Action) -> Distribution[State]:
         pass
 
     @abstractmethod
-    def reward(self, s, a, ns) -> float:
+    def reward(self, s: State, a: Action, ns: State) -> float:
         pass
 
     @abstractmethod
-    def actions(self, s) -> Iterable:
+    def actions(self, s: State) -> Sequence[Action]:
         pass
 
     @abstractmethod
-    def initial_state_dist(self) -> Distribution:
+    def initial_state_dist(self) -> Distribution[State]:
         pass
 
     @abstractmethod
-    def is_terminal(self, s):
+    def is_terminal(self, s: State) -> bool:
         pass
-
-    def hash_state(self, s) -> Hashable:
-        return s #default to assuming hashable
-
-    def hash_action(self, a) -> Hashable:
-        return a #default to assuming hashable
-
-    def _variable_map(self,
-                      hashable,
-                      hash_function=None,
-                      default_value=None,
-                      initialize_defaults=True):
-        """Generic function for mapping variables"""
-        if default_value is not None:
-            if hashable:
-                return defaultdict2(
-                    default_value=default_value,
-                    initialize_defaults=initialize_defaults,
-                )
-            else:
-                return DefaultHashDictionary(
-                    default_value=default_value,
-                    initialize_defaults=initialize_defaults,
-                    hash_function=hash_function
-                )
-        if hashable:
-            return {}
-        else:
-            return HashDictionary(hash_function=hash_function)
-
-    def state_map(self, default_value=None) -> Mapping:
-        """Creates a dictionary-like object where keys are states."""
-        s0 = self.initial_state_dist().support[0]
-        if isinstance(s0, Hashable):
-            return self._variable_map(
-                hashable=True,
-                default_value=default_value
-            )
-        return self._variable_map(
-            hashable=False,
-            hash_function=self.hash_state,
-            default_value=default_value,
-        )
-
-    def action_map(self, default_value=None) -> Mapping:
-        """Creates a dictionary-like object where keys are actions."""
-        s0 = self.initial_state_dist().support[0]
-        a = next(iter(self.actions(s0)))
-        if isinstance(a, Hashable):
-            return self._variable_map(
-                hashable=True,
-                default_value=default_value
-            )
-        return self._variable_map(
-            hashable=False,
-            hash_function=self.hash_action,
-            default_value=default_value,
-        )
-
-    def state_action_map(self, default_value=None):
-        def make_action_map(s):
-            return self.action_map(default_value=default_value)
-        return self.state_map(default_value=make_action_map)
