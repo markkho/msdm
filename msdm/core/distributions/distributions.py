@@ -77,6 +77,9 @@ class FiniteDistribution(Distribution[Event]):
     def __mul__(self, num: float):
         return DictDistribution({e: p*num for e, p in self.items()})
 
+    def __rmul__(self, other):
+        return self * other
+
     def __repr__(self):
         e_p = ", ".join([f"{e}: {p}" for e, p in self.items()])
         return f"{self.__class__.__name__}({{{e_p}}})"
@@ -102,6 +105,20 @@ class FiniteDistribution(Distribution[Event]):
         for e, p in self.items():
             tot += real_function(e)*p
         return tot
+
+    def condition(self, predicate: Callable[[Event], bool]):
+        dist = {e: p for e, p in self.items() if predicate(e)}
+        norm = sum(dist.values())
+        for e, p in dist.items():
+            dist[e] = p/norm
+        return DictDistribution(dist)
+
+    def joint(self, other: "FiniteDistribution"):
+        return DictDistribution({
+            (a, b): pa * pb
+            for a, pa in self.items()
+            for b, pb in other.items()
+        })
 
 # Importing down here to avoid a cyclic reference.
 from msdm.core.distributions.dictdistribution import DictDistribution

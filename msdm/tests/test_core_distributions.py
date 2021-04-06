@@ -73,6 +73,7 @@ class DistributionTestCase(unittest.TestCase):
         bvals = [DictDistribution({'b': 1}), UniformDistribution(['b']), DeterministicDistribution('b')]
         for adist in avals:
             assert (adist * 0.5).isclose(DictDistribution({'a': 0.5}))
+            assert (0.5 * adist).isclose(DictDistribution({'a': 0.5}))
             for bdist in bvals:
                 assert (adist * 0.5 | bdist * 0.5).isclose(UniformDistribution(['a', 'b']))
 
@@ -86,6 +87,40 @@ class DistributionTestCase(unittest.TestCase):
         assert DictDistribution(a=0.5, b=0.5).isclose(DictDistribution.uniform(['a', 'b']))
         assert DictDistribution(a=1).isclose(DictDistribution.deterministic('a'))
 
+    def test_expectation(self):
+        assert DictDistribution({0: 0.25, 1: 0.75}).expectation(lambda x: x) == 0.75
+        assert DictDistribution.uniform(range(4)).expectation(lambda x: x**2) == sum(i**2 for i in range(4))/4 == (1 + 4 + 9)/4
+
+    def test_marginalize(self):
+        assert DictDistribution({
+            (0, 0): 0.1,
+            (0, 1): 0.2,
+            (1, 0): 0.3,
+            (1, 1): 0.4,
+        }).marginalize(lambda x: x[0]).isclose(DictDistribution({0: 0.3, 1: 0.7}))
+
+    def test_condition(self):
+        assert DictDistribution({
+            (0, 0): 0.1,
+            (0, 1): 0.2,
+            (1, 0): 0.3,
+            (1, 1): 0.4,
+        }).condition(lambda e: e[0] + e[1] > 0).isclose(DictDistribution({
+            (0, 1): 2/9,
+            (1, 0): 3/9,
+            (1, 1): 4/9,
+        }))
+
+    def test_joint(self):
+        d = DictDistribution(a=0.25, b=0.75).joint(DictDistribution({0: 0.1, 1: 0.9}))
+        assert d.isclose(DictDistribution({
+            ('a', 0): 1/40,
+            ('b', 0): 3/40,
+            ('a', 1): 9/40,
+            ('b', 1): 27/40,
+        }))
+
+class DFTTestCase(unittest.TestCase):
     def test_sample(self):
         warnings.filterwarnings("ignore", category=PendingDeprecationWarning)
         for cls in [DiscreteFactorTable]:
