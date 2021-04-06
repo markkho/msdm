@@ -97,5 +97,11 @@ class FiniteDistribution(Distribution[Event]):
             newdist[projection(e)] += p
         return DictDistribution(newdist)
 
+    def expectation(self, real_function: Callable[[Event], float]):
+        tot = 0
+        for e, p in self.items():
+            tot += real_function(e)*p
+        return tot
+
 # Importing down here to avoid a cyclic reference.
 from msdm.core.distributions.dictdistribution import DictDistribution
