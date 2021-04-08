@@ -100,7 +100,7 @@ class FiniteDistribution(Distribution[Event]):
             newdist[projection(e)] += p
         return DictDistribution(newdist)
 
-    def expectation(self, real_function: Callable[[Event], float]):
+    def expectation(self, real_function: Callable[[Event], float] = lambda e: e):
         tot = 0
         for e, p in self.items():
             tot += real_function(e)*p
