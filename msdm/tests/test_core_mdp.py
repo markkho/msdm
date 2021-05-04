@@ -1,5 +1,6 @@
 import unittest
 import numpy as np
+from frozendict import frozendict
 from msdm.domains import GridWorld
 from msdm.algorithms import ValueIteration
 from msdm.core.problemclasses.mdp import TabularPolicy
@@ -39,8 +40,8 @@ class CoreTestCase(unittest.TestCase):
         eval_res = res.policy.evaluate_on(gw1)
         ss0 = gw1.initial_states
         true_v0 = sum([gw1.initial_state_dist().prob(s0)*res.valuefunc[s0] for s0 in ss0])
-        print(eval_res.initial_value, true_v0)
         assert eval_res.initial_value == true_v0
+        assert eval_res.occupancy[frozendict({'x': 0, 'y': 1})] == 1
 
     def test_quick_tabular_mdp(self):
         from msdm.core.distributions import DictDistribution as DD

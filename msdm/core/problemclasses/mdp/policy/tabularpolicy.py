@@ -66,6 +66,7 @@ class TabularPolicy(dict, Policy):
         pi = self.as_matrix(ss, aa)
         mp = (rs[:, None] * (tf[:, :, :] * pi[:, :, None]).sum(1)) * nt[None, :]
         s_rf = (pi[:, :, None] * tf[:, :, :] * rf[:, :, :]).sum(axis=(1, 2))
+        occ = s0@np.linalg.inv(np.eye(len(s0)) - mdp.discount_rate * mp)
         v = np.linalg.solve(np.eye(len(s0)) - mdp.discount_rate * mp, s_rf)
         q = (tf[:, :, :] * (rf[:, :, :] + v[None, None, :])).sum(axis=2)
 
@@ -74,6 +75,8 @@ class TabularPolicy(dict, Policy):
         res.policy = self
         res._valuevec = v
         res.value = res.V = dict(zip(ss, v))
+        occ = dict(zip(ss, occ))
+        res.occupancy = res.successor_representation = occ
         res._qvaluemat = q
         qf = dict()
         for si, s in enumerate(ss):
