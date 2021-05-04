@@ -1,8 +1,10 @@
 import matplotlib.pyplot as plt
 from typing import Sequence
 from msdm.core.utils.gridstringutils import  string_to_element_array
+from msdm.core.utils.funcutils import cached_property
 from frozendict import frozendict
 from termcolor import colored
+from collections import defaultdict
 
 from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess, State
 
@@ -105,8 +107,15 @@ class GridWorld(TabularMarkovDecisionProcess):
         return list(self._absorbingStates)
 
     @property
-    def location_features(self):
+    def location_features(self) -> dict:
         return self._locFeatures
+
+    @cached_property
+    def feature_locations(self) -> dict:
+        fl = defaultdict(list)
+        for l, f in self.location_features.items():
+            fl[f].append(l)
+        return dict(fl)
 
     def is_terminal(self, s):
         return s == TERMINALSTATE
