@@ -6,8 +6,8 @@ from msdm.core.problemclasses.mdp.policy.policy import Policy
 from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess
 from msdm.core.algorithmclasses import Result
 
-from msdm.core.distributions.dictdistribution import DictDistribution, \
-    DeterministicDistribution, UniformDistribution
+from msdm.core.distributions import DictDistribution, \
+    DeterministicDistribution, UniformDistribution, SoftmaxDistribution
 
 class TabularPolicy(dict, Policy):
     def action_dist(self, s):
@@ -27,22 +27,29 @@ class TabularPolicy(dict, Policy):
         return TabularPolicy(policy)
 
     @classmethod
-    def from_q_matrix(cls, states, actions, q: np.array):
+    def from_q_matrix(cls, states, actions, q: np.array, inverse_temperature=float('inf')):
         assert q.shape == (len(states), len(actions))
 
-        rtol = np.nanmax(np.abs(np.spacing(q)))
-        policy_ismax = \
-            np.isclose(q, np.max(q, axis=-1, keepdims=True), rtol=rtol, atol=0.0)
-        # per-state count of actions with max value.
-        policy_counts = policy_ismax.sum(axis=-1)
+        if inverse_temperature == float('inf'):
+            atol = np.nanmax(np.abs(np.spacing(q)))
+            policy_ismax = \
+                np.isclose(q, np.max(q, axis=-1, keepdims=True), rtol=0.0, atol=atol)
+            # per-state count of actions with max value.
+            policy_counts = policy_ismax.sum(axis=-1)
 
-        policy = {}
-        for si, s in enumerate(states):
-            binary_policy = policy_ismax[si]
-            if policy_counts[si] == 1:
-                policy[s] = DeterministicDistribution(actions[binary_policy.argmax()])
-            else:
-                policy[s] = UniformDistribution([actions[ai] for ai in np.where(binary_policy)[0]])
+            policy = {}
+            for si, s in enumerate(states):
+                binary_policy = policy_ismax[si]
+                if policy_counts[si] == 1:
+                    policy[s] = DeterministicDistribution(actions[binary_policy.argmax()])
+                else:
+                    policy[s] = UniformDistribution([actions[ai] for ai in np.where(binary_policy)[0]])
+        else:
+            pi = np.exp(inverse_temperature*(q - np.max(q, axis=-1, keepdims=True)))
+            pi = pi/pi.sum(axis=-1, keepdims=True)
+            policy = {}
+            for si, s in enumerate(states):
+                policy[s] = SoftmaxDistribution(dict(zip(actions, pi[si])))
         return TabularPolicy(policy)
 
     @classmethod
