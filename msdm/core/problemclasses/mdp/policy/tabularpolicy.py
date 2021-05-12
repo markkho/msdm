@@ -30,7 +30,9 @@ class TabularPolicy(dict, Policy):
     def from_q_matrix(cls, states, actions, q: np.array):
         assert q.shape == (len(states), len(actions))
 
-        policy_ismax = q == np.max(q, axis=-1, keepdims=True)
+        rtol = np.nanmax(np.abs(np.spacing(q)))
+        policy_ismax = \
+            np.isclose(q, np.max(q, axis=-1, keepdims=True), rtol=rtol, atol=0.0)
         # per-state count of actions with max value.
         policy_counts = policy_ismax.sum(axis=-1)
 

@@ -73,5 +73,22 @@ class MyTestCase(unittest.TestCase):
         lrtdp = LRTDP()(gw)
         assert pi_res.initial_value == vi_res.initial_value == lrtdp.initial_value
 
+    def test_policy_iteration_gridworld2(self):
+        gw = GridWorld((
+            '..g..',
+            '.###.',
+            '..#..',
+            '..s..'
+        ), discount_rate=1 - 1e-5)
+        pi = PolicyIteration().plan_on(gw)
+        vi = ValueIteration().plan_on(gw)
+        reachable = sorted(gw.reachable_states(),
+                           key=lambda s: (s['x'], s['y']))
+        pi_mat = pi.policy.as_matrix(reachable, gw.action_list)
+        vi_mat = vi.policy.as_matrix(reachable, gw.action_list)
+        assert (pi_mat == vi_mat).all()
+        assert all([np.isclose(pi.valuefunc[s], vi.valuefunc[s])
+                    for s in reachable])
+
 if __name__ == '__main__':
     unittest.main()
