@@ -72,6 +72,8 @@ class GridWorld(TabularMarkovDecisionProcess):
         self.success_prob = success_prob
         if feature_rewards is None:
             feature_rewards = {'g': 0}
+        if not hasattr(feature_rewards, "items"):
+            feature_rewards = dict(feature_rewards)
         self._featureRewards = feature_rewards
         self.step_cost = step_cost
         self.discount_rate = discount_rate
