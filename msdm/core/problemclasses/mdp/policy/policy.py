@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from msdm.core.problemclasses.mdp.mdp import MarkovDecisionProcess, State, Action
 from msdm.core.distributions import Distribution
 from msdm.core.algorithmclasses import Result
-from typing import TypeVar
+import random
 
 class Policy(ABC):
     @abstractmethod
@@ -15,7 +15,8 @@ class Policy(ABC):
     def run_on(self,
                mdp: MarkovDecisionProcess,
                initial_state=None,
-               max_steps=int(2 ** 30)):
+               max_steps=int(2 ** 30),
+               rng=random):
         if initial_state is None:
             initial_state = mdp.initial_state_dist().sample()
         traj = []
@@ -23,8 +24,8 @@ class Policy(ABC):
         for t in range(max_steps):
             if mdp.is_terminal(s):
                 break
-            a = self.action_dist(s).sample()
-            ns = mdp.next_state_dist(s, a).sample()
+            a = self.action_dist(s).sample(rng=rng)
+            ns = mdp.next_state_dist(s, a).sample(rng=rng)
             r = mdp.reward(s, a, ns)
             traj.append((s, a, ns, r))
             s = ns
