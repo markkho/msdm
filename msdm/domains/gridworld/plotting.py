@@ -42,7 +42,8 @@ class GridWorldPlotter:
         self.ax.axis('off')
         self.ax.set_xlim(-0.1, self.gw.width + .1)
         self.ax.set_ylim(-0.1, self.gw.height + .1)
-        self.ax.axis('equal')
+        # self.ax.axis('equal')
+        ax.set_aspect('equal')
 
     def plot_features(self, featurecolors, edgecolor='darkgrey') -> "GridWorldPlotter":
         """Plot gridworld features"""
@@ -250,10 +251,21 @@ class GridWorldPlotter:
                               state_action_map: Mapping,
                               plot_over_walls=False,
                               value_range=None,
-                              color_value_func: Union[Callable, str]="bwr_r",
-                              arrow_width=.1) -> "GridWorldPlotter":
-        allvals = sum([list(av.values()) for s, av in state_action_map.items()],
-                      [])
+                              color_value_func: Union[Callable, str] = "bwr_r",
+                              arrow_width=.1,
+                              show_numbers=False,
+                              numbers_kw=None,
+                              visualization_type="arrow"
+                              ) -> "GridWorldPlotter":
+        """
+        Parameters:
+            visualization_type: "arrow" or "triangles"
+        """
+
+        # set up value range
+        allvals = sum(
+            [list(av.values()) for s, av in state_action_map.items()],
+            [])
         absvals = [abs(v) for v in allvals]
         absvmax = max(absvals)
         if value_range is None:
@@ -266,36 +278,106 @@ class GridWorldPlotter:
             colorrange = plt.get_cmap(color_value_func)
             color_norm = colors.Normalize(vmin=vmin, vmax=vmax)
             color_value_map = cmx.ScalarMappable(norm=color_norm,
-                                                cmap=colorrange)
+                                                 cmap=colorrange)
             color_value_func = lambda v: color_value_map.to_rgba(v)
 
-        for s, av in state_action_map.items():
-            if self.gw.is_terminal(s):
-                continue
-            if (not plot_over_walls) and (s in self.gw.walls):
-                continue
-            if isinstance(s, (dict, frozendict)):
-                x, y = s['x'], s['y']
-            elif isinstance(s, tuple) or isinstance(s, list):
+        # format mapping for plotting
+        if isinstance(next(iter(state_action_map)), (dict, frozendict)):
+            to_plot = {}
+            for s, a_v in state_action_map.items():
+                if self.gw.is_terminal(s):
+                    continue
+                if (not plot_over_walls) and (s in self.gw.walls):
+                    continue
+                s_ = (s['x'], s['y'])
+                to_plot[s_] = {}
+                for a, v in a_v.items():
+                    a_ = (a.get('dx', 0), a.get('dy', 0))
+                    to_plot[s_][a_] = v
+        elif isinstance(next(iter(state_action_map)), (tuple, list)):
+            to_plot = {}
+            for s, a_v in state_action_map.items():
+                if self.gw.is_terminal(s):
+                    continue
+                if (not plot_over_walls) and (s in self.gw.walls):
+                    continue
+                to_plot[s] = {**a_v}
+        else:
+            raise Exception("unknown state representation")
+
+        def plot_state_action_map_as_arrows():
+            for s, av in to_plot.items():
                 x, y = s
-            else:
-                raise Exception("unknown state representation")
+                for a, v in av.items():
+                    dx, dy = a
+                    arrowColor = color_value_func(v)
+                    mag = abs(v) / absvmax
+                    mag *= .5
+                    if (dx != 0) or (dy != 0):
+                        patch = Arrow(x + .5, y + .5, dx * mag, dy * mag,
+                                      width=arrow_width,
+                                      color=arrowColor)
+                    else:
+                        patch = Circle((x + .5, y + .5), radius=mag * .9,
+                                       fill=False, color=arrowColor)
+                    self.ax.add_patch(patch)
 
-            for a, v in av.items():
-                dx, dy = a.get('dx', 0.0), a.get('dy', 0.0)
-                arrowColor = color_value_func(v)
-                mag = abs(v) / absvmax
-                mag *= .5
-                if (dx != 0) or (dy != 0):
-                    patch = Arrow(x + .5, y + .5, dx * mag, dy * mag,
-                                  width=arrow_width,
-                                  color=arrowColor)
-                else:
-                    patch = Circle((x + .5, y + .5), radius=mag * .9,
-                                   fill=False, color=arrowColor)
-                self.ax.add_patch(patch)
+        def plot_state_action_map_as_triangles():
+            sav_params = []
+            for (x, y), a_v in to_plot.items():
+                for (dx, dy), v in a_v.items():
+                    vertices = {
+                        (0, 0): [(.3, .3), (.7, .3), (.7, .7), (.3, .7)],
+                        (-1, 0): [(.5, .5), (0, 0), (0, 1)],
+                        (1, 0): [(.5, .5), (1, 0), (1, 1)],
+                        (0, 1): [(.5, .5), (0, 1), (1, 1)],
+                        (0, -1): [(.5, .5), (0, 0), (1, 0)],
+                    }[(dx, dy)]
+                    vertices = [(x + ix, y + iy) for ix, iy in vertices]
+                    av_params = list(zip(*vertices)) + [
+                        colors.to_hex(color_value_func(v))]
+                    if (dx, dy) == (0, 0):
+                        sav_params.extend(av_params)
+                    else:
+                        sav_params = av_params + sav_params
+            _ = self.ax.fill(*sav_params)
+
+        def plot_state_action_map_numbers():
+            for (x, y), a_v in to_plot.items():
+                for (dx, dy), v in a_v.items():
+                    ann_params = {
+                        (0, 0): {"xy": (.5, .5), "ha": "center",
+                                 "va": "center"},
+                        (-1, 0): {"xy": (.05, .5), "ha": "left",
+                                  "va": "center"},
+                        (1, 0): {"xy": (.95, .5), "ha": "right",
+                                 "va": "center"},
+                        (0, 1): {"xy": (.5, .95), "ha": "center", "va": "top"},
+                        (0, -1): {"xy": (.5, .05), "ha": "center",
+                                  "va": "bottom"}
+                    }[(dx, dy)]
+                    ann_params['xy'] = (
+                    ann_params['xy'][0] + x, ann_params['xy'][1] + y)
+                    contrast_color = get_contrast_color(color_value_func(v))
+                    contrast_color = contrast_color if contrast_color == 'white' else 'black'
+                    self.ax.annotate(text=f"{v:+.1f}",
+                                     **{**dict(color=contrast_color),
+                                        **numbers_kw, **ann_params})
+
+        if "arrow" in visualization_type:
+            plot_state_action_map_as_arrows()
+        elif "triangle" in visualization_type:
+            plot_state_action_map_as_triangles()
+        else:
+            raise ValueError("Unknown visualization type")
+        if show_numbers:
+            if numbers_kw is None:
+                numbers_kw = dict(fontsize=10)
+            if "arrow" in visualization_type:
+                numbers_kw['color'] = "k"
+            plot_state_action_map_numbers()
         return self
-
+    
     def plot_policy(self, policy: Union[TabularPolicy, dict]) -> "GridWorldPlotter":
         # if isinstance(policy, TabularPolicy):
         #     policy = policy.policy_dict
