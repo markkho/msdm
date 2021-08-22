@@ -1,0 +1,17 @@
+# YAML 1.2
+---
+authors: 
+  -
+    family-names: Ho
+    given-names: "Mark K"
+    orcid: "https://orcid.org/0000-0002-1454-4768"
+  -
+    family-names: Correa
+    given-names: "Carlos G."
+cff-version: "1.1.0"
+date-released: 2021-05-24
+message: "If you use this software, please cite it using these metadata."
+repository-code: "https://github.com/markkho/msdm"
+title: msdm
+version: "0.3"
+...
