@@ -48,6 +48,18 @@ class DistributionTestCase(unittest.TestCase):
             # Testing uniform distribution
             assert cls([0, 1, 2]).isclose(cls([0, 1, 2], logits=[1, 1, 1]))
 
+    def test_is_close(self):
+        # Missing keys when p is close to 0 is ok
+        dist = DictDistribution(a=1/3, b=2/3)
+        dist_with_zero = DictDistribution(a=1/3, b=2/3, c=1e-8)
+        assert dist.isclose(dist_with_zero)
+        assert dist_with_zero.isclose(dist)
+
+        # Make sure we're not equal to zero.
+        empty = DictDistribution()
+        assert not dist.isclose(empty)
+        assert not empty.isclose(dist)
+
     def test_softmax_distribution(self):
         scores = {'a': 100, 'b': 100, 'c': 90, 'd': 50}
         rng = random.Random(12345)

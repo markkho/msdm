@@ -84,13 +84,20 @@ class FiniteDistribution(Distribution[Event]):
         e_p = ", ".join([f"{e}: {p}" for e, p in self.items()])
         return f"{self.__class__.__name__}({{{e_p}}})"
 
-    def isclose(self, other: "FiniteDistribution[Event]") -> bool:
-        mapped = {
-            s: p
-            for s, p in self.items()
+    def isclose(
+        self, other: "FiniteDistribution[Event]", *,
+        # These tolerances are copied from `np.isclose()`
+        rtol=1e-05, atol=1e-08,
+    ) -> bool:
+        isclose_kw = dict(rel_tol=rtol, abs_tol=atol)
+        nonzero_support = {
+            e
+            for dist in [self, other]
+            for e, p in dist.items()
+            if not math.isclose(p, 0, **isclose_kw)
         }
-        for s, p in other.items():
-            if not math.isclose(p, mapped.get(s, 0.0)):
+        for e in nonzero_support:
+            if not math.isclose(self.prob(e), other.prob(e), **isclose_kw):
                 return False
         return True
 
