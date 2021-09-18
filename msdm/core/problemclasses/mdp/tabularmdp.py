@@ -56,7 +56,12 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         consistent for a particular TabularMarkovDecisionProcess instance.
         """
         logger.info("State space unspecified; performing reachability analysis.")
-        return list(self.reachable_states())
+        states = self.reachable_states()
+        try:
+            return sorted(states)
+        except TypeError: #unsortable
+            pass
+        return list(states)
 
     @cached_property
     def state_index(self) -> Mapping[State, int]:
@@ -73,6 +78,10 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         for s in self.state_list:
             for a in self.actions(s):
                 actions.add(a)
+        try:
+            return sorted(actions)
+        except TypeError: #unsortable action representation
+            pass
         return list(actions)
 
     @cached_property
