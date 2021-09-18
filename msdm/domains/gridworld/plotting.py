@@ -116,7 +116,7 @@ class GridWorldPlotter:
         for s in state_traj:
             if self.gw.is_terminal(s):
                 break
-            if isinstance(s, tuple):
+            if isinstance(s, (tuple, list)):
                 xys.append(s)
             elif isinstance(s, (dict, frozendict)):
                 xys.append((s['x'], s['y']))
@@ -377,7 +377,7 @@ class GridWorldPlotter:
                 numbers_kw['color'] = "k"
             plot_state_action_map_numbers()
         return self
-    
+
     def plot_policy(self, policy: Union[TabularPolicy, dict]) -> "GridWorldPlotter":
         # if isinstance(policy, TabularPolicy):
         #     policy = policy.policy_dict
