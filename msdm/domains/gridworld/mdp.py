@@ -157,8 +157,6 @@ class GridWorld(TabularMarkovDecisionProcess):
         return self._featureRewards.get(f, 0.0) + self.step_cost
 
     def actions(self, s) -> Sequence:
-        if self.is_terminal(s):
-            return [frozendict({'dx': 0, 'dy': 0}), ]
         return [a for a in self._actions]
 
     def initial_state_dist(self) -> FiniteDistribution:
