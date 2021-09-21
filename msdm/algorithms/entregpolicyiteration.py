@@ -39,7 +39,6 @@ def entropy_regularized_policy_iteration(
         policy_prior: An (1|S)xA tensor representing policy prior probabilities
         initial_policy: An SxA tensor representing the initial policy for policy iteration
         check_convergence: Whether to check convergence
-        stop_on_convergence: Whether to stop at convergence
         force_nonzero_probabilities: Whether or not policies can have zero probabilities.
 
     Returns:
