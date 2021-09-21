@@ -8,6 +8,11 @@ from msdm.core.problemclasses.mdp import \
     TabularMarkovDecisionProcess, TabularPolicy
 from msdm.core.algorithmclasses import Plans, PlanningResult
 
+def clamp_zero(tensor):
+    min_val = torch.finfo(tensor.dtype).tiny
+    return torch.clamp(tensor, min=min_val)
+
+
 def entropy_regularized_policy_iteration(
     transition_matrix: torch.Tensor,
     reward_matrix : torch.Tensor,
@@ -17,7 +22,7 @@ def entropy_regularized_policy_iteration(
     policy_prior : torch.Tensor=None,
     initial_policy : torch.Tensor=None,
     check_convergence : bool=True,
-    q_value_range : float=None
+    force_nonzero_probabilities: bool=True
 ):
     """
     An implementation of entropy regularized policy iteration
@@ -35,8 +40,7 @@ def entropy_regularized_policy_iteration(
         initial_policy: An SxA tensor representing the initial policy for policy iteration
         check_convergence: Whether to check convergence
         stop_on_convergence: Whether to stop at convergence
-        q_value_range: To prevent underflow when softmaxing, this lets you set
-            a floor on how much lower scaled values can be than the maximum.
+        force_nonzero_probabilities: Whether or not policies can have zero probabilities.
 
     Returns:
         A SimpleNamespace with the results of the algorithm.
@@ -46,10 +50,10 @@ def entropy_regularized_policy_iteration(
     if policy_prior is None:
         policy_prior = torch.softmax(torch.ones((1, tf.shape[1]), dtype=tf.dtype), 1)
     if initial_policy is None:
-        initial_policy = torch.softmax(torch.ones(tf.shape[:-1], dtype=tf.dtype), 1)
+        initial_policy = torch.softmax(torch.ones(tf.shape[:-1], dtype=tf.dtype)*torch.log(policy_prior > 0), 1)
     assert isinstance(transition_matrix, torch.Tensor)
     assert initial_policy.shape == tf.shape[:-1]
-    pi0 = policy_prior
+    pi0 = clamp_zero(policy_prior) if force_nonzero_probabilities else policy_prior
     assert tf.shape[0] == tf.shape[2]
     assert rf.shape[0] in (1, tf.shape[0])
     assert rf.shape[1] in (1, tf.shape[1])
@@ -61,7 +65,7 @@ def entropy_regularized_policy_iteration(
     assert entropy_weight.shape[0] in (1, tf.shape[0])
 
     eye = torch.eye(tf.shape[0])
-    pi = initial_policy
+    pi = clamp_zero(initial_policy) if force_nonzero_probabilities else initial_policy
     converged = False
     for i in range(n_planning_iters):
         s_ent = torch.nansum(torch.log(pi/pi0)*pi, dim=1)
@@ -71,17 +75,12 @@ def entropy_regularized_policy_iteration(
         v = torch.linalg.solve(eye - discount_rate*mp, s_rf_ent)
         q = (tf[:,:,:]*(rf + v[None,None,:])).sum(dim=-1)
         q_scale = q_action = (1/entropy_weight[:,None])*q
-        if q_value_range is not None:
-            q_relu = q_action = \
-                torch.relu(q_scale - \
-                           torch.logsumexp(q_scale, -1, keepdims=True) + \
-                           q_value_range)
         new_pi = torch.softmax(q_action + torch.log(pi0), -1)
         if check_convergence:
             if torch.all(torch.isclose(pi, new_pi)):
                 converged = True
                 break
-        pi = new_pi
+        pi = clamp_zero(new_pi) if force_nonzero_probabilities else new_pi
     return SimpleNamespace(
         policy=pi,
         action_values=q,
@@ -127,7 +126,7 @@ class EntropyRegularizedPolicyIteration(Plans):
             policy_prior=policy_prior,
             initial_policy=None,
             check_convergence=True,
-            q_value_range=None
+            force_nonzero_probabilities=True
         )
         policy = TabularPolicy.from_matrix(mdp.state_list, mdp.action_list, pi_res.policy.detach().numpy())
         res = PlanningResult()
