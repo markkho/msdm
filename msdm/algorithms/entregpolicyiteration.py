@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from typing import Union
 import torch
 import numpy as np
+import warnings
 from msdm.core.problemclasses.mdp import \
     TabularMarkovDecisionProcess, TabularPolicy
 from msdm.core.algorithmclasses import Plans, PlanningResult
@@ -132,7 +133,7 @@ class EntropyRegularizedPolicyIteration(Plans):
         res = PlanningResult()
         res.converged = pi_res.converged
         if not res.converged:
-            warnings.warn(f"Entropy Regularized Policy Iteration not converged after {iterations} iterations")
+            warnings.warn(f"Entropy Regularized Policy Iteration not converged after {pi_res.iterations} iterations")
         res.mdp = mdp
         res.policy = res.pi = policy
         res._valuevec = pi_res.state_values.detach().numpy()
