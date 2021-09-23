@@ -3,7 +3,7 @@ import numpy as np
 from frozendict import frozendict
 from msdm.core.distributions import DictDistribution
 from msdm.algorithms import ValueIteration, PolicyIteration, LRTDP
-from msdm.tests.domains import Counter, GNTFig6_6, Geometric, VaryingActionNumber
+from msdm.tests.domains import Counter, GNTFig6_6, Geometric, VaryingActionNumber, make_russell_norvig_grid
 from msdm.domains import GridWorld
 
 
@@ -89,6 +89,17 @@ class MyTestCase(unittest.TestCase):
         assert (pi_mat == vi_mat).all()
         assert all([np.isclose(pi.valuefunc[s], vi.valuefunc[s])
                     for s in reachable])
+
+    def test_policy_iteration_and_value_iteration_russell_norvig(self):
+        for discount_rate in [i/10 for i in range(1, 10)] + [.95, .99, 1.0]:
+            for slip_prob in [i/10 for i in range(1, 10)] + [.95, .99, 1.0]:
+                gw = make_russell_norvig_grid(
+                        discount_rate=discount_rate,
+                        slip_prob=slip_prob,
+                )
+                vi_res = ValueIteration(iterations=int(1e3)).plan_on(gw)
+                pi_res = PolicyIteration(iterations=int(1e3)).plan_on(gw)
+                assert np.isclose(vi_res._qvaluemat, pi_res._qvaluemat, atol=5e-4).all()
 
 if __name__ == '__main__':
     unittest.main()

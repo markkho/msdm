@@ -4,6 +4,7 @@ from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess, Determini
 from msdm.core.distributions import \
     Distribution, DictDistribution,\
     DeterministicDistribution, UniformDistribution
+from msdm.tests.domains.russell_norvig import make_russell_norvig_grid
 
 class GNTFig6_6(TabularMarkovDecisionProcess):
     T = [
