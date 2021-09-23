@@ -28,11 +28,10 @@ class PolicyIteration(Plans):
 
         for i in range(iterations):
             s_rf = (pi[:, :, None] * tf[:, :, :] * rf[:, :, :]).sum(axis=(1, 2))
-            # s_rf[~nt] = 0 #terminal states are always 0 reward
-            s_rf = s_rf*nt
+            s_rf = s_rf*nt #terminal states are always 0 reward
             mp = (rs[:, None] * (pi[:, :, None] * tf[:, :, :]).sum(axis=1) * nt[None,:])
             v = np.linalg.solve(np.eye(len(ss)) - mdp.discount_rate * mp, s_rf)
-            q = (tf[:, :, :] * (rf[:, :, :] + v[None, None, :])).sum(axis=2)
+            q = (tf[:, :, :] * (rf[:, :, :] + mdp.discount_rate * v[None, None, :])).sum(axis=2)
 
             new_pi = np.zeros_like(pi)
             np.put_along_axis(new_pi, (q + np.log(am)).argmax(axis=1)[:, None], values=1, axis=1)

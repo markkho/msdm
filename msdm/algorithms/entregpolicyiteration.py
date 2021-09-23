@@ -72,7 +72,7 @@ def entropy_regularized_policy_iteration(
         s_rf_ent = (s_rf - entropy_weight*s_ent)
         mp = (pi[:,:,None]*tf[:, :, :]).sum(dim=1)
         v = torch.linalg.solve(eye - discount_rate*mp, s_rf_ent)
-        q = (tf[:,:,:]*(rf + v[None,None,:])).sum(dim=-1)
+        q = (tf[:,:,:]*(rf + discount_rate*v[None,None,:])).sum(dim=-1)
         q_scale = q_action = (1/entropy_weight[:,None])*q
         new_pi = torch.softmax(q_action + torch.log(pi0), -1)
         if check_convergence:
