@@ -17,6 +17,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
     assume states/actions are hashable.
     """
 
+
     @abstractmethod
     def next_state_dist(self, s, a) -> FiniteDistribution:
         pass
@@ -122,7 +123,9 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         rf = np.zeros((len(ss), len(aa), len(ss)))
         for s, si in ssi.items():
             for a in self._cached_actions(s):
-                for ns in self._cached_next_state_dist(s, a).support:
+                for ns, p in self._cached_next_state_dist(s, a).items():
+                    if p == 0.:
+                        continue
                     rf[si, aai[a], ssi[ns]] = self.reward(s, a, ns)
         return rf
 
