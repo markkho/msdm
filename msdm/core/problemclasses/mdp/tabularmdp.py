@@ -8,8 +8,8 @@ from msdm.core.distributions import FiniteDistribution, DictDistribution
 
 logger = logging.getLogger(__name__)
 
-State = TypeVar('State', bound=Hashable)
-Action = TypeVar('Action', bound=Hashable)
+HashableState = TypeVar('State', bound=Hashable)
+HashableAction = TypeVar('Action', bound=Hashable)
 
 class TabularMarkovDecisionProcess(MarkovDecisionProcess):
     """
@@ -19,15 +19,15 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
     @classmethod
     def from_matrices(
         cls,
-        state_list : Sequence[State],
-        action_list : Sequence[Action],
+        state_list : Sequence[HashableState],
+        action_list : Sequence[HashableAction],
         initial_state_vec : np.array,
         transition_matrix : np.array,
         reward_matrix : np.array,
         nonterminal_state_vec : np.array,
         discount_rate : float,
         action_matrix=None
-    ):
+    ) -> "TabularMarkovDecisionProcess":
         """
         Constructs a Tabular MDP from matrices.
         """
@@ -76,7 +76,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         )
 
     @abstractmethod
-    def next_state_dist(self, s, a) -> FiniteDistribution:
+    def next_state_dist(self, s : HashableState, a : HashableAction) -> FiniteDistribution:
         pass
 
     @abstractmethod
@@ -84,14 +84,14 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         pass
 
     @method_cache
-    def _cached_next_state_dist(self, s, a) -> FiniteDistribution:
+    def _cached_next_state_dist(self, s : HashableState, a : HashableAction) -> FiniteDistribution:
         '''
         We prefer using this cached version of next_state_dist when possible.
         '''
         return self.next_state_dist(s, a)
 
     @method_cache
-    def _cached_actions(self, s) -> Sequence[Action]:
+    def _cached_actions(self, s : HashableState) -> Sequence[HashableAction]:
         return self.actions(s)
 
     def as_matrices(self):
@@ -108,7 +108,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         }
 
     @cached_property
-    def state_list(self) -> Sequence[State]:
+    def state_list(self) -> Sequence[HashableState]:
         """
         List of states. Note that state ordering is only guaranteed to be
         consistent for a particular TabularMarkovDecisionProcess instance.
@@ -122,11 +122,11 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         return list(states)
 
     @cached_property
-    def state_index(self) -> Mapping[State, int]:
+    def state_index(self) -> Mapping[HashableState, int]:
         return {s: i for i, s in enumerate(self.state_list)}
 
     @cached_property
-    def action_list(self) -> Sequence[Action]:
+    def action_list(self) -> Sequence[HashableAction]:
         """
         List of actions. Note that action ordering is only guaranteed to be
         consistent for a particular TabularMarkovDecisionProcess instance.
@@ -143,7 +143,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         return list(actions)
 
     @cached_property
-    def action_index(self) -> Mapping[Action, int]:
+    def action_index(self) -> Mapping[HashableAction, int]:
         return {a: i for i, a in enumerate(self.action_list)}
 
     @cached_property
@@ -220,7 +220,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         return np.array([is_absorbing(s) for s in self.state_list])
 
     @method_cache
-    def reachable_states(self) -> Set[State]:
+    def reachable_states(self) -> Set[HashableState]:
         S0 = self.initial_state_dist().support
         frontier = set(S0)
         visited = set(S0)
