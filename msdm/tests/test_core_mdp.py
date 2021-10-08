@@ -3,7 +3,7 @@ import numpy as np
 from frozendict import frozendict
 from msdm.domains import GridWorld
 from msdm.algorithms import ValueIteration
-from msdm.core.problemclasses.mdp import TabularPolicy
+from msdm.core.problemclasses.mdp import TabularPolicy, TabularMarkovDecisionProcess
 
 np.seterr(divide='ignore')
 
@@ -68,6 +68,47 @@ class CoreTestCase(unittest.TestCase):
             res = ValueIteration().plan_on(mdp)
             pi = [res.policy.action_dist(s).sample() for s in range(1, 10)]
             assert all([a == 1 for a in pi])
+
+    def test_tabular_mdp(self):
+        from itertools import product
+        from msdm.algorithms import PolicyIteration, ValueIteration
+        from msdm.tests.domains import make_russell_norvig_grid
+
+        for dr, sp in product([.99, .9, .5, .1], [.1, .2, .5, .8, 1.0]):
+            # Create MDPs and copy them
+            g1 = make_russell_norvig_grid(
+                discount_rate=dr,
+                slip_prob=sp
+            )
+            g2 = TabularMarkovDecisionProcess.from_matrices(
+                state_list = g1.state_list,
+                action_list = g1.action_list,
+                initial_state_vec = g1.initial_state_vec,
+                transition_matrix = g1.transition_matrix,
+                reward_matrix = g1.reward_matrix,
+                nonterminal_state_vec = g1.nonterminal_state_vec,
+                discount_rate = g1.discount_rate
+            )
+            pi1 = PolicyIteration().plan_on(g1)
+            pi2 = PolicyIteration().plan_on(g2)
+
+            assert g2.state_list == g1.state_list
+            assert id(g2.state_list) != id(g1.state_list)
+            assert g2.action_list == g1.action_list
+            assert id(g2.action_list) != id(g1.action_list)
+            assert (g2.initial_state_vec == g1.initial_state_vec).all()
+            assert id(g2.initial_state_vec) != id(g1.initial_state_vec)
+            assert (g2.transition_matrix == g1.transition_matrix).all()
+            assert id(g2.transition_matrix) != id(g1.transition_matrix)
+            assert (g2.reward_matrix == g1.reward_matrix).all()
+            assert id(g2.reward_matrix) != id(g1.reward_matrix)
+            assert (g2.nonterminal_state_vec == g1.nonterminal_state_vec).all()
+            assert id(g2.nonterminal_state_vec) != id(g1.nonterminal_state_vec)
+            assert g2.discount_rate == g1.discount_rate
+
+            assert pi1.initial_value == pi2.initial_value
+            assert pi1.iterations == pi2.iterations
+            assert pi1.converged == pi2.converged
 
 if __name__ == '__main__':
     unittest.main()

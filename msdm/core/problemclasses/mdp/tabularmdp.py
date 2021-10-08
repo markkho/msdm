@@ -4,7 +4,7 @@ from abc import abstractmethod
 from typing import Set, Sequence, Hashable, Mapping, TypeVar
 from msdm.core.problemclasses.mdp import MarkovDecisionProcess
 from msdm.core.utils.funcutils import method_cache, cached_property
-from msdm.core.distributions import FiniteDistribution
+from msdm.core.distributions import FiniteDistribution, DictDistribution
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,64 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
     Tabular MDPs can be fully enumerated (e.g., as matrices) and
     assume states/actions are hashable.
     """
+    @classmethod
+    def from_matrices(
+        cls,
+        state_list : Sequence[State],
+        action_list : Sequence[Action],
+        initial_state_vec : np.array,
+        transition_matrix : np.array,
+        reward_matrix : np.array,
+        nonterminal_state_vec : np.array,
+        discount_rate : float,
+        action_matrix=None
+    ):
+        """
+        Constructs a Tabular MDP from matrices.
+        """
+        assert len(state_list) \
+            == transition_matrix.shape[0] \
+            == transition_matrix.shape[2] \
+            == nonterminal_state_vec.shape[0] \
+            == initial_state_vec.shape[0] \
+            == reward_matrix.shape[0] \
+            == reward_matrix.shape[2]
+        assert len(action_list) \
+            == transition_matrix.shape[1] \
+            == reward_matrix.shape[1]
+        if action_matrix is not None:
+            assert len(action_list) == action_matrix.shape[1]
+            assert len(state_list) == action_matrix.shape[0]
 
+        #avoids circular dependency
+        from msdm.core.problemclasses.mdp.quicktabularmdp import QuickTabularMDP
+
+        ss_i = {s: i for i, s in enumerate(state_list)} #state indices
+        aa_i = {a: i for i, a in enumerate(action_list)}
+        def next_state_dist(s, a):
+            probs = transition_matrix[ss_i[s], aa_i[a], :]
+            return DictDistribution({
+                ns: p for ns, p in zip(state_list, probs) if p > 0
+            })
+        def reward(s, a, ns):
+            return reward_matrix[ss_i[s], aa_i[a], ss_i[ns]]
+        def actions(s):
+            if action_matrix is None:
+                return action_list
+            return [a for a, ai in enumerate(action_matrix[ss_i[s]]) if ai > 0]
+        initial_state_dist = DictDistribution({
+            s: p for s, p in zip(state_list, initial_state_vec) if p > 0
+        })
+        def is_terminal(s):
+            return not nonterminal_state_vec[ss_i[s]]
+        return QuickTabularMDP(
+            next_state_dist=next_state_dist,
+            reward=reward,
+            actions=actions,
+            initial_state_dist=initial_state_dist,
+            is_terminal=is_terminal,
+            discount_rate=discount_rate
+        )
 
     @abstractmethod
     def next_state_dist(self, s, a) -> FiniteDistribution:
