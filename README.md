@@ -1,17 +1,67 @@
-# Models of Sequential Decision Making
+# `msdm`: Models of Sequential Decision-Making
 
-Implementations of basic rl and planning algorithms and domains
-mainly for cog sci research.
+## Goals
+`msdm` aims to simplify the design and evaluation of
+models of sequential decision-making. The library
+can be used for cognitive science or computer
+science research/teaching.
 
+## Approach
+`msdm` provides standardized interfaces and implementations
+for common constructs in sequential
+decision-making. This includes algorithms used in single-agent
+[reinforcement learning](https://en.wikipedia.org/wiki/Reinforcement_learning) as well as those used in
+[planning](https://en.wikipedia.org/wiki/Automated_planning_and_scheduling),
+[partially observable environments](https://en.wikipedia.org/wiki/Partially_observable_Markov_decision_process),
+and [multi-agent games](https://en.wikipedia.org/wiki/Stochastic_game).
 
-## Installation
+The library is organized around different **problem classes**
+and **algorithms** that operate on **problem instances**.
+We take inspiration from existing libraries such as
+[scikit-learn](https://scikit-learn.org/) that
+enable users to transparently mix and match components.
+For instance, a standard way to define a problem, solve it,
+and examine the results would be:
 
-### Installing from GitHub
+```
+# create a problem instance
+mdp = make_russell_norvig_grid(
+    discount_rate=0.95,
+    slip_prob=0.8,
+)
+
+# solve the problem
+vi = ValueIteration()
+res = vi.plan_on(mdp)
+
+# print the value function
+print(res.V)
+```
+
+The library is under active development. Currently, it primarily
+supports tabular and discrete methods for single-agent problems,
+but we aim to extend support for the following problem classes:
+
+- Markov Decision Processes (MDPs)
+- Partially Observable Markov Decision Processes (POMDPs)
+- Markov Games
+- Partially Observable Stochastic Games (POSGs)
+
+and algorithm classes:
+
+- Planning and Search
+- Reinforcement Learning
+- Inverse Reinforcement Learning
+- Multi-agent learning
+
+# Installation
+
+## Installing from GitHub
 ```bash
 $ pip install --upgrade git+https://github.com/markkho/msdm.git
 ```
 
-### Installing the package in edit mode
+## Installing the package in edit mode
 
 After downloading, go into the folder and install the package locally
 (with a symlink so its updated as source file changes are made):
@@ -25,7 +75,7 @@ It is recommended to use a virtual environment.
 Related libraries:
 - [BURLAP](https://github.com/jmacglashan/burlap)
 
-## Contributing
+# Contributing
 
 To run all tests: `make test`
 
