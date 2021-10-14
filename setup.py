@@ -14,7 +14,7 @@ setup(name='msdm',
       packages=find_packages(),
       install_requires=[
           'numpy', 'matplotlib', 'scipy', 'torch', 'tqdm', 'sparse', 'termcolor',
-          'frozendict @ git+https://github.com/Marco-Sulla/python-frozendict@v2.0.1'
+          'frozendict', 'julia'
       ],
       test_suite='nose.collector',
       tests_require=['nose'],
