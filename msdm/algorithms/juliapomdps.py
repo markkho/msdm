@@ -33,7 +33,6 @@ class JuliaPOMDP(Learns):
         policy = solve(self.solver, m)
 
         from julia.Main import typeof as typeof2
-        print(policy, type(policy), typeof2(policy))
         alphas = np.array([np.array(v) for v in alphavectors(policy)])
 
         def value(belief):
