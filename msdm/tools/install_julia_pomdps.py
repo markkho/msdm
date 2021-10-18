@@ -21,5 +21,5 @@ if __name__ == '__main__':
 
     kw = dict()
     if len(args) == 1:
-        kw['julia'] = args[0]
+        kw['julia_path'] = args[0]
     install_julia_pomdps(**kw)
