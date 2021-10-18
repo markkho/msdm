@@ -5,13 +5,13 @@ import numpy as np
 
 class JuliaPOMDP(Learns):
     def __init__(self, solvername, solvermodule, *args, **kwargs):
+        import julia
         try:
             m = getattr(importlib.import_module(solvermodule), solvername)
             # TODO; how to incorporate optional arguments in a generic way?
             self.solver = m()
-        except ImportError:
-            print("Before using Julia POMDPs, must install with\n\tpython -m msdm.tools.install_julia_pomdps")
-            raise
+        except (ImportError, julia.core.UnsupportedPythonError):
+            raise Exception("Before using Julia POMDPs, must install with\n\tpython -m msdm.tools.install_julia_pomdps")
 
     def train_on(self, pomdp: TabularPOMDP):
         # We intentionally avoid importing at the top-level to ensure we avoid
