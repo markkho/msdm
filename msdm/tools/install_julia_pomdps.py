@@ -1,12 +1,13 @@
 
-def install(julia="julia"):
+def install_julia_pomdps(julia_path="julia"):
     import julia
-    julia.install(julia=julia)
+    julia.install(julia=julia_path)
 
     from julia import Pkg
     Pkg.add([
-        "POMDPs", "POMDPSimulators", "POMDPPolicies", "POMDPModelTools", "Distributions",
-        "QMDP", "SARSOP", "ARDESPOT", "IncrementalPruning",
+        "POMDPs", "POMDPSimulators", "POMDPPolicies",
+        "POMDPModelTools", "Distributions", "QuickPOMDPs",
+        "QMDP", "SARSOP", "ARDESPOT", "IncrementalPruning"
     ])
 
 if __name__ == '__main__':
@@ -21,4 +22,4 @@ if __name__ == '__main__':
     kw = dict()
     if len(args) == 1:
         kw['julia'] = args[0]
-    install(**kw)
+    install_julia_pomdps(**kw)
