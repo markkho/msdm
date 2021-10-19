@@ -10,13 +10,16 @@ import tqdm
 from scipy.spatial.distance import cdist
 
 from msdm.core.problemclasses.pomdp import TabularPOMDP
-from msdm.core.algorithmclasses import Plans
+from msdm.core.algorithmclasses import Plans, Result
+from msdm.core.problemclasses.pomdp.alphavectorpolicy import AlphaVectorPolicy
 
 def next_beliefs(pomdp, b):
+    assert np.isclose(sum(b), 1), sum(b)
     tf = pomdp.transition_matrix
     of = pomdp.observation_matrix
     ns_dist = np.einsum("san,s->an", tf, b)
     nbs = np.einsum("an,ano->aon", ns_dist, of)
+    nbs = nbs[nbs.sum(-1) > 0, :] #ignore 0 beliefs
     nbs = nbs/nbs.sum(-1, keepdims=True)
     nbs = nbs.reshape((-1, nbs.shape[-1]))
     return np.unique(nbs, axis=0)
@@ -102,6 +105,7 @@ def point_based_value_iteration(
         ba_vf_max_idx = ba_vf.argmax(axis=1)
         new_bv = bsa_vf[count_b, :, ba_vf_max_idx]
 
+        # convergence test
         old_v = np.einsum("bs,bs->b", bv, bb)
         new_v = np.einsum("bs,bs->b", new_bv, bb)
         delta = np.abs(old_v - new_v).max()
@@ -110,6 +114,7 @@ def point_based_value_iteration(
         bv = new_bv
     return {
         'alpha_vectors': bv,
+        'belief_action_alpha_vectors': bsa_vf,
         'iterations': i
     }
 
@@ -137,7 +142,7 @@ class PointBasedValueIteration(Plans):
     def _solve(self, pomdp):
         s0 = pomdp.initial_state_vec
         belief_set = np.array([s0,])
-        # iterator = tqdm.tqdm(range(self.max_iterations))
+#         iterator = tqdm.tqdm(range(self.max_iterations))
         iterator = range(self.max_iterations)
         for i in iterator:
             belief_set = expand_beliefs(pomdp, belief_set)
@@ -161,12 +166,17 @@ class PointBasedValueIteration(Plans):
                 last_v = belief_values(last_res['alpha_vectors'], belief_set)
                 curr_v = belief_values(res['alpha_vectors'], belief_set)
                 diff = np.max(np.abs(last_v - curr_v))
-                iterator.set_description(f"diff: {diff:.2f}")
+#                 iterator.set_description(f"diff: {diff:.2f}; iters: {res['iterations']}")
                 if diff < self.value_epsilon:
                     break
             last_res = res
-        return res['alpha_vectors']
+        del res['iterations']
+        return res
 
     def plan_on(self, pomdp: TabularPOMDP):
-        v = self._solve(pomdp)
-        return v
+        res = self._solve(pomdp)
+        pi = AlphaVectorPolicy(pomdp, res['alpha_vectors'])
+        return Result(
+            policy=pi,
+            alpha_vectors=res['alpha_vectors']
+        )

@@ -1,9 +1,10 @@
 from abc import abstractmethod, ABC
 from typing import TypeVar
+from collections import defaultdict
 
 from msdm.core.problemclasses.mdp.mdp import \
     MarkovDecisionProcess, State, Action
-from msdm.core.distributions import Distribution
+from msdm.core.distributions import DictDistribution, Distribution
 
 Observation = TypeVar('Observation')
 
@@ -14,3 +15,29 @@ class PartiallyObservableMDP(MarkovDecisionProcess):
     @abstractmethod
     def observation_dist(self, a : Action, ns : State) -> Distribution[Observation]:
         pass
+
+    def state_estimator(self, b: Distribution[State], a : Action, o : Observation) -> Distribution[State]:
+        """
+        Returns the posterior distribution over next states
+        given an action, observation, and belief over previous states.
+        """
+        ns_dist = defaultdict(int)
+        for s, s_prob in b.items():
+            for ns, ns_prob in self.next_state_dist(s, a).items():
+                o_prob = self.observation_dist(a, ns)[o]
+                ns_dist[ns] += o_prob*s_prob
+        tot = sum(ns_dist.values())
+        return DictDistribution({ns: p/tot for ns, p in ns_dist.items()})
+
+    def predictive_observation_dist(self, b: Distribution[State], a : Action) -> Distribution[Observation]:
+        """
+        Returns the predicted observation distribution for taking
+        an action given a belief distribution.
+        """
+        o_dist = defaultdict(float)
+        for s, s_prob in b.items():
+            for ns, ns_prob in self.next_state_dist(s, a).items():
+                for o, o_prob in self.observation_dist(a, ns).items():
+                    o_dist[o] += s_prob*ns_prob*o_prob
+        tot = sum(o_dist.values())
+        return DictDistribution({o: p/tot for o, p in o_dist.items()})
