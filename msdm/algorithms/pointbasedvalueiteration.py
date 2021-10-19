@@ -59,6 +59,7 @@ def point_based_value_iteration(
 
     tf = pomdp.transition_matrix
     sa_rf = pomdp.state_action_reward_matrix
+    nt = pomdp.nonterminal_state_vec
     of = pomdp.observation_matrix
     aa = pomdp.action_list
     ss = pomdp.state_list
@@ -66,6 +67,9 @@ def point_based_value_iteration(
 
     bb = belief_set
     count_b = np.arange(len(bb))
+
+    sa_rf = sa_rf*nt[:,None] #reward at terminal state is 0
+    tf = tf*nt[:, None, None] #terminal states transition nowhere
 
     # alpha vectors - one per belief
     bv = np.zeros((len(bb), len(pomdp.state_list)))
@@ -171,6 +175,8 @@ class PointBasedValueIteration(Plans):
                     break
             last_res = res
         del res['iterations']
+        res['belief_set'] = belief_set
+        res['expansion_iterations'] = i + self.min_iterations
         return res
 
     def plan_on(self, pomdp: TabularPOMDP):
@@ -178,5 +184,7 @@ class PointBasedValueIteration(Plans):
         pi = AlphaVectorPolicy(pomdp, res['alpha_vectors'])
         return Result(
             policy=pi,
-            alpha_vectors=res['alpha_vectors']
+            alpha_vectors=res['alpha_vectors'],
+            belief_set=res['belief_set'],
+            expansion_iterations=res['expansion_iterations']
         )
