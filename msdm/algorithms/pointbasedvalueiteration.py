@@ -123,13 +123,13 @@ class PointBasedValueIteration(Plans):
         max_iterations=int(1e5),
         value_epsilon=.01
     ):
-    """
-    Point-based value iteration approximates an exact
-    POMDP value iteration solution by selecting a
-    small set of representative belief points and then tracking
-    the value and its derivative for those points only.
-    This implementation is based on Pineau et al. (2003).
-    """
+        """
+        Point-based value iteration approximates an exact
+        POMDP value iteration solution by selecting a
+        small set of representative belief points and then tracking
+        the value and its derivative for those points only.
+        This implementation is based on Pineau et al. (2003).
+        """
         self.min_iterations = min_iterations
         self.max_iterations = max_iterations
         self.value_epsilon = value_epsilon
