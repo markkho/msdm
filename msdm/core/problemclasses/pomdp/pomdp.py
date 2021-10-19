@@ -23,11 +23,15 @@ class PartiallyObservableMDP(MarkovDecisionProcess):
         """
         ns_dist = defaultdict(int)
         for s, s_prob in b.items():
+            if s_prob == 0.0:
+                continue
             for ns, ns_prob in self.next_state_dist(s, a).items():
-                o_prob = self.observation_dist(a, ns)[o]
-                ns_dist[ns] += o_prob*s_prob
+                o_prob = self.observation_dist(a, ns).get(o, 0.0)
+                ns_dist[ns] += o_prob*s_prob*ns_prob
         tot = sum(ns_dist.values())
-        return DictDistribution({ns: p/tot for ns, p in ns_dist.items()})
+        if tot == 0.0:
+            return DictDistribution({})
+        return DictDistribution({ns: p/tot for ns, p in ns_dist.items() if p > 0.0})
 
     def predictive_observation_dist(self, b: Distribution[State], a : Action) -> Distribution[Observation]:
         """

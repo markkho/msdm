@@ -1,4 +1,5 @@
 import random
+from collections import namedtuple
 from abc import abstractmethod, ABC
 from typing import TypeVar
 
@@ -8,6 +9,7 @@ from msdm.core.distributions import Distribution
 from msdm.core.algorithmclasses import Result
 
 AgentState = TypeVar('AgentState')
+Step = namedtuple("Step", "state agentstate action nextstate reward observation nextagentstate")
 
 class POMDPPolicy(ABC):
     @abstractmethod
@@ -44,18 +46,14 @@ class POMDPPolicy(ABC):
             r = pomdp.reward(s, a, ns)
             o = pomdp.observation_dist(a, ns).sample(rng=rng)
             nag = self.next_agentstate(ag, a, o)
-            traj.append((s, ag, a, ns, r, o, nag))
+            traj.append(Step(s, ag, a, ns, r, o, nag))
             s = ns
             ag = nag
         if traj:
-            states, _, actions, _, rewards, _, _ = zip(*traj)
+            states, agentstates, actions, _, rewards, _, _ = zip(*traj)
         else:
             states = ()
             actions = ()
             rewards = ()
-        return Result(**{
-            'state_traj': states,
-            'action_traj': actions,
-            'reward_traj': rewards,
-            'traj': traj
-        })
+            agentstates = ()
+        return traj
