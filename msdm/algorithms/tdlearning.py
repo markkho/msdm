@@ -34,6 +34,12 @@ def epsilon_softmax_dist(action_values, rand_choose, softmax_temp):
     rand_dist = DictDistribution.uniform(action_values.keys())
     return rand_dist*rand_choose | sm_dist*(1 - rand_choose)
 
+def argmax(d, rng):
+    maxv = max(d.values())
+    aa = [a for a, v in d.items() if v == maxv]
+    rng.shuffle(aa)
+    return aa
+
 class TDLearningEventListener(ABC):
     @abstractmethod
     def __init__(self):
@@ -65,23 +71,33 @@ class EpisodeRewardEventListener(TDLearningEventListener):
 class TemporalDifferenceLearning(Learns):
     def __init__(
         self,
-        episodes=100,
-        step_size=.1,
-        rand_choose=0.05,
-        softmax_temp=0.0,
-        initial_q=0.0,
-        seed=None,
-        event_listener_type : TDLearningEventListener = EpisodeRewardEventListener
+        episodes : int = 100,
+        step_size : float = .1,
+        rand_choose : float = 0.05,
+        softmax_temp : float = 0.0,
+        initial_q : float = 0.0,
+        seed : int = None,
+        event_listener_class : TDLearningEventListener = EpisodeRewardEventListener
     ):
         """
-        Generic temporal difference learning interface.
+        Generic temporal difference learning interface based on Sutton & Barto, Ch 6.
 
-        Parameters:
-            episodes - the number of episodes to train
-            step_size - the step size of the update rule
-            rand_choose - probability of choosing an action uniformly (as in epsilon-greedy)
-            softmax_temp - temperature of softmax during learning (closer to 0 -> closer to hardmax)
-            seed - seed for random number generator (reset at the beginning of each call to train_on)
+        Parameters
+        ----------
+        episodes : int
+            The number of episodes to train
+        step_size : float
+            The step size of the update rule
+        rand_choose : float
+            Epsilon in epsilon-greedy during learning
+        softmax_temp : float
+            Temperature of softmax during learning (0.0 -> hardmax)
+        initial_q : float or Callable[[State, Action], float]
+            Initial q value or a function that returns values for a state and action. Equivalent to a heuristic.
+        seed : int
+            Random seed
+        event_listener_class : TDLearningEventListener
+            Event listener class
         """
         self.episodes = episodes
         self.step_size = step_size
@@ -90,7 +106,7 @@ class TemporalDifferenceLearning(Learns):
         self.seed = seed
         if isinstance(initial_q, float):
             self.initial_q = lambda s, a: initial_q
-        self.event_listener_type = event_listener_type
+        self.event_listener_class = event_listener_class
 
     @abstractmethod
     def _training(self, mdp, rng):
@@ -118,9 +134,18 @@ class TemporalDifferenceLearning(Learns):
         policy = TabularPolicy(policy)
         return policy
 
+    def _initial_q_table(self, mdp):
+        def initial_q(s, a):
+            if mdp.is_terminal(s):
+                return 0.0
+            return self.initial_q(s, a)
+        initial_avals = lambda s: {a: initial_q(s, a) for a in mdp.actions(s)}
+        q = defaultdict2(initial_avals, initialize_defaults=True)
+        return q
+
     def train_on(self, mdp: TabularMarkovDecisionProcess):
         rng = self._init_random_number_generator()
-        event_listener = self.event_listener_type()
+        event_listener = self.event_listener_class()
         q = self._training(mdp, rng, event_listener)
         return Result(
             q_values=q,
@@ -137,8 +162,7 @@ class QLearning(TemporalDifferenceLearning):
     $$
     """
     def _training(self, mdp, rng, event_listener):
-        initial_avals = lambda s: {a: self.initial_q(s, a) for a in mdp.actions(s)}
-        q = defaultdict2(initial_avals, initialize_defaults=True)
+        q = self._initial_q_table(mdp)
         for ep in range(self.episodes):
             s = mdp.initial_state_dist().sample(rng=rng)
             while not mdp.is_terminal(s):
@@ -155,6 +179,49 @@ class QLearning(TemporalDifferenceLearning):
             event_listener.end_of_episode(locals())
         return q
 
+class DoubleQLearning(TemporalDifferenceLearning):
+    r"""
+    Double Q-learning is an off-policy temporal difference control method
+    that uses two q-value estimates to avoid positive bias.
+    The temporal difference error in q-learning is:
+    $$
+    \delta_t = R_{t+1} + \gamma Q_i(S_{t+1}, \argmax_a Q_j(S_{t+1}, a)) - Q_j(S_t, A_t)
+    $$
+    where Q_i and Q_j are two different Q functions selected at random each update.
+    """
+    def _training(self, mdp, rng, event_listener):
+        q1 = self._initial_q_table(mdp)
+        q2 = self._initial_q_table(mdp)
+        for ep in range(self.episodes):
+            s = mdp.initial_state_dist().sample(rng=rng)
+            while not mdp.is_terminal(s):
+                # select action
+                avals = {a: q1[s][a]*.5 + q2[s][a]*.5 for a in mdp.actions(s)}
+                a = epsilon_softmax_sample(avals, self.rand_choose, self.softmax_temp, rng)
+                # transition to next state
+                ns = mdp.next_state_dist(s, a).sample(rng=rng)
+                r = mdp.reward(s, a, ns)
+                # update
+                if rng.random() > .5:
+                    td_error = r + mdp.discount_rate*q2[ns][argmax(q1[ns], rng).pop()] - q1[s][a]
+                    q1[s][a] += self.step_size*td_error
+                else:
+                    td_error = r + mdp.discount_rate*q1[ns][argmax(q2[ns], rng).pop()] - q2[s][a]
+                    q2[s][a] += self.step_size*td_error
+
+                # end of timestep
+                event_listener.end_of_timestep(locals())
+                s = ns
+            event_listener.end_of_episode(locals())
+
+        #return mean of the two estimates
+        q = {}
+        for s in set(q1.keys()) | set(q2.keys()):
+            q[s] = {}
+            for a in mdp.actions(s):
+                q[s][a] = q1[s][a]*.5 +q2[s][a]+.5
+        return q
+
 class SARSA(TemporalDifferenceLearning):
     r"""
     SARSA is an on-policy temporal difference control method.
@@ -164,8 +231,7 @@ class SARSA(TemporalDifferenceLearning):
     $$
     """
     def _training(self, mdp, rng, event_listener):
-        initial_avals = lambda s: {a: self.initial_q(s, a) for a in mdp.actions(s)}
-        q = defaultdict2(initial_avals, initialize_defaults=True)
+        q = self._initial_q_table(mdp)
         for ep in range(self.episodes):
             s = mdp.initial_state_dist().sample(rng=rng)
             if s not in q:
@@ -193,8 +259,7 @@ class ExpectedSARSA(TemporalDifferenceLearning):
     $$
     """
     def _training(self, mdp, rng, event_listener):
-        initial_avals = lambda s: {a: self.initial_q(s, a) for a in mdp.actions(s)}
-        q = defaultdict2(initial_avals, initialize_defaults=True)
+        q = self._initial_q_table(mdp)
         for ep in range(self.episodes):
             s = mdp.initial_state_dist().sample(rng=rng)
             while not mdp.is_terminal(s):
