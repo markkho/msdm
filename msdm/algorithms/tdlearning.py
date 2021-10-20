@@ -1,3 +1,6 @@
+"""Temporal difference learning algorithms for discrete MDPs
+
+"""
 from msdm.core.algorithmclasses import Learns, Result
 from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess, TabularPolicy
 from msdm.core.distributions import DictDistribution, SoftmaxDistribution
