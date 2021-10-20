@@ -1,8 +1,10 @@
 from msdm.core.algorithmclasses import Learns, Result
 from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess, TabularPolicy
 from msdm.core.distributions import DictDistribution
+from msdm.core.utils.dictutils import defaultdict2
 from collections import defaultdict
-from abc import abstractmethod
+from types import SimpleNamespace
+from abc import abstractmethod, ABC
 import random
 import math
 
@@ -21,6 +23,34 @@ def epsilon_softmax(action_values, rand_choose, softmax_temp, rng):
             a = rng.choice([a for a in aa if action_values[a] == maxq])
     return a
 
+class TDLearningEventListener(ABC):
+    @abstractmethod
+    def __init__(self):
+        pass
+    @abstractmethod
+    def end_of_timestep(self, local_vars):
+        pass
+    @abstractmethod
+    def end_of_episode(self, local_vars):
+        pass
+    @abstractmethod
+    def results(self):
+        pass
+
+class EpisodeRewardEventListener(TDLearningEventListener):
+    def __init__(self):
+        self.episode_rewards = []
+        self.curr_ep_rewards = 0
+    def end_of_timestep(self, local_vars):
+        self.curr_ep_rewards += local_vars['r']
+    def end_of_episode(self, local_vars):
+        self.episode_rewards.append(self.curr_ep_rewards)
+        self.curr_ep_rewards = 0
+    def results(self):
+        return SimpleNamespace(
+            episode_rewards=self.episode_rewards
+        )
+
 class TemporalDifferenceLearning(Learns):
     def __init__(
         self,
@@ -29,7 +59,8 @@ class TemporalDifferenceLearning(Learns):
         rand_choose=0.05,
         softmax_temp=0.0,
         initial_q=0.0,
-        seed=None
+        seed=None,
+        event_listener_type : TDLearningEventListener = EpisodeRewardEventListener
     ):
         """
         Generic temporal difference learning interface.
@@ -48,6 +79,7 @@ class TemporalDifferenceLearning(Learns):
         self.seed = seed
         if isinstance(initial_q, float):
             self.initial_q = lambda s, a: initial_q
+        self.event_listener_type = event_listener_type
 
     @abstractmethod
     def _training(self, mdp, rng):
@@ -77,11 +109,12 @@ class TemporalDifferenceLearning(Learns):
 
     def train_on(self, mdp: TabularMarkovDecisionProcess):
         rng = self._init_random_number_generator()
-        q, episode_rewards = self._training(mdp, rng)
+        event_listener = self.event_listener_type()
+        q = self._training(mdp, rng, event_listener)
         return Result(
-            episode_rewards=episode_rewards,
             q_values=q,
-            policy=self._create_policy(mdp, q)
+            policy=self._create_policy(mdp, q),
+            event_listener_results=event_listener.results()
         )
 
 class QLearning(TemporalDifferenceLearning):
@@ -92,31 +125,24 @@ class QLearning(TemporalDifferenceLearning):
     \delta_t = R_{t+1} + \gamma\max_a Q(S_{t+1}, a) - Q(S_t, A_t)
     $$
     """
-    def _training(self, mdp, rng):
-        q = {}
-        episode_rewards = []
+    def _training(self, mdp, rng, event_listener):
+        initial_avals = lambda s: {a: self.initial_q(s, a) for a in mdp.actions(s)}
+        q = defaultdict2(initial_avals, initialize_defaults=True)
         for ep in range(self.episodes):
             s = mdp.initial_state_dist().sample(rng=rng)
-            ep_reward = 0
             while not mdp.is_terminal(s):
-                # initialize q values if state hasn't been visited
-                if s not in q:
-                    q[s] = {a: self.initial_q(s, a) for a in mdp.actions(s)}
-
                 # select action
                 a = epsilon_softmax(q[s], self.rand_choose, self.softmax_temp, rng)
-
                 # transition to next state
                 ns = mdp.next_state_dist(s, a).sample(rng=rng)
                 r = mdp.reward(s, a, ns)
-
                 # delta rule
                 q[s][a] += self.step_size*(r + mdp.discount_rate*max(q.get(ns, {0: 0}).values()) - q[s][a])
-
-                ep_reward += r
+                # end of timestep
+                event_listener.end_of_timestep(locals())
                 s = ns
-            episode_rewards.append(ep_reward)
-        return q, episode_rewards
+            event_listener.end_of_episode(locals())
+        return q
 
 class SARSA(TemporalDifferenceLearning):
     r"""
@@ -126,28 +152,23 @@ class SARSA(TemporalDifferenceLearning):
     \delta_t = R_{t+1} + \gamma Q(S_{t+1}, A_{t+1}) - Q(S_t, A_t)
     $$
     """
-    def _training(self, mdp, rng):
-        q = {}
-        episode_rewards = []
+    def _training(self, mdp, rng, event_listener):
+        initial_avals = lambda s: {a: self.initial_q(s, a) for a in mdp.actions(s)}
+        q = defaultdict2(initial_avals, initialize_defaults=True)
         for ep in range(self.episodes):
             s = mdp.initial_state_dist().sample(rng=rng)
             if s not in q:
                 q[s] = {a: self.initial_q(s, a) for a in mdp.actions(s)}
             a = epsilon_softmax(q[s], self.rand_choose, self.softmax_temp, rng)
-            ep_reward = 0
             while not mdp.is_terminal(s):
                 # get next state, reward, next action
                 ns = mdp.next_state_dist(s, a).sample(rng=rng)
-                if ns not in q:
-                    q[ns] = {na: self.initial_q(ns, na) for na in mdp.actions(ns)}
                 r = mdp.reward(s, a, ns)
                 na = epsilon_softmax(q[ns], self.rand_choose, self.softmax_temp, rng)
-
                 # delta rule
                 q[s][a] += self.step_size*(r + mdp.discount_rate*q[ns][na] - q[s][a])
-
-                ep_reward += r
-                s = ns
-                a = na
-            episode_rewards.append(ep_reward)
-        return q, episode_rewards
+                # end of timestep
+                event_listener.end_of_timestep(locals())
+                s, a = ns, na
+            event_listener.end_of_episode(locals())
+        return q
