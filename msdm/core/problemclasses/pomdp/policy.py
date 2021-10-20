@@ -49,6 +49,7 @@ class POMDPPolicy(ABC):
             traj.append(Step(s, ag, a, ns, r, o, nag))
             s = ns
             ag = nag
+        traj.append(Step(s, ag, None, None, None, None, None))
         if traj:
             states, agentstates, actions, _, rewards, _, _ = zip(*traj)
         else:
