@@ -1,6 +1,6 @@
 from msdm.core.algorithmclasses import Learns, Result
 from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess, TabularPolicy
-from msdm.core.distributions import DictDistribution
+from msdm.core.distributions import DictDistribution, SoftmaxDistribution
 from msdm.core.utils.dictutils import defaultdict2
 from collections import defaultdict
 from types import SimpleNamespace
@@ -8,7 +8,7 @@ from abc import abstractmethod, ABC
 import random
 import math
 
-def epsilon_softmax(action_values, rand_choose, softmax_temp, rng):
+def epsilon_softmax_sample(action_values, rand_choose, softmax_temp, rng):
     aa, qs = zip(*action_values.items())
     if (rand_choose) and (rng.random() < rand_choose):
         a = rng.choice(aa)
@@ -22,6 +22,17 @@ def epsilon_softmax(action_values, rand_choose, softmax_temp, rng):
             maxq = max(qs)
             a = rng.choice([a for a in aa if action_values[a] == maxq])
     return a
+
+def epsilon_softmax_dist(action_values, rand_choose, softmax_temp):
+    if softmax_temp == 0.0:
+        maxq = max(action_values.values())
+        sm_dist = DictDistribution.uniform([a for a, q in action_values.items() if q == maxq])
+    else:
+        sm_dist = SoftmaxDistribution({a: q/softmax_temp for a, q in action_values.items()})
+    if rand_choose == 0.0:
+        return sm_dist
+    rand_dist = DictDistribution.uniform(action_values.keys())
+    return rand_dist*rand_choose | sm_dist*(1 - rand_choose)
 
 class TDLearningEventListener(ABC):
     @abstractmethod
@@ -132,11 +143,11 @@ class QLearning(TemporalDifferenceLearning):
             s = mdp.initial_state_dist().sample(rng=rng)
             while not mdp.is_terminal(s):
                 # select action
-                a = epsilon_softmax(q[s], self.rand_choose, self.softmax_temp, rng)
+                a = epsilon_softmax_sample(q[s], self.rand_choose, self.softmax_temp, rng)
                 # transition to next state
                 ns = mdp.next_state_dist(s, a).sample(rng=rng)
                 r = mdp.reward(s, a, ns)
-                # delta rule
+                # update
                 q[s][a] += self.step_size*(r + mdp.discount_rate*max(q.get(ns, {0: 0}).values()) - q[s][a])
                 # end of timestep
                 event_listener.end_of_timestep(locals())
@@ -159,16 +170,45 @@ class SARSA(TemporalDifferenceLearning):
             s = mdp.initial_state_dist().sample(rng=rng)
             if s not in q:
                 q[s] = {a: self.initial_q(s, a) for a in mdp.actions(s)}
-            a = epsilon_softmax(q[s], self.rand_choose, self.softmax_temp, rng)
+            a = epsilon_softmax_sample(q[s], self.rand_choose, self.softmax_temp, rng)
             while not mdp.is_terminal(s):
                 # get next state, reward, next action
                 ns = mdp.next_state_dist(s, a).sample(rng=rng)
                 r = mdp.reward(s, a, ns)
-                na = epsilon_softmax(q[ns], self.rand_choose, self.softmax_temp, rng)
-                # delta rule
+                na = epsilon_softmax_sample(q[ns], self.rand_choose, self.softmax_temp, rng)
+                # update
                 q[s][a] += self.step_size*(r + mdp.discount_rate*q[ns][na] - q[s][a])
                 # end of timestep
                 event_listener.end_of_timestep(locals())
                 s, a = ns, na
+            event_listener.end_of_episode(locals())
+        return q
+
+class ExpectedSARSA(TemporalDifferenceLearning):
+    r"""
+    Expected SARSA is an on-policy temporal difference control method.
+    The temporal difference error in Expected SARSA is:
+    $$
+    \delta_t = R_{t+1} + \gamma \sum_a \pi(a \mid S_{t + 1})Q(S_{t+1}, a) - Q(S_t, A_t)
+    $$
+    """
+    def _training(self, mdp, rng, event_listener):
+        initial_avals = lambda s: {a: self.initial_q(s, a) for a in mdp.actions(s)}
+        q = defaultdict2(initial_avals, initialize_defaults=True)
+        for ep in range(self.episodes):
+            s = mdp.initial_state_dist().sample(rng=rng)
+            while not mdp.is_terminal(s):
+                # select action
+                a = epsilon_softmax_sample(q[s], self.rand_choose, self.softmax_temp, rng)
+                # transition to next state
+                ns = mdp.next_state_dist(s, a).sample(rng=rng)
+                r = mdp.reward(s, a, ns)
+                # update
+                na_dist = epsilon_softmax_dist(q[ns], self.rand_choose, self.softmax_temp)
+                td_error = r + mdp.discount_rate*sum([q[ns][na]*p for na, p in na_dist.items()]) - q[s][a]
+                q[s][a] += self.step_size*td_error
+                # end of timestep
+                event_listener.end_of_timestep(locals())
+                s = ns
             event_listener.end_of_episode(locals())
         return q
