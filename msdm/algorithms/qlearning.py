@@ -28,11 +28,11 @@ class TemporalDifferenceLearning(Learns):
         step_size=.1,
         rand_choose=0.05,
         softmax_temp=0.0,
+        initial_q=0.0,
         seed=None
     ):
         """
-        Standard Q-learning as described in Sutton & Barto (2018) section 6.5.
-        Works on TabularMDPs.
+        Generic temporal difference learning interface.
 
         Parameters:
             episodes - the number of episodes to train
@@ -46,9 +46,14 @@ class TemporalDifferenceLearning(Learns):
         self.rand_choose = rand_choose
         self.softmax_temp = softmax_temp
         self.seed = seed
+        if isinstance(initial_q, float):
+            self.initial_q = lambda s, a: initial_q
 
     @abstractmethod
     def _training(self, mdp, rng):
+        """This is the main training loop. It should return
+        a nested dictionary. Specifically, a dictionary with
+        states as keys and action-value dictionaries as values."""
         pass
 
     def _init_random_number_generator(self):
@@ -76,7 +81,7 @@ class TemporalDifferenceLearning(Learns):
         return Result(
             episode_rewards=episode_rewards,
             q_values=q,
-            policy=self._create_policy(mdp, q, rng)
+            policy=self._create_policy(mdp, q)
         )
 
 class QLearning(TemporalDifferenceLearning):
@@ -89,7 +94,6 @@ class QLearning(TemporalDifferenceLearning):
     """
     def _training(self, mdp, rng):
         q = {}
-        initial_q = 0
         episode_rewards = []
         for ep in range(self.episodes):
             s = mdp.initial_state_dist().sample(rng=rng)
@@ -97,7 +101,7 @@ class QLearning(TemporalDifferenceLearning):
             while not mdp.is_terminal(s):
                 # initialize q values if state hasn't been visited
                 if s not in q:
-                    q[s] = {a: initial_q for a in mdp.actions(s)}
+                    q[s] = {a: self.initial_q(s, a) for a in mdp.actions(s)}
 
                 # select action
                 a = epsilon_softmax(q[s], self.rand_choose, self.softmax_temp, rng)
@@ -111,5 +115,39 @@ class QLearning(TemporalDifferenceLearning):
 
                 ep_reward += r
                 s = ns
+            episode_rewards.append(ep_reward)
+        return q, episode_rewards
+
+class SARSA(TemporalDifferenceLearning):
+    r"""
+    SARSA is an on-policy temporal difference control method.
+    The temporal difference error in SARSA is:
+    $$
+    \delta_t = R_{t+1} + \gamma Q(S_{t+1}, A_{t+1}) - Q(S_t, A_t)
+    $$
+    """
+    def _training(self, mdp, rng):
+        q = {}
+        episode_rewards = []
+        for ep in range(self.episodes):
+            s = mdp.initial_state_dist().sample(rng=rng)
+            if s not in q:
+                q[s] = {a: self.initial_q(s, a) for a in mdp.actions(s)}
+            a = epsilon_softmax(q[s], self.rand_choose, self.softmax_temp, rng)
+            ep_reward = 0
+            while not mdp.is_terminal(s):
+                # get next state, reward, next action
+                ns = mdp.next_state_dist(s, a).sample(rng=rng)
+                if ns not in q:
+                    q[ns] = {na: self.initial_q(ns, na) for na in mdp.actions(ns)}
+                r = mdp.reward(s, a, ns)
+                na = epsilon_softmax(q[ns], self.rand_choose, self.softmax_temp, rng)
+
+                # delta rule
+                q[s][a] += self.step_size*(r + mdp.discount_rate*q[ns][na] - q[s][a])
+
+                ep_reward += r
+                s = ns
+                a = na
             episode_rewards.append(ep_reward)
         return q, episode_rewards
