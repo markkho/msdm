@@ -1,5 +1,4 @@
-from msdm.algorithms import LAOStar
-from msdm.algorithms.pointbasedvalueiteration import PointBasedValueIteration
+from msdm.algorithms import LAOStar, PointBasedValueIteration
 from msdm.domains.tiger import Tiger
 from msdm.domains.heavenorhell import HeavenOrHell
 from msdm.core.problemclasses.pomdp import BeliefMDP
