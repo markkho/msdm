@@ -47,12 +47,25 @@ but we aim to extend support for the following problem classes:
 - Markov Games
 - Partially Observable Stochastic Games (POSGs)
 
-and algorithm classes:
+and algorithms:
 
 - Planning and Search
+    - Value Iteration
+    - Policy Iteration
+    - Breadth-First Search
+    - A*
+    - Real-time Dynamic Programming
+    - LAO*
 - Reinforcement Learning
+    - Q-Learning
+    - Double Q-Learning
+    - SARSA
+    - Expected SARSA
 - Inverse Reinforcement Learning
 - Multi-agent learning
+    - Correlated Q Learning
+    - Nash Q Learning
+    - Friend/Foe Q Learning
 
 # Installation
 
