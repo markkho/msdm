@@ -4,6 +4,5 @@ scipy
 torch
 tqdm
 pandas
-sparse
 frozendict
 termcolor
