@@ -14,7 +14,7 @@ setup(
         'cognitive science'
     ],
     url='https://github.com/markkho/msdm',
-    download_url = '',
+    download_url = 'https://github.com/markkho/msdm/archive/refs/tags/v0.4.tar.gz',
     author="Mark Ho",
     author_email='mark.ho.cs@gmail.com',
     license='MIT',
