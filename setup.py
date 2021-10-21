@@ -20,18 +20,18 @@ setup(
     license='MIT',
     packages=find_packages(),
     install_requires=[
-        'numpy',
         'matplotlib',
+        'numpy',
         'scipy',
         'torch',
         'tqdm',
-        'sparse',
+        'pandas',
+        'frozendict',
         'termcolor',
-        'frozendict'
     ],
     test_suite='nose.collector',
     tests_require=['nose'],
-    zip_safe=False,
+    zip_safe=False
     classifiers=[
         'Development Status :: 3 - Alpha',
         'License :: OSI Approved :: MIT License',
