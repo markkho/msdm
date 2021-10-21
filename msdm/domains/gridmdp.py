@@ -6,12 +6,21 @@ Location = namedtuple("Location", "x y")
 GridAction = namedtuple("GridAction", "dx dy")
 
 class GridMDP(TabularMarkovDecisionProcess):
+    """
+    Generic class for MDPs that can be expressed as grids.
+    This requires specifying `next_state_dist`,
+    `initial_state_dist`, `is_terminal`, and `reward`
+    methods.
+    """
     def __init__(self, grid):
-        grid = """
-        ............
-        ............
-        ............
-        sxxxxxxxxxxg
+        """
+        Parameters
+        ----------
+        grid : str
+            A multi-line string representing a grid MDP.
+            Leading and trailing whitespace is removed.
+            Each column and row is parsed into a
+            Location(x, y) and feature map.
         """
         self._grid = tuple(tuple(list(r.strip())) for r in grid.strip().split('\n')[::-1])
         self._loc_features = {}
