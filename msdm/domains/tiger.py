@@ -1,10 +1,9 @@
 from msdm.core.problemclasses.pomdp import TabularPOMDP
 from msdm.core.distributions import DictDistribution
 class Tiger(TabularPOMDP):
-    discount_rate : float = 0.95
-
-    def __init__(self, coherence):
+    def __init__(self, coherence, discount_rate):
         self.coherence = coherence
+        self.discount_rate = discount_rate
 
     def next_state_dist(self, s, a):
         if a == 'listen':
