@@ -8,7 +8,13 @@ setup(
     name='msdm',
     version='0.4',
     description='Models of sequential decision making',
+    keywords = [
+        'reinforcement learning',
+        'planning',
+        'cognitive science'
+    ],
     url='https://github.com/markkho/msdm',
+    download_url = 'https://github.com/markkho/msdm/archive/refs/tags/v0.4.tar.gz',
     author="Mark Ho",
     author_email='mark.ho.cs@gmail.com',
     license='MIT',
@@ -25,5 +31,13 @@ setup(
     ],
     test_suite='nose.collector',
     tests_require=['nose'],
-    zip_safe=False
+    zip_safe=False,
+    classifiers=[
+        'Development Status :: 3 - Alpha',
+        'License :: OSI Approved :: MIT License',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+    ],
 )

@@ -5,9 +5,9 @@ name: Python package
 
 on:
   push:
-    branches: [ master, pyrlap2_dev, tabular_stochastic_game ]
+    branches: [master]
   pull_request:
-    branches: [ master, pyrlap2_dev, tabular_stochastic_game ]
+    branches: [master]
 
 jobs:
   build:
