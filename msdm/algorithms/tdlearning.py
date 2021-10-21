@@ -127,7 +127,11 @@ class TemporalDifferenceLearning(Learns):
 
     def _create_policy(self, mdp, q):
         policy = {}
-        for s in mdp.state_list:
+        try:
+            state_list = mdp.state_list
+        except AttributeError:
+            state_list = q.keys()
+        for s in state_list:
             if s not in q:
                 max_aa = mdp.actions(s)
             else:
