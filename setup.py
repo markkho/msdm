@@ -31,7 +31,7 @@ setup(
     ],
     test_suite='nose.collector',
     tests_require=['nose'],
-    zip_safe=False
+    zip_safe=False,
     classifiers=[
         'Development Status :: 3 - Alpha',
         'License :: OSI Approved :: MIT License',
