@@ -1,8 +1,9 @@
+import warnings
+warnings.warn("Multi-agent domains/algorithms are still being tested/developed - use with caution!")
 import json, logging
 import numpy as np
 from itertools import product
 from functools import reduce
-import sparse
 from tqdm import tqdm
 from msdm.core.problemclasses.stochasticgame import StochasticGame
 from msdm.core.assignment.assignmentset import AssignmentSet as Set
@@ -10,10 +11,10 @@ from msdm.core.distributions import DiscreteFactorTable as Pr
 logger = logging.getLogger(__name__)
 
 class TabularStochasticGame(StochasticGame):
-    
+
     def __init__(self,agent_names,memoize=False):
         super(TabularStochasticGame,self).__init__(agent_names=agent_names,memoize=memoize)
-    
+
     @property
     def state_list(self):
         try:
@@ -26,7 +27,7 @@ class TabularStochasticGame(StochasticGame):
                 key=lambda d: json.dumps(d, sort_keys=True) if isinstance(d, dict) else d
             )
         return self._states
-    
+
     @property
     def position_list(self):
         try:
@@ -39,8 +40,8 @@ class TabularStochasticGame(StochasticGame):
                         positions.add((state[agent]["x"],state[agent]["y"]))
             self._positions = list(positions)
             return self._positions
-    
-    
+
+
     @property
     def joint_action_list(self):
         try:
@@ -55,17 +56,18 @@ class TabularStochasticGame(StochasticGame):
             all_joint_actions = [dict(zip(ja_keys, list(v))) for v in product(*ja_values)]
             for action in all_joint_actions:
                 actions.add(action)
-        self._joint_actions = sorted(actions, 
+        self._joint_actions = sorted(actions,
                 key=lambda d: json.dumps(d, sort_keys=True) if isinstance(d, dict) else d
             )
         return self._joint_actions
-    
+
     @property
     def transitionmatrix(self):
         try:
             return self._tfmatrix
         except AttributeError:
             pass
+        import sparse
         ss = self.state_list
         aa = self.joint_action_list
         scoords = []
@@ -76,7 +78,7 @@ class TabularStochasticGame(StochasticGame):
             for ai, a in enumerate(aa):
                 nsdist = self.next_state_dist(s, a)
                 for nsi, ns in enumerate(nsdist.keys()):
-                    # Getting state index from state_list 
+                    # Getting state index from state_list
                     index = self.state_list.index(ns)
                     prob = nsdist.prob(ns)
                     if prob != 0.0:
