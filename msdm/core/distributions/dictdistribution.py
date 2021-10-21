@@ -30,7 +30,7 @@ class DeterministicDistribution(FiniteDistribution):
     def items(self):
         yield self.value, 1
 
-class DictDistribution(dict, FiniteDistribution):
+class DictDistribution(FiniteDistribution,dict):
     @classmethod
     def uniform(cls, support):
         return UniformDistribution(support)
