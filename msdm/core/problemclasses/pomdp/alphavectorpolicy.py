@@ -2,9 +2,8 @@ from collections import namedtuple, defaultdict
 import numpy as np
 from msdm.core.problemclasses.pomdp.policy import POMDPPolicy
 from msdm.core.problemclasses.pomdp import TabularPOMDP
+from msdm.core.problemclasses.pomdp.pomdp import Belief
 from msdm.core.distributions import DictDistribution, Distribution
-
-Belief = namedtuple("Belief", "states probs")
 
 class AlphaVectorPolicy(POMDPPolicy):
     def __init__(
