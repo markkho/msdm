@@ -6,7 +6,6 @@ Also see Shani, Pineau & Kaplow (2012) A survey of point-based POMDP solvers
 
 """
 import numpy as np
-import tqdm
 from scipy.spatial.distance import cdist
 
 from msdm.core.problemclasses.pomdp import TabularPOMDP
