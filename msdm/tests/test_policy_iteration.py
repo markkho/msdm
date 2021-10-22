@@ -101,5 +101,33 @@ class MyTestCase(unittest.TestCase):
                 pi_res = PolicyIteration(iterations=int(1e3)).plan_on(gw)
                 assert np.isclose(vi_res._qvaluemat, pi_res._qvaluemat, atol=5e-4).all()
 
+    def test_policy_iteration_heavenorhell(self):
+        # technically a pomdp, but we can solve underlying mdp
+        from msdm.domains.heavenorhell import HeavenOrHell
+        for discount_rate in [i/10 for i in range(1, 10, 2)] + [.95, .99, .99999]:
+            for coherence in [i/10 for i in range(1, 10, 2)] + [.95, .99, .99999]:
+                print(discount_rate, coherence)
+
+                hh = HeavenOrHell(
+                    coherence=coherence,
+                    grid=
+                        """
+                        hcg
+                        #.#
+                        #s#
+                        """,
+                    discount_rate=discount_rate,
+                    heaven_reward=50,
+                    hell_reward=-50,
+                )
+                pi = PolicyIteration().plan_on(hh)
+                vi = ValueIteration().plan_on(hh)
+                reachable = sorted(hh.reachable_states())
+                pi_mat = pi.policy.as_matrix(reachable, hh.action_list)
+                vi_mat = vi.policy.as_matrix(reachable, hh.action_list)
+                assert (pi_mat == vi_mat).all()
+                assert all([np.isclose(pi.valuefunc[s], vi.valuefunc[s])
+                            for s in reachable])
+
 if __name__ == '__main__':
     unittest.main()

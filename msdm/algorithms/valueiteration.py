@@ -28,13 +28,10 @@ class ValueIteration(Plans):
         if iterations is None:
             iterations = max(len(ss), int(1e5))
 
-        terminal_sidx = np.where(1 - nt)[0]
-
         v = np.zeros(len(ss))
         for i in range(iterations):
             q = np.einsum("san,san->sa", tf, rf + mdp.discount_rate * v[None, None, :])
             nv = np.max(q + np.log(am), axis=-1)
-            nv[terminal_sidx] = 0 #terminal states are always 0 reward
             if self.check_unreachable_convergence:
                 diff = (v - nv)
             else:
@@ -73,4 +70,3 @@ class ValueIteration(Plans):
 
 # for backward compatibility
 VectorizedValueIteration = ValueIteration
-
