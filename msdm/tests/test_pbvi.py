@@ -16,8 +16,8 @@ def compare_lao_and_pbvi(pomdp):
     lao_res = lao.plan_on(bmdp)
     assert lao_res.converged
     pbvi_res = PointBasedValueIteration(
-        min_iterations=5,
-        max_iterations=100
+        min_belief_expansions=5,
+        max_belief_expansions=100
     ).plan_on(pomdp)
 
     # compare policies on visited states

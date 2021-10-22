@@ -48,14 +48,14 @@ def expand_beliefs(pomdp, belief_set):
 def point_based_value_iteration(
     pomdp,
     belief_set,
-    value_epsilon
+    value_convergence_epsilon
 ):
     # iterations as suggested in Pineau et al. 2003
     rmax = pomdp.state_action_reward_matrix.max().item()
     rmin = pomdp.state_action_reward_matrix.min().item()
-    max_iterations = value_epsilon / (rmax - rmin)
-    max_iterations = np.log(max_iterations) / np.log(pomdp.discount_rate)
-    max_iterations = int(np.ceil(max_iterations))
+    max_belief_expansions = value_convergence_epsilon / (rmax - rmin)
+    max_belief_expansions = np.log(max_belief_expansions) / np.log(pomdp.discount_rate)
+    max_belief_expansions = int(np.ceil(max_belief_expansions))
 
     tf = pomdp.transition_matrix
     sa_rf = pomdp.state_action_reward_matrix
@@ -74,7 +74,7 @@ def point_based_value_iteration(
     # alpha vectors - one per belief
     bv = np.zeros((len(bb), len(pomdp.state_list)))
 
-    for i in range(max_iterations):
+    for i in range(max_belief_expansions):
         ### Alpha-vectors over states (s) associated with each action (a),
         ### observation (o), and next-belief (p)
         aops_fut_vf = np.einsum("san,ano,pn->aops", tf, of, bv)
@@ -113,7 +113,7 @@ def point_based_value_iteration(
         old_v = np.einsum("bs,bs->b", bv, bb)
         new_v = np.einsum("bs,bs->b", new_bv, bb)
         delta = np.abs(old_v - new_v).max()
-        if delta < value_epsilon:
+        if delta < value_convergence_epsilon:
             break
         bv = new_bv
     return {
@@ -128,9 +128,9 @@ def belief_values(alpha_vectors, belief_set):
 class PointBasedValueIteration(Plans):
     def __init__(
         self,
-        min_iterations=int(1e2),
-        max_iterations=int(1e5),
-        value_epsilon=.01
+        min_belief_expansions=int(1e2),
+        max_belief_expansions=int(1e5),
+        value_convergence_epsilon=.01
     ):
         """
         Point-based value iteration approximates an exact
@@ -138,28 +138,45 @@ class PointBasedValueIteration(Plans):
         small set of representative belief points and then tracking
         the value and its derivative for those points only.
         This implementation is based on Pineau et al. (2003).
+
+        Parameters
+        ----------
+        min_belief_expansions : int
+            The minimum number of iterations of belief-set expansions.
+            At each iteration, for each belief in the current belief set
+            we find the furthest successor belief and add it to the
+            set.
+        max_belief_expansions : int
+            The maximum number of belief set expansions.
+        value_convergence_epsilon : float
+            The convergence crition used for point-based value iteration
+            (inner loop) as well as belief set expansions (outer loop).
+
+        Returns
+        -------
+        Result
+            A result object with the computed policy
         """
-        self.min_iterations = min_iterations
-        self.max_iterations = max_iterations
-        self.value_epsilon = value_epsilon
+        self.min_belief_expansions = min_belief_expansions
+        self.max_belief_expansions = max_belief_expansions
+        self.value_convergence_epsilon = value_convergence_epsilon
 
     def _solve(self, pomdp):
         s0 = pomdp.initial_state_vec
         belief_set = np.array([s0,])
-#         iterator = tqdm.tqdm(range(self.max_iterations))
-        iterator = range(self.max_iterations)
+        iterator = range(self.max_belief_expansions)
         for i in iterator:
             belief_set = expand_beliefs(pomdp, belief_set)
-            if i >= self.min_iterations:
+            if i >= self.min_belief_expansions:
                 break
 
         last_res = None
         for i in iterator:
-            # run value iteration
+            # run value iteration to convergence
             res = point_based_value_iteration(
                 pomdp,
                 belief_set,
-                value_epsilon=self.value_epsilon
+                value_convergence_epsilon=self.value_convergence_epsilon
             )
 
             # expand belief set
@@ -170,13 +187,12 @@ class PointBasedValueIteration(Plans):
                 last_v = belief_values(last_res['alpha_vectors'], belief_set)
                 curr_v = belief_values(res['alpha_vectors'], belief_set)
                 diff = np.max(np.abs(last_v - curr_v))
-#                 iterator.set_description(f"diff: {diff:.2f}; iters: {res['iterations']}")
-                if diff < self.value_epsilon:
+                if diff < self.value_convergence_epsilon:
                     break
             last_res = res
         del res['iterations']
         res['belief_set'] = belief_set
-        res['expansion_iterations'] = i + self.min_iterations
+        res['expansion_iterations'] = i + self.min_belief_expansions
         return res
 
     def plan_on(self, pomdp: TabularPOMDP):
