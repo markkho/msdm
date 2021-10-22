@@ -25,6 +25,9 @@ class PolicyIteration(Plans):
         # we assume terminal states transition nowhere.
         tf = tf*nt[:, None, None]
 
+        # reward function assigns 0 to all transitions out of a terminal
+        rf = rf*nt[:, None, None]
+
         iterations = self.iterations
         if iterations is None:
             iterations = max(len(ss), int(1e5))

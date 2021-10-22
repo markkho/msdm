@@ -24,6 +24,11 @@ class ValueIteration(Plans):
         rs = mdp.reachable_state_vec
         am = mdp.action_matrix
 
+        # transition function goes nowhere
+        tf = tf*nt[:, None, None]
+        # reward function assigns 0 to all transitions out of a terminal
+        rf = rf*nt[:, None, None]
+
         iterations = self.iterations
         if iterations is None:
             iterations = max(len(ss), int(1e5))
