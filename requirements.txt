@@ -4,7 +4,6 @@ scipy
 torch
 tqdm
 pandas
-sparse
 termcolor
 julia
 frozendict
