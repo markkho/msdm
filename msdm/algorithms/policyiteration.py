@@ -42,7 +42,6 @@ class PolicyIteration(Plans):
             # the current policy. Only consider reachable states.
             mp = (pi[:, :, None] * tf[:, :, :]).sum(axis=1)
             mp = rs[:, None] * mp
-            print(mp)
 
             # The value the solution to a set of linear equations.
             v = np.linalg.solve(np.eye(len(ss)) - mdp.discount_rate * mp, s_rf)
