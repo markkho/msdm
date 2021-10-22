@@ -1,4 +1,4 @@
-from msdm.algorithms import LAOStar, PointBasedValueIteration
+from msdm.algorithms import LAOStar, PointBasedValueIteration, QMDP
 from msdm.domains.tiger import Tiger
 from msdm.domains.heavenorhell import HeavenOrHell
 from msdm.core.problemclasses.pomdp import BeliefMDP
@@ -49,3 +49,27 @@ def test_pbvi_on_toy_domains():
     )
     compare_lao_and_pbvi(tiger)
     compare_lao_and_pbvi(hh)
+
+def test_pbvi_qmdp():
+    # PBVI will realize it needs to go to the c square
+    # to learn, whereas QMDP assumes it will know where
+    # to go after the next step
+    hh = HeavenOrHell(
+        coherence=.6,
+        grid=
+            """
+            g.h
+            .sc
+            h.g
+            """,
+        discount_rate=.95,
+        heaven_reward=50,
+        hell_reward=-50,
+    )
+    pbvi_res = PointBasedValueIteration(
+        min_belief_expansions=5,
+        max_belief_expansions=100
+    ).plan_on(hh)
+    qmdp_res = QMDP().plan_on(hh)
+    assert list(qmdp_res.policy.action_dist(qmdp_res.policy.initial_agentstate()).probs) == [.25, .25, .25, .25]
+    assert list(pbvi_res.policy.action_dist(pbvi_res.policy.initial_agentstate()).probs) == [1]
