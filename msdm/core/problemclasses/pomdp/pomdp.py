@@ -1,4 +1,3 @@
-from collections import namedtuple
 from abc import abstractmethod, ABC
 from typing import TypeVar
 from collections import defaultdict
@@ -8,7 +7,6 @@ from msdm.core.problemclasses.mdp.mdp import \
 from msdm.core.distributions import DictDistribution, Distribution
 
 Observation = TypeVar('Observation')
-Belief = namedtuple("Belief", "states probs")
 
 class PartiallyObservableMDP(MarkovDecisionProcess):
     """

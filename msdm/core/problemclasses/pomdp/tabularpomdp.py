@@ -1,4 +1,5 @@
 import logging
+from collections import namedtuple
 from abc import abstractmethod, ABC
 from typing import Set, Sequence, Hashable, Mapping, TypeVar
 import numpy as np
@@ -11,6 +12,7 @@ from msdm.core.distributions import FiniteDistribution, DictDistribution
 logger = logging.getLogger(__name__)
 
 HashableObservation = TypeVar('HashableObservation', bound=Hashable)
+Belief = namedtuple("Belief", "states probs")
 
 class TabularPOMDP(TabularMarkovDecisionProcess, PartiallyObservableMDP):
     def as_matrices(self):

@@ -1,6 +1,5 @@
 from collections import defaultdict
-from msdm.core.problemclasses.pomdp.tabularpomdp import TabularPOMDP
-from msdm.core.problemclasses.pomdp.pomdp import Belief
+from msdm.core.problemclasses.pomdp.tabularpomdp import TabularPOMDP, Belief
 from msdm.core.problemclasses.mdp import MarkovDecisionProcess, TabularMarkovDecisionProcess
 from msdm.core.distributions import DictDistribution
 

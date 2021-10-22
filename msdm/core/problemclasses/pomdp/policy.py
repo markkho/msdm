@@ -5,7 +5,8 @@ from typing import TypeVar
 
 from msdm.core.problemclasses.pomdp.pomdp import \
     State, Action, Observation, PartiallyObservableMDP
-from msdm.core.distributions import Distribution
+from msdm.core.problemclasses.pomdp.tabularpomdp import TabularPOMDP, Belief
+from msdm.core.distributions import Distribution, DictDistribution
 from msdm.core.algorithmclasses import Result
 
 AgentState = TypeVar('AgentState')
@@ -58,3 +59,29 @@ class POMDPPolicy(ABC):
             rewards = ()
             agentstates = ()
         return traj
+
+class ValueBasedTabularPOMDPPolicy(POMDPPolicy):
+    """
+    POMDP policy that selects actions based on a
+    representation of action values at a belief state.
+    """
+    def __init__(self, pomdp : TabularPOMDP):
+        self.pomdp = pomdp
+
+    @abstractmethod
+    def action_value(self, b : Belief, a : Action):
+        pass
+
+    def initial_agentstate(self):
+        return Belief(tuple(self.pomdp.state_list), tuple(self.pomdp.initial_state_vec))
+
+    def action_dist(self, ag : Belief):
+        av = {a: self.action_value(ag, a) for a in self.pomdp.action_list}
+        maxv = max(av.values())
+        return DictDistribution.uniform([a for a, v in av.items() if v == maxv])
+
+    def next_agentstate(self, ag, a, o):
+        s_dist = DictDistribution(zip(*ag))
+        ns_dist = self.pomdp.state_estimator(s_dist, a, o)
+        ss = tuple(self.pomdp.state_list)
+        return Belief(ss, tuple([ns_dist.prob(ns) for ns in ss]))
