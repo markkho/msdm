@@ -26,7 +26,7 @@ class PartiallyObservableMDP(MarkovDecisionProcess):
             if s_prob == 0.0:
                 continue
             for ns, ns_prob in self.next_state_dist(s, a).items():
-                o_prob = self.observation_dist(a, ns).get(o, 0.0)
+                o_prob = self.observation_dist(a, ns).prob(o)
                 ns_dist[ns] += o_prob*s_prob*ns_prob
         tot = sum(ns_dist.values())
         if tot == 0.0:
