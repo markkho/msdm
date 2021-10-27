@@ -10,7 +10,8 @@ science research/teaching.
 `msdm` provides standardized interfaces and implementations
 for common constructs in sequential
 decision-making. This includes algorithms used in single-agent
-[reinforcement learning](https://en.wikipedia.org/wiki/Reinforcement_learning) as well as those used in
+[reinforcement learning](https://en.wikipedia.org/wiki/Reinforcement_learning)
+as well as those used in
 [planning](https://en.wikipedia.org/wiki/Automated_planning_and_scheduling),
 [partially observable environments](https://en.wikipedia.org/wiki/Partially_observable_Markov_decision_process),
 and [multi-agent games](https://en.wikipedia.org/wiki/Stochastic_game).
@@ -38,36 +39,51 @@ res = vi.plan_on(mdp)
 print(res.V)
 ```
 
-The library is under active development. Currently, it primarily
-supports tabular and discrete methods for single-agent problems,
-but we aim to extend support for the following problem classes:
+The library is under active development. Currently,
+we support the following problem classes:
 
 - Markov Decision Processes (MDPs)
 - Partially Observable Markov Decision Processes (POMDPs)
 - Markov Games
 - Partially Observable Stochastic Games (POSGs)
 
-and algorithms:
+The following algorithms have been implemented and
+tested:
 
-- Planning and Search
-    - Value Iteration
-    - Policy Iteration
+- Classical Planning
     - Breadth-First Search
     - A*
-    - Real-time Dynamic Programming
+- Stochastic Planning
+    - Value Iteration
+    - Policy Iteration
+    - Labeled Real-time Dynamic Programming
     - LAO*
+- Partially Observable Planning
+    - QMDP
+    - Point-based Value-Iteration
+    - Wrappers for [POMDPs.jl](https://juliapomdp.github.io/POMDPs.jl/latest/) solvers (requires Julia installation)
 - Reinforcement Learning
     - Q-Learning
     - Double Q-Learning
     - SARSA
     - Expected SARSA
-- Inverse Reinforcement Learning
-- Multi-agent learning
+- Multi-agent Reinforcement Learning (in progress)
     - Correlated Q Learning
     - Nash Q Learning
     - Friend/Foe Q Learning
 
+We aim to add implementations for other algorithms in the
+near future (e.g., inverse RL, deep learning, multi-agent learning and planning).
+
 # Installation
+
+It is recommended to use a [virtual environment](https://virtualenv.pypa.io/en/latest/index.html).
+
+## Installing from pip
+
+```bash
+$ pip install msdm
+```
 
 ## Installing from GitHub
 ```bash
@@ -83,12 +99,17 @@ After downloading, go into the folder and install the package locally
 $ pip install -e .
 ```
 
-It is recommended to use a virtual environment.
-
-Related libraries:
-- [BURLAP](https://github.com/jmacglashan/burlap)
-
 # Contributing
+
+We welcome contributions in the form of implementations of
+algorithms for common problem classes that are
+well-documented in the literature. Please first
+post an issue and/or
+reach out to <mark.ho.cs@gmail.com>
+to check if a proposed contribution is within the
+scope of the library.
+
+## Running tests, etc.
 
 To run all tests: `make test`
 

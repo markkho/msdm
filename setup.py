@@ -28,6 +28,7 @@ setup(
         'pandas',
         'frozendict',
         'termcolor',
+        'julia',
     ],
     test_suite='nose.collector',
     tests_require=['nose'],

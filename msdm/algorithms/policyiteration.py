@@ -19,23 +19,45 @@ class PolicyIteration(Plans):
         rs = mdp.reachable_state_vec
         am = mdp.action_matrix
 
+        # In general, terminal states only lead to themselves
+        # and return zero rewards, but to ensure that the
+        # the transition matrix is non-singular
+        # we assume terminal states transition nowhere.
+        tf = tf*nt[:, None, None]
+
+        # reward function assigns 0 to all transitions out of a terminal
+        rf = rf*nt[:, None, None]
+
         iterations = self.iterations
         if iterations is None:
             iterations = max(len(ss), int(1e5))
 
-        pi = np.ones(tf.shape[:-1])
-        pi = pi / pi.sum(axis=1, keepdims=True)
+        # Initialize to uniform random policy over available
+        # actions.
+        pi = am / am.sum(axis=1, keepdims=True)
 
         for i in range(iterations):
+            # Calculate the expected per-state reward under
+            # the current policy.
             s_rf = (pi[:, :, None] * tf[:, :, :] * rf[:, :, :]).sum(axis=(1, 2))
-            s_rf = s_rf*nt #terminal states are always 0 reward
-            mp = (rs[:, None] * (pi[:, :, None] * tf[:, :, :]).sum(axis=1) * nt[None,:])
+
+            # Construct a markov chain, marginalizing over
+            # the current policy. Only consider reachable states.
+            mp = (pi[:, :, None] * tf[:, :, :]).sum(axis=1)
+            mp = rs[:, None] * mp
+
+            # The value the solution to a set of linear equations.
             v = np.linalg.solve(np.eye(len(ss)) - mdp.discount_rate * mp, s_rf)
+
+            # The action value is the expectation over next state transitions
             q = (tf[:, :, :] * (rf[:, :, :] + mdp.discount_rate * v[None, None, :])).sum(axis=2)
 
+            # Calculate the new policy, taking into account
+            # the "infinite" cost of unavailable actions.
             new_pi = np.zeros_like(pi)
             np.put_along_axis(new_pi, (q + np.log(am)).argmax(axis=1)[:, None], values=1, axis=1)
 
+            # Check convergence
             if self.check_unreachable_convergence:
                 converged = (new_pi == pi).all()
             else:
