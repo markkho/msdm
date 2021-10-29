@@ -29,7 +29,7 @@ class Tiger(TabularPOMDP):
 
     def observation_dist(self, a, ns):
         if a != 'listen':
-            return DictDistribution({'reset':1})
+            return DictDistribution({'left':.5, 'right': .5})
         elif ns == 'left':
             pleft = self.coherence
         else:
