@@ -80,8 +80,6 @@ class FSCGradientAscent(Learns):
         learning_rate=1e-1,
         # This parameter is the number of iterations that should pass between updates printed  out
         log_iteration_progress=None,
-        # Threshold used to detect convergence
-        convergence_diff=1e-4,
         optimizer=torch.optim.Adam,
         dtype=torch.float64,
         seed=None,
@@ -90,7 +88,6 @@ class FSCGradientAscent(Learns):
         self.learning_rate = learning_rate
         self.log_iteration_progress = log_iteration_progress
         self.iterations = iterations
-        self.convergence_diff = convergence_diff
         self.controller_state_count = controller_state_count
         self.optimizer = optimizer
         self.seed = seed or torch.randint(2**30, size=(1,)).item()
@@ -118,24 +115,11 @@ class FSCGradientAscent(Learns):
 
         opt = self.optimizer([fsc_action_logit, fsc_state_logit, fsc_initial_state_logit], lr=self.learning_rate)
 
-        prevV = None
-        converged = False
-
         for idx in range(self.iterations):
             opt.zero_grad()
 
             result = value()
-            V = result.state_value
 
-            # Check for convergence
-            if prevV is not None:
-                max_bellman_error = torch.abs(V-prevV).max().item()
-                if max_bellman_error < self.convergence_diff:
-                    converged = True
-                    break
-            prevV = V.clone()
-
-            # If not converged, then take a step
             loss = -result.expected_value
             loss.backward()
             opt.step()
@@ -144,8 +128,6 @@ class FSCGradientAscent(Learns):
                 print(f'iteration={idx} value={result.expected_value:.02f}')
 
         return Result(
-            converged=converged,
-            max_bellman_error=max_bellman_error,
             value=value(),
             policy=StochasticFiniteStateController(
                 pomdp,
