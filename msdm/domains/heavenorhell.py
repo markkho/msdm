@@ -89,8 +89,7 @@ class HeavenOrHell(TabularPOMDP):
 
     def reward(self, s, a, ns):
         r = 0
-        if (a.dx, a.dy) != (0, 0):
-            r += self.step_cost
+        r += self.step_cost
         if self.loc_features[(ns.x, ns.y)] == ns.heaven:
             r += self.heaven_reward
         elif self.loc_features[(ns.x, ns.y)] == ns.hell:

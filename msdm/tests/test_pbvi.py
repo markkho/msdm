@@ -25,13 +25,10 @@ def compare_lao_and_pbvi(pomdp):
     for b in bmdp_states:
         if bmdp.is_terminal(b):
             continue
-        pbvi_pol = sorted(pbvi_res.policy.action_dist(b).items())
-        lao_pol = sorted(lao_res.policy.action_dist(b).items())
-        if pbvi_pol != lao_pol:
-            print(b)
-            print(pbvi_pol)
-            print(lao_pol)
-            raise Exception("Policies don't match")
+        pbvi_pol = set(pbvi_res.policy.action_dist(b).support)
+        lao_pol = set(lao_res.policy.action_dist(b).support)
+        # lao* doesn't always preserve symmatry, so we test if it's actions are a subset
+        assert lao_pol <= pbvi_pol
 
 def test_pbvi_on_toy_domains():
     tiger = Tiger(
