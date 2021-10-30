@@ -61,6 +61,7 @@ tested:
 - Partially Observable Planning
     - QMDP
     - Point-based Value-Iteration
+    - Finite state controller gradient ascent
     - Wrappers for [POMDPs.jl](https://juliapomdp.github.io/POMDPs.jl/latest/) solvers (requires Julia installation)
 - Reinforcement Learning
     - Q-Learning
