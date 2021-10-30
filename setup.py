@@ -6,7 +6,7 @@ def readme():
 
 setup(
     name='msdm',
-    version='0.4',
+    version='0.5',
     description='Models of sequential decision making',
     keywords = [
         'reinforcement learning',
