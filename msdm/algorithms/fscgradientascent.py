@@ -4,7 +4,7 @@ from msdm.core.algorithmclasses import Learns, Result
 import torch
 import numpy as np
 
-def stochastic_fsc_policy_evaluation_exact(pomdp: TabularPOMDP, fsc_action, fsc_state, fsc_initial_state, *, dtype=torch.float64):
+def stochastic_fsc_policy_evaluation_exact(pomdp: TabularPOMDP, fsc_action, fsc_state, *, fsc_initial_state=None, dtype=torch.float64):
     '''
     This function evaluates the policy represented by a stochastic controller by solving the
     fundamental equation of the Markov chain induced by taking the cross-product of
@@ -28,7 +28,7 @@ def stochastic_fsc_policy_evaluation_exact(pomdp: TabularPOMDP, fsc_action, fsc_
     # Checking that our controller strategies are distributions.
     assert torch.allclose(fsc_action.sum(axis=-1), torch.ones(fsc_action.shape[:-1], dtype=dtype))
     assert torch.allclose(fsc_state.sum(axis=-1), torch.ones(fsc_state.shape[:-1], dtype=dtype))
-    assert np.isclose(fsc_initial_state.sum(axis=-1).item(), 1)
+    assert fsc_initial_state is None or np.isclose(fsc_initial_state.sum(axis=-1).item(), 1)
 
     # First, we ensure our controller observation strategy is conditional on actions.
     # We'd like a distribution p(n' | n, a, o), but we accept 3-dimensional distributions
@@ -57,6 +57,10 @@ def stochastic_fsc_policy_evaluation_exact(pomdp: TabularPOMDP, fsc_action, fsc_
 
     # Reshape the value function back from the space of the controller/POMDP cross product
     V = V.view((ncontroller, nstates))
+
+    # Return early if we don't have a distribution over initial states.
+    if fsc_initial_state is None:
+        return Result(state_controller_value=V)
 
     # This is a departure from Meuleau 1999; their initial controller state
     # distribution is conditional on an initial observation. However, our
@@ -109,7 +113,7 @@ class FSCGradientAscent(Learns):
                 pomdp,
                 fsc_action_logit.softmax(-1),
                 fsc_state_logit.softmax(-1),
-                fsc_initial_state_logit.softmax(-1),
+                fsc_initial_state=fsc_initial_state_logit.softmax(-1),
                 dtype=self.dtype,
             )
 
