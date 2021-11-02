@@ -291,21 +291,15 @@ def improve_node(pomdp, V, node, *, solver=cp.ECOS, verbose=False):
 
     # Our state constraints are pretty straightforward; We want to find a node using one-step lookahead with a value
     # that dominates our existing node's value for every state.
+    reward = R @ ca
+    # Summing over controller nodes is left out in Poupart 2003, but is in Grzes, Poupart 2015's
+    # Figure 1, which is a description of Poupart 2003. We do it here via this matrix multiply.
+    future_reward_given_a_o_ns = [canz[a] @ V for a in range(nactions)]
+    ns_o_given_s_a = np.einsum('san,ano->sano', T, O)
     state_constraints = [
-        V[node, s] + epsilon <= sum([
-            # Immediate reward
-            ca[a] * R[s, a] +
+        V[node, s] + epsilon <= reward[s] + pomdp.discount_rate * sum([
             # Expected future reward
-            pomdp.discount_rate * sum([
-                T[s, a, ns] * O[a, ns, o] * sum([
-                    canz[a][o, nn] * V[nn, ns]
-                    # This loop over controller nodes is left out in Poupart 2003, but is in Grzes, Poupart 2015's
-                    # Figure 1, which is a description of Poupart 2003.
-                    for nn in range(ncontroller)
-                ])
-                for ns in range(nstates)
-                for o in range(nobs)
-            ])
+            cp.sum(cp.multiply(ns_o_given_s_a[s, a], future_reward_given_a_o_ns[a].T))
             for a in range(nactions)
         ])
         for s in range(nstates)
@@ -460,7 +454,6 @@ class FSCBoundedPolicyIteration(Learns):
             if np.abs(prev-V).max() < self.convergence_diff:
                 converged = True
                 break
-            print(V)
 
         initial_controller_values = V @ pomdp.initial_state_vec
         fsc_initial_state = np.zeros(ncontroller)
