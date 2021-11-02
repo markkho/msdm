@@ -55,8 +55,7 @@ def improve_node(
     we follow the suggestion in a footnote to compute c_a based on the c_{a,n_z} values, leading to a
     total parameter size of |A||N||Z|+1.
 
-    Since we compute c_a based on c_{a,n_z}, we can further simplify the LP in Table 4:
-    - We require c_{a,n_z} sums to 1, replacing the constraints that they sum to c_a which in turn sums to 1.
+    Since we compute c_a based on c_{a,n_z}, we can slightly simplify the LP in Table 4:
     - We drop the constraint that c_a is non-negative; the constraint that c_{a,n_z} is non-negative is
       is sufficient to assure c_a will be as well.
 
@@ -104,12 +103,21 @@ def improve_node(
     p[epsilon_idx] = -1
 
     '''
-    Now, the equality constraints: Az=b. We have only one; that \sum_{a,n_z} c_{a,n_z} = 1.
+    Now, the equality constraints: Az=b. We have only two.
+    We first define c_a for each action (and an arbitrary z) as c_a = \sum_{n_z} c_{a,n_z}.
+    Then we can express our constraints:
+    - for all a: 1 = \sum_a c_a = \sum_a \sum_{n_0} c_{a,n_0}
+    - for all a, z: \sum_{n_z} c_{a,n_z} = c_a = \sum_{n_0} c_{a,n_0}
     '''
-    A = torch.zeros((1, param_count), dtype=dtype)
-    b = torch.zeros((1,), dtype=dtype)
-    A[0, canz_idxs] = 1
-    b[0] = 1
+    A = torch.zeros((nactions * nobs + nactions, param_count), dtype=dtype)
+    b = torch.zeros((nactions * nobs + nactions,), dtype=dtype)
+    Ax = A[:, canz_idxs].view((nactions, nobs+1, canz_shape))
+    for a in range(nactions):
+        nactions * nobs + a
+        for o in range(nobs):
+            A[0, canz_idxs] = 1
+            b[0] = 1
+            # xxxxxx stopped here
 
     '''
     Finally, the inequality constraints: Gz<=h.
