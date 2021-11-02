@@ -7,3 +7,4 @@ pandas
 termcolor
 julia
 frozendict
+cvxpy
