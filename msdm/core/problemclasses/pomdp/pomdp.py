@@ -1,6 +1,7 @@
 from abc import abstractmethod, ABC
 from typing import TypeVar
 from collections import defaultdict
+import numpy as np
 
 from msdm.core.problemclasses.mdp.mdp import \
     MarkovDecisionProcess, State, Action
@@ -21,7 +22,7 @@ class PartiallyObservableMDP(MarkovDecisionProcess):
         Returns the posterior distribution over next states
         given an action, observation, and belief over previous states.
         """
-        ns_dist = defaultdict(int)
+        ns_dist = defaultdict(float)
         for s, s_prob in b.items():
             if s_prob == 0.0:
                 continue
@@ -43,5 +44,5 @@ class PartiallyObservableMDP(MarkovDecisionProcess):
             for ns, ns_prob in self.next_state_dist(s, a).items():
                 for o, o_prob in self.observation_dist(a, ns).items():
                     o_dist[o] += s_prob*ns_prob*o_prob
-        tot = sum(o_dist.values())
-        return DictDistribution({o: p/tot for o, p in o_dist.items()})
+        assert np.isclose(sum(o_dist.values()), 1)
+        return DictDistribution({o: p for o, p in o_dist.items() if p > 0.0})
