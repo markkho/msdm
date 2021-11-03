@@ -26,7 +26,6 @@ DISTINCT_COLORS = [
     '#ffffff', '#000000'
 ]
 
-
 def get_contrast_color(color):
     r, g, b = colors.to_rgb(color)
     luminance = (0.299 * r ** 2 + 0.587 * g ** 2 + 0.114 * b ** 2) ** .5
@@ -392,16 +391,30 @@ class GridWorldPlotter:
         self.ax.set_title(title, **kwargs)
         return self
 
-    def annotate(self, s, a=None, text="",
-                 outlinewidth=0, outlinecolor='black',
-      fontsize=10, ha='center', va='center', **kwargs):
+    def annotate(
+        self,
+        s,
+        a=None,
+        text="",
+        outlinewidth=0,
+        outlinecolor='black',
+        fontsize=10,
+        ha='center',
+        va='center',
+        **kwargs
+    ):
         kwargs = {
             'fontsize': fontsize,
             'ha': ha,
             'va': va,
             **kwargs
         }
-        text = self.ax.text(s['x'] + .5, s['y'] + .5, text, **kwargs)
+
+        if isinstance(s, (tuple, list)):
+            s = s
+        elif isinstance(s, (dict, frozendict)):
+            s = (s['x'], s['y'])
+        text = self.ax.text(s[0] + .5, s[1] + .5, text, **kwargs)
         if outlinewidth > 0:
             text.set_path_effects([
                 path_effects.Stroke(linewidth=outlinewidth,
