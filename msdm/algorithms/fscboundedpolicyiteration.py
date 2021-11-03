@@ -18,7 +18,7 @@ class Solvers(object):
         it be SPD, so I've included an identity matrix considerably scaled down. When we
         solve with cvxpy, we can let this be zero.
         '''
-        Q = torch.eye(param_count, dtype=dtype) * qcoef
+        Q = torch.eye(args[0].shape*2, dtype=dtype) * qcoef
         return Result(
             solution=qpth.qp.QPFunction(**kwargs)(*[torch.tensor(a, dtype=dtype) for a in args]).squeeze(),
         )
@@ -468,17 +468,26 @@ class FSCBoundedPolicyIteration(Learns):
             tangent_beliefs = []
             improved = False
 
+            # We first attempt to improve each node of the controller.
             for n in range(ncontroller):
+                # We find the best possible improvement at each node using an LP; we have a few implementations above.
                 r = self.improve_node_fn(pomdp, V, n)
                 if r.improved:
+                    # When we can improve this node, we update the controller.
                     improved = True
                     assert_value_improvement(V, lambda: r.add_to_fsc(fsc_action, fsc_state, inplace=False))
                     r.add_to_fsc(fsc_action, fsc_state, inplace=True)
                     V = value(fsc_action, fsc_state)
                 else:
+                    # If we can't, we keep track of the belief where the current value function
+                    # is tangent to the backed-up value function; this is a critical place we can
+                    # improve our controller.
                     tangent_beliefs.append(r.tangent_belief)
 
+            # If we couldn't improve any node, then we find ways to improve at the tangent beliefs
             if not improved:
+                # To improve the value at the tangent beliefs, we do one-step lookahead to find
+                # posterior beliefs that we can improve through the addition of new nodes.
                 r = check_improvement_at_reachable_beliefs(pomdp, tangent_beliefs, V)
                 if r and r.improved:
                     # Can't really assert value improvement here, since we are only
@@ -492,9 +501,11 @@ class FSCBoundedPolicyIteration(Learns):
                 converged = True
                 break
 
+        # We define our initial state as the one with greatest value given the initial state distribution.
         initial_controller_values = V @ pomdp.initial_state_vec
         fsc_initial_state = np.zeros(ncontroller)
         fsc_initial_state[np.argmax(initial_controller_values)] = 1
+
         return Result(
             converged=converged,
             policy=StochasticFiniteStateController(pomdp, fsc_action, fsc_state, fsc_initial_state),
