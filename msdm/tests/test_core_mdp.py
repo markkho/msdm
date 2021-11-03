@@ -110,5 +110,64 @@ class CoreTestCase(unittest.TestCase):
             assert pi1.iterations == pi2.iterations
             assert pi1.converged == pi2.converged
 
+    def test_canonical_mdp(self):
+        from msdm.core.problemclasses.mdp import QuickTabularMDP
+        from msdm.core.problemclasses.mdp.canonicalmdp import CanonicalTabularMDP
+        from msdm.core.distributions import DictDistribution as p
+
+        bounds = (0, +5)
+        goal = bounds[1]
+        test_mdp = QuickTabularMDP(
+            next_state_dist=lambda s, a: p({max(min(s+a, bounds[1]), bounds[0]): 1}),
+            actions=lambda s: (
+                ([] if s == bounds[0] else [-1]) +
+                ([] if s == bounds[1] else [+1]) +
+                # We let the agent move by +2 at one location only. This is helpful
+                # for testing for invalid action use at other locations.
+                ([+2] if s == 3 else [])
+            ),
+            is_terminal=lambda s: s == goal,
+            initial_state_dist=p({3: 1}),
+            reward=-1,
+        )
+        canon_mdp = CanonicalTabularMDP(test_mdp)
+
+        # First, in next_state_dist()
+        # Testing actions()
+        assert test_mdp.next_state_dist(0, +2).isclose(p({2: 1}))
+        assert canon_mdp.next_state_dist(0, +2).isclose(p({0: 1}))
+        # Including totally invalid actions
+        assert test_mdp.next_state_dist(0, +5).isclose(p({+5: 1}))
+        assert canon_mdp.next_state_dist(0, +5).isclose(p({0: 1}))
+        # Testing is_terminal()
+        assert test_mdp.next_state_dist(goal, -1).isclose(p({goal-1: 1}))
+        assert canon_mdp.next_state_dist(goal, -1).isclose(p({goal: 1}))
+
+        # Next, in reward()
+        # Testing actions()
+        assert test_mdp.reward(0, +2, +2) == -1
+        assert canon_mdp.reward(0, +2, +2) == -float('inf')
+        # Including totally invalid actions()
+        assert test_mdp.reward(0, +5, +5) == -1
+        assert canon_mdp.reward(0, +5, +5) == -float('inf')
+        # Testing is_terminal()
+        assert test_mdp.reward(goal, -1, goal-1) == -1
+        assert canon_mdp.reward(goal, -1, goal-1) == 0
+        # Testing next_state_dist()==0
+        assert test_mdp.reward(goal, -1, goal-2) == -1
+        assert canon_mdp.reward(goal, -1, goal-2) == 0
+
+        # Checking tabular methods.
+
+        tf = test_mdp.transition_matrix
+        rf = test_mdp.reward_matrix
+        nt = test_mdp.nonterminal_state_vec
+        am = test_mdp.action_matrix
+
+        rf = rf * nt[:, None, None] * (tf!=0) + np.log(am)[:, :, None]
+
+        assert np.allclose(rf, canon_mdp.reward_matrix)
+
+
 if __name__ == '__main__':
     unittest.main()

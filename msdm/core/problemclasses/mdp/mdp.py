@@ -2,7 +2,7 @@ from abc import abstractmethod
 from typing import TypeVar, Generic, Sequence
 
 from msdm.core.problemclasses.problemclass import ProblemClass
-from msdm.core.distributions import Distribution
+from msdm.core.distributions import Distribution, DictDistribution
 
 
 State = TypeVar('State')

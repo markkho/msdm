@@ -3,6 +3,7 @@ import numpy as np
 import math
 
 from msdm.core.problemclasses.mdp.policy.policy import Policy
+from msdm.core.problemclasses.mdp.canonicalmdp import CanonicalTabularMDP
 from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess
 from msdm.core.algorithmclasses import Result
 
@@ -69,6 +70,7 @@ class TabularPolicy(dict, Policy):
         return matrix
 
     def evaluate_on(self, mdp: TabularMarkovDecisionProcess) -> Result:
+        mdp = CanonicalTabularMDP(mdp)
         mats = mdp.as_matrices()
         ss, aa, s0, tf, rf, rs, nt = \
             [mats[k] for k in ['ss', 'aa', 's0', 'tf', 'rf', 'rs', 'nt']]

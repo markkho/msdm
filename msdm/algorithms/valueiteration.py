@@ -4,6 +4,7 @@ import numpy as np
 from collections import defaultdict
 from msdm.core.problemclasses.mdp import \
     TabularMarkovDecisionProcess, TabularPolicy
+from msdm.core.problemclasses.mdp.canonicalmdp import CanonicalTabularMDP
 from msdm.core.algorithmclasses import Plans, PlanningResult
 
 class ValueIteration(Plans):
@@ -17,17 +18,11 @@ class ValueIteration(Plans):
         self.check_unreachable_convergence = check_unreachable_convergence
 
     def plan_on(self, mdp: TabularMarkovDecisionProcess):
+        mdp = CanonicalTabularMDP(mdp)
         ss = mdp.state_list
         tf = mdp.transition_matrix
         rf = mdp.reward_matrix
-        nt = mdp.nonterminal_state_vec
         rs = mdp.reachable_state_vec
-        am = mdp.action_matrix
-
-        # transition function goes nowhere
-        tf = tf*nt[:, None, None]
-        # reward function assigns 0 to all transitions out of a terminal
-        rf = rf*nt[:, None, None]
 
         iterations = self.iterations
         if iterations is None:
@@ -36,7 +31,12 @@ class ValueIteration(Plans):
         v = np.zeros(len(ss))
         for i in range(iterations):
             q = np.einsum("san,san->sa", tf, rf + mdp.discount_rate * v[None, None, :])
-            nv = np.max(q + np.log(am), axis=-1)
+            # HACK: are there other ways to do this? our nans come from 0-prob transitions using invalid actions.
+            # It's a case we mostly want to sweep away, but using -inf and 0 means we have to deal with these
+            # nan values. We could alternatively switch to large negative values? However large negative values
+            # are problematic for atol computation in TabularPolicy.
+            q = np.nan_to_num(q, nan=-np.inf, neginf=-np.inf, posinf=np.inf)
+            nv = np.max(q, axis=-1)
             if self.check_unreachable_convergence:
                 diff = (v - nv)
             else:
@@ -45,8 +45,7 @@ class ValueIteration(Plans):
                 break
             v = nv
 
-        validq = q + np.log(am)
-        pi = TabularPolicy.from_q_matrix(mdp.state_list, mdp.action_list, validq)
+        pi = TabularPolicy.from_q_matrix(mdp.state_list, mdp.action_list, q)
 
         # create result object
         res = PlanningResult()
