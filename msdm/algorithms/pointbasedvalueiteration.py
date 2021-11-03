@@ -47,14 +47,16 @@ def expand_beliefs(pomdp, belief_set):
 def point_based_value_iteration(
     pomdp,
     belief_set,
-    value_convergence_epsilon
+    value_convergence_epsilon,
+    horizon=None
 ):
-    # iterations as suggested in Pineau et al. 2003
-    rmax = pomdp.state_action_reward_matrix.max().item()
-    rmin = pomdp.state_action_reward_matrix.min().item()
-    max_belief_expansions = value_convergence_epsilon / (rmax - rmin)
-    max_belief_expansions = np.log(max_belief_expansions) / np.log(pomdp.discount_rate)
-    max_belief_expansions = int(np.ceil(max_belief_expansions))
+    # iterations for infinite horizon as suggested in Pineau et al. 2003
+    if horizon is None:
+        rmax = pomdp.state_action_reward_matrix.max().item()
+        rmin = pomdp.state_action_reward_matrix.min().item()
+        horizon = value_convergence_epsilon / (rmax - rmin)
+        horizon = np.log(horizon) / np.log(pomdp.discount_rate)
+        horizon = int(np.ceil(horizon))
 
     tf = pomdp.transition_matrix
     sa_rf = pomdp.state_action_reward_matrix
@@ -73,7 +75,7 @@ def point_based_value_iteration(
     # alpha vectors - one per belief
     bv = np.zeros((len(bb), len(pomdp.state_list)))
 
-    for i in range(max_belief_expansions):
+    for i in range(horizon):
         ### Alpha-vectors over states (s) associated with each action (a),
         ### observation (o), and next-belief (p)
         aops_fut_vf = np.einsum("san,ano,pn->aops", tf, of, bv)
@@ -118,6 +120,7 @@ def point_based_value_iteration(
     return {
         'alpha_vectors': bv,
         'belief_action_alpha_vectors': bsa_vf,
+        'belief_action_indices': ba_vf_max_idx,
         'iterations': i
     }
 
@@ -129,7 +132,8 @@ class PointBasedValueIteration(Plans):
         self,
         min_belief_expansions=int(1e2),
         max_belief_expansions=int(1e5),
-        value_convergence_epsilon=.01
+        value_convergence_epsilon=.01,
+        horizon=None
     ):
         """
         Point-based value iteration approximates an exact
@@ -150,6 +154,10 @@ class PointBasedValueIteration(Plans):
         value_convergence_epsilon : float
             The convergence crition used for point-based value iteration
             (inner loop) as well as belief set expansions (outer loop).
+        horizon : int
+            The planning horizon to optimize value over.
+            None corresponds to an infinite horizon.
+            If this is not None, then it overrides value_convergence_epsilon.
 
         Returns
         -------
@@ -159,6 +167,7 @@ class PointBasedValueIteration(Plans):
         self.min_belief_expansions = min_belief_expansions
         self.max_belief_expansions = max_belief_expansions
         self.value_convergence_epsilon = value_convergence_epsilon
+        self.horizon = horizon
 
     def _solve(self, pomdp):
         s0 = pomdp.initial_state_vec
@@ -175,7 +184,8 @@ class PointBasedValueIteration(Plans):
             res = point_based_value_iteration(
                 pomdp,
                 belief_set,
-                value_convergence_epsilon=self.value_convergence_epsilon
+                value_convergence_epsilon=self.value_convergence_epsilon,
+                horizon=self.horizon
             )
 
             # expand belief set
@@ -200,6 +210,7 @@ class PointBasedValueIteration(Plans):
         return Result(
             policy=pi,
             alpha_vectors=res['alpha_vectors'],
+            alpha_actions=[pomdp.action_list[i] for i in res['belief_action_indices']],
             belief_set=res['belief_set'],
             expansion_iterations=res['expansion_iterations']
         )
