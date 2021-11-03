@@ -1,6 +1,5 @@
 import torch
 import numpy as np
-import cvxpy as cp
 
 from msdm.core.distributions import DictDistribution
 from msdm.core.problemclasses.pomdp import TabularPOMDP
@@ -12,43 +11,48 @@ from msdm.algorithms.fscgradientascent import stochastic_fsc_policy_evaluation_e
 
 class Solvers(object):
     @classmethod
-    def qpth(cls, *args, **kwargs):
+    def qpth(cls, *args, qcoef=1e-8, dtype=torch.float64, **kwargs):
         import qpth
+        '''
+        We don't have a quadratic constraint here but one of the qpth solvers requires
+        it be SPD, so I've included an identity matrix considerably scaled down. When we
+        solve with cvxpy, we can let this be zero.
+        '''
+        Q = torch.eye(param_count, dtype=dtype) * qcoef
         return Result(
-            solution=qpth.qp.QPFunction(**kwargs)(*args).squeeze(),
-        )
-    @classmethod
-    def qpth_cvxpy(cls, *args, **kwargs):
-        return cls.qpth(*args, solver=qpth.qp.QPSolvers.CVXPY, check_Q_spd=False, **kwargs)
-    @classmethod
-    def cvxpy_lp(cls, Q, p, G, h, A, b, solver='ECOS', verbose=False):
-        import cvxpy as cp
-        # Making sure we can ignore Q
-        assert (
-            np.allclose(torch.zeros(Q.shape), Q) or
-            np.allclose(torch.eye(Q.shape[0]), Q/Q[0, 0])
+            solution=qpth.qp.QPFunction(**kwargs)(*[torch.tensor(a, dtype=dtype) for a in args]).squeeze(),
         )
 
+    @classmethod
+    def cvxpy_lp(cls, p, G, h, A, b, *, solver='ECOS', verbose=False):
+        import cvxpy as cp
         z = cp.Variable(len(p))
-        prob = cp.Problem(
-            cp.Minimize(p.T@z), [
-                G@z <= h,
-                A@z == b])
+        ineq_constraint = G@z <= h
+        prob = cp.Problem(cp.Minimize(p.T@z), [ineq_constraint, A@z == b])
         solution = prob.solve(verbose=verbose, solver=getattr(cp, solver) if isinstance(solver, str) else solver)
         return Result(
-            solution=torch.tensor(z.value, dtype=Q.dtype),
+            solution=z.value,
             problem=prob,
+            inequality_dual_values=ineq_constraint.dual_value,
         )
 
-def improve_node(
-    pomdp, V, node, *,
-    qcoef=1e-8,
-    dtype=torch.float64,
+    @classmethod
+    def scipy_lp(cls, p, G, h, A, b, *, method='highs-ds'):
+        from scipy.optimize import linprog
+        res = linprog(p, A_ub=G, b_ub=h, A_eq=A, b_eq=b, method=method)
+        return Result(
+            solution=res.x,
+            result=res,
+            inequality_dual_values=-res.ineqlin.marginals,
+        )
 
-    solver=Solvers.cvxpy_lp,
-    cvxpy=True,
-    solver_kwargs={},
-):
+def improve_node_matrix_constraint(pomdp, V, node, *, solver=Solvers.scipy_lp, solver_kwargs={}):
+    def np_no_copy_reshape(a, shape):
+        # from https://numpy.org/doc/stable/reference/generated/numpy.reshape.html
+        b = a.view()
+        b.shape = shape
+        return b
+
     '''
     This implements a linear program to find a combination of backed-up FSC nodes that dominate
     an existing node. It implements the efficient version described in Table 4 of [1]. In particular,
@@ -62,9 +66,9 @@ def improve_node(
     [1] Poupart, Boutilier. (2003). Bounded Finite State Controllers
     '''
 
-    T = torch.tensor(pomdp.transition_matrix, dtype=dtype)
-    O = torch.tensor(pomdp.observation_matrix, dtype=dtype)
-    R = torch.tensor(pomdp.state_action_reward_matrix, dtype=dtype)
+    T = pomdp.transition_matrix
+    O = pomdp.observation_matrix
+    R = pomdp.state_action_reward_matrix
 
     # Number of states, actions, observations in the POMDP
     nactions, nstates, nobs = pomdp.observation_matrix.shape
@@ -80,8 +84,8 @@ def improve_node(
     - the c_{a,n_z} variables (accessed by canz_idxs)
     - the epsilon term (acessed by epsilon_idx)
     '''
-    canz_shape = torch.Size((nactions, nobs, ncontroller))
-    canz_count = canz_shape.numel()
+    canz_shape = (nactions, nobs, ncontroller)
+    canz_count = nactions * nobs * ncontroller
     param_count = canz_count + 1
     canz_idxs = slice(0, canz_count)
     epsilon_idx = slice(canz_count, canz_count+1)
@@ -89,35 +93,39 @@ def improve_node(
     assert param_count == (canz_idxs.stop-canz_idxs.start) + (epsilon_idx.stop-epsilon_idx.start)
 
     '''
-    Starting with the minimization objective: argmin_z 1/2 z^T Q z + p^T z
-    We don't have a quadratic constraint here but one of the qpth solvers requires
-    it be SPD, so I've included an identity matrix considerably scaled down. When we
-    solve with cvxpy, we can let this be zero.
-
+    Starting with the minimization objective: argmin_z p^T z
     The only variable we seek to optimize is epsilon; since we want to maximize it
     but we are specifying a minimization, we negate it.
     '''
-    Q = torch.eye(param_count, dtype=dtype) * qcoef
     # The default optimization is an argmin, so this lets us maximize the epsilon.
-    p = torch.zeros(param_count, dtype=dtype)
+    p = np.zeros(param_count)
     p[epsilon_idx] = -1
 
     '''
     Now, the equality constraints: Az=b. We have only two.
     We first define c_a for each action (and an arbitrary z) as c_a = \sum_{n_z} c_{a,n_z}.
     Then we can express our constraints:
-    - for all a: 1 = \sum_a c_a = \sum_a \sum_{n_0} c_{a,n_0}
     - for all a, z: \sum_{n_z} c_{a,n_z} = c_a = \sum_{n_0} c_{a,n_0}
+    - simplex constraint: 1 = \sum_a c_a = \sum_a \sum_{n_0} c_{a,n_0}
     '''
-    A = torch.zeros((nactions * nobs + nactions, param_count), dtype=dtype)
-    b = torch.zeros((nactions * nobs + nactions,), dtype=dtype)
-    Ax = A[:, canz_idxs].view((nactions, nobs+1, canz_shape))
+    A = np.zeros((nactions * (nobs-1) + 1, param_count))
+    b = np.zeros((nactions * (nobs-1) + 1,))
+    Ax = np_no_copy_reshape(A[:-1, canz_idxs], (nactions, nobs-1, nactions, nobs, ncontroller))
+    bx = np_no_copy_reshape(b[:-1], (nactions, nobs-1))
+
+    # Simplex constraint
+    A_ca = np_no_copy_reshape(A[-1, canz_idxs], canz_shape)
+    b[-1] = 1
+
+    arbitrary_obs = nobs-1
     for a in range(nactions):
-        nactions * nobs + a
+        A_ca[a, arbitrary_obs] = 1
         for o in range(nobs):
-            A[0, canz_idxs] = 1
-            b[0] = 1
-            # xxxxxx stopped here
+            if o == arbitrary_obs:
+                continue
+            Ax[a, o, a, arbitrary_obs] = -1
+            Ax[a, o, a, o] = 1
+            # bx[a, o] = 0, since we want equality
 
     '''
     Finally, the inequality constraints: Gz<=h.
@@ -128,57 +136,74 @@ def improve_node(
     - That each c_{a,n_z} are non-negative, c >= 0. To fit Gz<=h, we rearrange
       to -c <= 0, specified in G with a -1 for each c_{a,n_z}.
     '''
-    G = torch.zeros((nstates + canz_count, param_count), dtype=dtype)
-    h = torch.cat((
+    G = np.zeros((nstates + canz_count, param_count))
+    h = np.concatenate((
         # Have to negate value here, because it switches sides.
         -V[node],
-        torch.zeros(canz_count, dtype=dtype),
+        np.zeros(canz_count),
     ))
 
+    # This follows pretty directly from Table 4; we take an expectation
+    # of the value function after marginalizing out next state.
+    # Here, x is next agent state.
+    expected_value_given_saonn = np.einsum('san,ano,xn->saox', T, O, V)
+
     # Earlier locations encode value improvement constraint.
+    # Epsilon stays on left side, so positive coef.
+    G[:nstates, epsilon_idx] = 1
+
     for s in range(nstates):
-        # Epsilon stays on left side, so positive coef.
-        G[s, epsilon_idx] = 1
         # Doing some reshaping to make the rest of this a bit easier to read.
-        canz_coef = G[s, canz_idxs].view(canz_shape)
-        for a in range(nactions):
-            for o in range(nobs):
-                for nn in range(ncontroller):
-                    # Have to negate backed-up value b/c it switches sides.
-                    canz_coef[a, o, nn] = -(
-                        # Since c_a = \sum_{n_z} c_{a,n_z}, we have to include the
-                        # reward for each c_{a,n_z}.
-                        R[s, a] +
-                        # This follows pretty directly from Table 4; we take an expectation
-                        # of the value function after marginalizing out next state.
-                        pomdp.discount_rate * (T[s, a, :] * O[a, :, o] * V[nn]).sum())
+        canz_coef = np_no_copy_reshape(G[s, canz_idxs], canz_shape)
+        # We include the reward for c_a.
+        canz_coef[:, arbitrary_obs] = -R[s, :, None]
+        # Have to negate backed-up value b/c it switches sides.
+        # Also have to do += here b/c we set a coefficient for c_a above.
+        canz_coef += -pomdp.discount_rate * expected_value_given_saonn[s]
 
     # Last locations encode c >= 0 as -c <= 0
     for idx in range(canz_count):
         G[nstates+idx, idx] = -1
 
     # Solve the LP
-    constraints = (Q, p, G, h, A, b)
-    result = solver(*constraints)
+    constraints = (p, G, h, A, b)
+    result = solver(*constraints, **solver_kwargs)
 
     # Unpack the solution.
     epsilon = result.solution[epsilon_idx].item()
-    canz = result.solution[canz_idxs].view(canz_shape)
+
+    canz = np_no_copy_reshape(result.solution[canz_idxs], canz_shape)
     # Computing c_a using c_{a,n_z}
-    c_a = canz.sum(axis=(1, 2))
-    assert c_a.shape == (nactions,)
-    print(canz)
-    assert ((canz >= 0) | np.isclose(canz, 0)).all()
-    assert np.isclose(torch.sum(canz), 1)
+    c_a = canz[:, arbitrary_obs, :].sum(axis=-1)
+    action_strategy = c_a
+
+    # c_a can be zero at times; we make sure to correct invalid results of division in the next line.
+    with np.errstate(divide='ignore', invalid='ignore'):
+        observation_strategy = canz/c_a[:, None, None]
+    # HACK: for actions with near-0 probabilities, we code in a uniform distribution over next internal states since
+    # the above division by a near-0 p(a|s) usually means this doesn't sum to 1 because of numerical errors.
+    # We mostly do this because we check that these distributions sum to 1 in other methods.
+    observation_strategy[np.isclose(c_a, np.zeros(c_a.shape))] = 1/ncontroller
+    assert np.allclose(observation_strategy.sum(-1), 1)
+
+    def add_to_fsc(fsc_action, fsc_state, *, inplace=True):
+        if not inplace:
+            fsc_action = np.copy(fsc_action)
+            fsc_state = np.copy(fsc_state)
+        fsc_action[node] = action_strategy
+        fsc_state[node] = observation_strategy
+        return fsc_action, fsc_state
 
     return Result(
-        constraints=constraints,
         epsilon=epsilon,
-        canz=canz,
-        c_a=c_a,
-        action_strategy=c_a,
-        observation_strategy=canz/canz.sum(-1, keepdims=True),
+        # HACK: the not isclose check is ensure we're not just a hair above 0
+        improved=epsilon>0 and not np.isclose(epsilon, 0),
+        action_strategy=action_strategy,
+        observation_strategy=observation_strategy,
         solver_result=result,
+        # We also pull out the tangent belief from the dual of our state constraints.
+        tangent_belief=result.inequality_dual_values[:nstates],
+        add_to_fsc=add_to_fsc,
     )
 
 
@@ -252,7 +277,7 @@ def propose_escape_node(pomdp, belief, state_controller_value):
             max_as = action_strategy
 
     current_v = np.max(state_controller_value @ belief)
-    assert np.isclose(max_v, current_v) or max_v > current_v, 'is this true?????'
+    assert np.isclose(max_v, current_v) or max_v > current_v
 
     # Assemble result
     r = Result(
@@ -265,7 +290,9 @@ def propose_escape_node(pomdp, belief, state_controller_value):
     r.add_to_fsc = lambda fsc_action, fsc_state: with_new_node(fsc_action, fsc_state, r.action_strategy, r.observation_strategy)
     return r
 
-def improve_node(pomdp, V, node, *, solver=cp.ECOS, verbose=False):
+def improve_node_cvxpy(pomdp, V, node, *, solver='ECOS', verbose=False):
+    import cvxpy as cp
+    solver = getattr(cp, solver) if isinstance(solver, str) else solver
     '''
     This implements a linear program to find a combination of backed-up FSC nodes that dominate
     an existing node. It implements the efficient version described in Table 4 of [1]. In particular,
@@ -402,11 +429,13 @@ class FSCBoundedPolicyIteration(Learns):
         iterations=100,
         seed=None,
         convergence_diff=1e-5,
+        improve_node_fn=improve_node_matrix_constraint,
     ):
         self.controller_state_count = controller_state_count
         self.iterations = iterations
         self.seed = seed or np.random.randint(2**30)
         self.convergence_diff = convergence_diff
+        self.improve_node_fn = improve_node_fn
 
     def train_on(self, pomdp: TabularPOMDP):
         # Number of states, actions, observations in the POMDP
@@ -440,7 +469,7 @@ class FSCBoundedPolicyIteration(Learns):
             improved = False
 
             for n in range(ncontroller):
-                r = improve_node(pomdp, V, n)
+                r = self.improve_node_fn(pomdp, V, n)
                 if r.improved:
                     improved = True
                     assert_value_improvement(V, lambda: r.add_to_fsc(fsc_action, fsc_state, inplace=False))
