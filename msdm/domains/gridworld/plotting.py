@@ -377,12 +377,16 @@ class GridWorldPlotter:
             plot_state_action_map_numbers()
         return self
 
-    def plot_policy(self, policy: Union[TabularPolicy, dict]) -> "GridWorldPlotter":
+    def plot_policy(
+        self,
+        policy: Union[TabularPolicy, dict],
+        plot_over_walls=False
+    ) -> "GridWorldPlotter":
         # if isinstance(policy, TabularPolicy):
         #     policy = policy.policy_dict
         return self.plot_state_action_map(
             state_action_map=policy,
-            plot_over_walls=False,
+            plot_over_walls=plot_over_walls,
             value_range=[0, 1],
             color_value_func=lambda v: 'k'
         )
