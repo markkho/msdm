@@ -10,6 +10,7 @@ class PolicyIteration(Plans):
                  check_unreachable_convergence=True):
         self.iterations = iterations
         self.check_unreachable_convergence = check_unreachable_convergence
+        self.VALUE_DECIMAL_PRECISION = 10
 
     def plan_on(self, mdp: TabularMarkovDecisionProcess):
         ss = mdp.state_list
@@ -51,6 +52,7 @@ class PolicyIteration(Plans):
 
             # The action value is the expectation over next state transitions
             q = (tf[:, :, :] * (rf[:, :, :] + mdp.discount_rate * v[None, None, :])).sum(axis=2)
+            q = np.around(q, decimals=self.VALUE_DECIMAL_PRECISION)
 
             # Calculate the new policy, taking into account
             # the "infinite" cost of unavailable actions.
