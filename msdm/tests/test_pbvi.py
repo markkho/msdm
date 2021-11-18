@@ -8,10 +8,12 @@ def compare_lao_and_pbvi(pomdp):
     # to get an optimal policy. But, it requires that the
     # heuristic be admissible.
     bmdp = BeliefMDP(pomdp)
+
     lao = LAOStar(
-        max_lao_iters=100,
-        heuristic=lambda s: 0. if bmdp.is_terminal(s) else pomdp.reward_matrix.max(),
-        show_progress=False
+        seed=124977,
+        heuristic=lambda s: pomdp.reward_matrix.max(),
+        max_lao_star_iterations=100,
+        dynamic_programming_iterations=100,
     )
     lao_res = lao.plan_on(bmdp)
     assert lao_res.converged
@@ -21,7 +23,7 @@ def compare_lao_and_pbvi(pomdp):
     ).plan_on(pomdp)
 
     # compare policies on visited states
-    bmdp_states = lao_res.sGraph.keys()
+    bmdp_states = lao_res.solution_graph.states_to_nodes.keys()
     for b in bmdp_states:
         if bmdp.is_terminal(b):
             continue
