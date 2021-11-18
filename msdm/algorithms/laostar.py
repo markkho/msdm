@@ -1,31 +1,52 @@
+"""
+Hansen, E. A., & Zilberstein, S. (2001). LAO*:
+A heuristic search algorithm that finds solutions
+with loops. Artificial Intelligence, 129(1-2), 35-62.
+"""
 from types import SimpleNamespace
+from typing import Callable
 import warnings, tqdm
 import random
 import numpy as np
 
 from msdm.core.algorithmclasses import Plans, PlanningResult
-from msdm.core.problemclasses.mdp import MarkovDecisionProcess, TabularPolicy
+from msdm.core.problemclasses.mdp import MarkovDecisionProcess, TabularPolicy, HashableState
 from msdm.core.distributions.dictdistribution import DeterministicDistribution
 
 class LAOStar(Plans):
-    """
-    Hansen, E. A., & Zilberstein, S. (2001). LAO*:
-    A heuristic search algorithm that finds solutions
-    with loops. Artificial Intelligence, 129(1-2), 35-62.
-    """
     def __init__(
         self,
-        heuristic=None, # Function over states
+        heuristic : Callable[[HashableState], float], # Function over states
         max_lao_star_iterations=int(1e5),
         dynamic_programming_iterations=100,
         seed=None,
     ):
-        if heuristic is None:
-            heuristic = lambda s : 0.0
+        """
+        LAO* is a heuristic search algorithm that works on MDPs.
+        This algorithm converges to the optimal policy when
+        provided with an admissible heuristic (one that
+        over-estimates the value at all states).
+
+        Parameters
+        ----------
+        heuristic : Callable[[HashableState], float]
+            A heuristic state value function
+
+        max_lao_star_iterations: int
+            Maximum number of iterations of the main LAO* loop
+
+        dynamic_programming_iterations : int
+            Maximum number of policy iteration iterations in
+            the value revision step.
+
+        seed : int
+            Random seed
+        """
         self.heuristic = heuristic
         self.max_lao_star_iterations = max_lao_star_iterations
         self.dynamic_programming_iterations = dynamic_programming_iterations
         self.seed = seed
+
 
     def plan_on(self, mdp: MarkovDecisionProcess) -> PlanningResult:
         explicit_graph, iterations = self._run_lao_star(mdp)
@@ -99,6 +120,8 @@ class ExplicitStateGraph:
             )
             self.state_list.append(s)
 
+        self.VALUE_DECIMAL_PRECISION = 10
+
     def solution_graph(self):
         """Return solution graph from initial states"""
         return SolutionGraph(self)
@@ -122,7 +145,6 @@ class ExplicitStateGraph:
     def expand_at(self, state):
         """Expand the explicit graph at a non-terminal node"""
         node = self.states_to_nodes[state]
-        assert not self.mdp.is_terminal(node.state), "Only expand non-terminal states"
         assert node.state in self.states_to_nodes, "Only visited states can be expanded"
         assert id(self.states_to_nodes[node.state]) == id(node), "Node needs to be inside the explicit graph"
         assert not node.expanded
@@ -212,6 +234,7 @@ class ExplicitStateGraph:
             v = np.linalg.solve(np.eye(tf.shape[0]) - self.mdp.discount_rate * mp, s_rf) # state value
             q = rf[:, :, :] + self.mdp.discount_rate * v[None, None, :]
             q = np.einsum("san,san->sa", tf, q)
+            q = np.around(q, decimals=self.VALUE_DECIMAL_PRECISION)
 
             # Calculate the new policy, taking into account
             # the "infinite" cost of unavailable actions.
@@ -227,13 +250,17 @@ class ExplicitStateGraph:
         return pi, v, q
 
     def _state_nodes_to_matrices(self, state_nodes, actions):
+        """
+        Convert a collection of state nodes into valid
+        transition and reward matrix representing the
+        subgraph.
+        """
         assert isinstance(state_nodes, list)
         n_states = len(state_nodes)
         n_actions = len(actions)
         state_index = {n.state: i for i, n in enumerate(state_nodes)}
         action_index = {a: i for i, a in enumerate(actions)}
         tf = np.zeros((n_states + 1, n_actions, n_states + 1))
-        tf[-1, :, -1] = 1 # terminal state actions always lead to the terminal state
         am = np.zeros((n_states + 1, n_actions))
         am[-1, :] = 1
         rf = np.zeros((n_states + 1, n_actions, n_states + 1))
@@ -241,7 +268,7 @@ class ExplicitStateGraph:
             s = node.state
             si = state_index[s]
             if self.mdp.is_terminal(s):
-                tf[si, :, si] = 1
+                tf[si, :, -1] = 1
                 am[si, :] = 1
                 continue
             for a in self.mdp.actions(s):
@@ -254,15 +281,24 @@ class ExplicitStateGraph:
                         tf[si, ai, nsi] = prob
                         rf[si, ai, nsi] = reward
                     else:
-                        # if the next state is not in the subgraph, we treat it as a terminal transition
-                        # and add in the next state value
                         tf[si, ai, -1] += prob
-                        rf[si, ai, -1] += prob*(reward + self.mdp.discount_rate*self.states_to_nodes[ns].value)
-                # this corrects rewards that have been collapsed into the terminal state
+                        # If the next state is a real terminal state, future expected value is 0.
+                        # Otherwise, if the next state is simply not in the subgraph,
+                        # we treat it as a pseudo-terminal and add in the next state value.
+                        # Also, the pseudo-terminal reward is a probability weighted sum
+                        # of the rewards and needs to be renormalized by the total
+                        # probability of entering the pseudo-terminal state (see below).
+                        if self.mdp.is_terminal(ns):
+                            rf[si, ai, -1] += prob*reward
+                        else:
+                            rf[si, ai, -1] += prob*(reward + self.mdp.discount_rate*self.states_to_nodes[ns].value)
+                # Renormalize weighted and summed pseudo-terminal rewards
+                # by dividing by the *total* probability of entering the pseudo-terminal state
                 if tf[si, ai, -1] > 0:
                     rf[si, ai, -1] /= tf[si, ai, -1]
 
-        assert np.isclose(tf.sum(-1), 1).all(), "Transitions need to sum to 1.0"
+        assert np.isclose(tf[:-1, :, :].sum(-1), 1).all(), "Non-terminal transitions need to sum to 1.0"
+        tf[:-1, :, :] = tf[:-1, :, :]/tf[:-1, :, :].sum(-1, keepdims=True)
         assert (rf[-1, :, :] == 0).all(), "Terminal to terminal rewards must be 0"
         return tf, rf, am
 
@@ -271,18 +307,18 @@ class SolutionGraph:
         self.states_to_nodes = {}
         self.nonterminal_tip_states = []
         for s0 in explicit_graph.initial_states:
-            frontier = [s0, ]
+            frontier = {s0, }
             while frontier:
                 s = frontier.pop()
                 if s in self.states_to_nodes:
                     continue
-                if explicit_graph.mdp.is_terminal(s):
+                if s in frontier:
                     continue
                 node = explicit_graph.states_to_nodes[s]
                 self.states_to_nodes[s] = node
                 if node.expanded:
                     nextstates = node.action_nextstates[node.optimal_action]
-                    frontier.extend(nextstates)
+                    frontier.update(nextstates)
                 else:
                     self.nonterminal_tip_states.append(node.state)
 
