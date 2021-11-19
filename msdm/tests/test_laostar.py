@@ -111,7 +111,7 @@ def test_explicit_state_graph_with_heuristic():
     explicit_graph.dynamic_programming(expanded_nodes)
     vi_res = ValueIteration().plan_on(gw)
     initial_value = explicit_graph.states_to_nodes[gw.initial_state_dist().support[0]].value
-    assert initial_value == vi_res.initial_value
+    assert np.isclose(initial_value, vi_res.initial_value, atol=1e-10)
 
     # the solution graph should NOT be solved since there are non-terminal tips
     solution_graph = explicit_graph.solution_graph()
