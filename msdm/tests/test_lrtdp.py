@@ -1,8 +1,10 @@
 import unittest
+import copy
 
 from msdm.algorithms import ValueIteration, LRTDP
 from msdm.tests.domains import GNTFig6_6, Counter
 from msdm.domains import GridWorld
+from msdm.algorithms.lrtdp import LRTDPEventListener
 
 def ensure_uniform(dist):
     '''
@@ -97,33 +99,59 @@ class LRTDPTestCase(unittest.TestCase):
             assert policy(s) in vi_actions
 
     def test_seed_reproducibility(self):
+        class TrialRecorder(LRTDPEventListener):
+            def __init__(self):
+                self.trial_data = [{
+                    "trial": [],
+                    "solved": []
+                }]
+            def end_of_lrtdp_trial(self, localvars):
+                self.trial_data.append({
+                    "trial": copy.deepcopy(localvars['visited']),
+                    "solved": copy.deepcopy(localvars['self'].res.solved),
+                })
+
         mdp = GNTFig6_6()
         m = LRTDP(
             randomize_action_order=True,
+            event_listener_class=TrialRecorder,
             seed=12345
         )
         res1 = m.plan_on(mdp)
 
         m = LRTDP(
             randomize_action_order=True,
+            event_listener_class=TrialRecorder,
             seed=12345
         )
         res2 = m.plan_on(mdp)
 
-        for t1, t2 in zip(res1.trials, res2.trials):
-            for s1, s2 in zip(t1, t2):
+        # for t1, t2 in zip(res1.trials, res2.trials):
+        trials1 = res1.event_listener.trial_data
+        trials2 = res2.event_listener.trial_data
+        for t1, t2 in zip(trials1, trials2):
+            trial1 = t1['trial']
+            trial2 = t2['trial']
+            for s1, s2 in zip(trial1, trial2):
                 assert s1 == s2
+                assert s1 in mdp.state_list
 
         m = LRTDP(
             randomize_action_order=True,
-            seed=13
+            event_listener_class=TrialRecorder,
+            seed=13004
         )
         res3 = m.plan_on(mdp)
 
         notequal = []
-        for t1, t2 in zip(res3.trials, res2.trials):
-            for s1, s2 in zip(t1, t2):
-                notequal.append(s1 != s2)
+        trials3 = res3.event_listener.trial_data
+        for t2, t3 in zip(trials2, trials3):
+            trial2 = t2['trial']
+            trial3 = t3['trial']
+            for s2, s3 in zip(trial2, trial3):
+                notequal.append(s3 != s2)
+                assert s3 in mdp.state_list
+                assert s2 in mdp.state_list
         assert any(notequal)
 
     def test_trivial_solution(self):

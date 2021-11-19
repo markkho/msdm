@@ -2,6 +2,7 @@ import random
 import copy
 import warnings
 from collections import defaultdict
+from abc import ABC, abstractmethod
 from msdm.core.utils.dictutils import defaultdict2
 from msdm.core.problemclasses.mdp import MarkovDecisionProcess, TabularPolicy
 from msdm.core.algorithmclasses import Plans, PlanningResult
@@ -18,6 +19,7 @@ class LRTDP(Plans):
                  iterations=int(2**30),
                  randomize_action_order=False,
                  max_trial_length=None,
+                 event_listener_class=None,
                  seed=None
                  ):
         self.error_margin = error_margin
@@ -28,21 +30,31 @@ class LRTDP(Plans):
         if max_trial_length is None:
             max_trial_length = float('inf')
         self.max_trial_length = max_trial_length
+        self.event_listener_class = event_listener_class
 
     def plan_on(self, mdp: MarkovDecisionProcess):
-        self.res = PlanningResult()
+        self.res = PlanningResult(
+        )
         if self.seed is None:
             self.res.seed = random.randint(0, int(2**30))
         else:
             self.res.seed = self.seed
         self.rng = random.Random(self.seed)
+
+        if self.event_listener_class is not None:
+            self.res.event_listener = self.event_listener_class()
+        else:
+            self.res.event_listener = None
+
         self.lrtdp(
             mdp, heuristic=self.heuristic, iterations=self.iterations
         )
+
         res = self.res
         res.policy = {}
         res.Q = defaultdict(lambda : dict())
-        for s in sum(self.res.trials, []) + [state for state, solved in res.solved.items() if solved]:
+        # for s in sum(self.res.trials, []) + [state for state, solved in res.solved.items() if solved]:
+        for s in [state for state, solved in res.solved.items() if solved]:
             if s in res.policy:
                 continue
             res.policy[s] = self.policy(mdp, s)
@@ -62,9 +74,6 @@ class LRTDP(Plans):
 
         self.res.V = defaultdict2(heuristic)
         self.res.action_orders = dict()
-
-        self.res.trials = []
-        self.res.trials_solved = []
 
         # Keeping track of "labels": which states have been solved
         self.res.solved = defaultdict2(lambda s: False)
@@ -92,8 +101,8 @@ class LRTDP(Plans):
                 self.res.solved[s] = True
             if len(visited) > self.max_trial_length:
                 break
-        self.res.trials.append(copy.deepcopy(visited))
-        self.res.trials_solved.append(copy.deepcopy(self.res.solved))
+        if self.res.event_listener is not None:
+            self.res.event_listener.end_of_lrtdp_trial(locals())
         s = visited.pop()
         while self._check_solved(mdp, s) and visited:
             s = visited.pop()
@@ -168,3 +177,7 @@ class LRTDP(Plans):
             for a in mdp.action_dist(s).support
         )
 
+class LRTDPEventListener(ABC):
+    @abstractmethod
+    def end_of_lrtdp_trial(self, localvars):
+        pass
