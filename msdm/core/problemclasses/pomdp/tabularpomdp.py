@@ -69,3 +69,27 @@ class TabularPOMDP(TabularMarkovDecisionProcess, PartiallyObservableMDP):
                 for o, p in self._cached_observation_dist(a, ns).items():
                     obs[ai, nsi, ooi[o]] = p
         return obs
+
+    def state_estimator_vec(self, b: np.array, ai : int, oi : int) -> np.array:
+        """
+        Returns the posterior distribution over next states
+        given an action, observation, and belief over previous states.
+
+        This version is vectorized, and takes action/observations as indices.
+        """
+
+        dist = np.einsum('s,sn,n->n', b, self.transition_matrix[:, ai, :], self.observation_matrix[ai, :, oi])
+        if dist.sum() == 0.0:
+            return dist
+        return dist/dist.sum()
+
+    def predictive_observation_vec(self, b: np.array, ai : int) -> np.array:
+        """
+        Returns the predicted observation distribution for taking
+        an action given a belief distribution.
+
+        This version is vectorized, and takes actions as indices.
+        """
+        result = np.einsum('s,sn,no->o', b, self.transition_matrix[:, ai, :], self.observation_matrix[ai])
+        assert np.isclose(result.sum(), 1)
+        return result
