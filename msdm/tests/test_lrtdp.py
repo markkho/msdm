@@ -149,12 +149,15 @@ class LRTDPTestCase(unittest.TestCase):
                 return 0.0
             return -(abs(s['x']-goal['x']) + abs(s['y']-goal['y']))
 
-        self.assert_equal_value_iteration(LRTDP(), mdp)
+        self.assert_equal_value_iteration(
+            LRTDP(heuristic=lambda s: 0),
+            mdp
+        )
         self.assert_equal_value_iteration(LRTDP(heuristic=heuristic), mdp)
 
     def test_GNTFig6_6(self):
         mdp = GNTFig6_6()
-        m = LRTDP(seed=12388)
+        m = LRTDP(heuristic=lambda s: 0, seed=12388)
         self.assert_equal_value_iteration(m, mdp)
 
     def assert_equal_value_iteration(self, planner, mdp):
@@ -200,6 +203,8 @@ class LRTDPTestCase(unittest.TestCase):
                     "trial": [],
                     "solved": []
                 }]
+            def end_of_lrtdp_timestep(self, localvars):
+                pass
             def end_of_lrtdp_trial(self, localvars):
                 self.trial_data.append({
                     "trial": copy.deepcopy(localvars['visited']),
@@ -208,6 +213,7 @@ class LRTDPTestCase(unittest.TestCase):
 
         mdp = GNTFig6_6()
         m = LRTDP(
+            heuristic=lambda s: 0,
             randomize_action_order=True,
             event_listener_class=TrialRecorder,
             seed=12345
@@ -215,6 +221,7 @@ class LRTDPTestCase(unittest.TestCase):
         res1 = m.plan_on(mdp)
 
         m = LRTDP(
+            heuristic=lambda s: 0,
             randomize_action_order=True,
             event_listener_class=TrialRecorder,
             seed=12345
@@ -231,6 +238,7 @@ class LRTDPTestCase(unittest.TestCase):
                 assert s1 in mdp.state_list
 
         m = LRTDP(
+            heuristic=lambda s: 0,
             randomize_action_order=True,
             event_listener_class=TrialRecorder,
             seed=13004
@@ -249,7 +257,10 @@ class LRTDPTestCase(unittest.TestCase):
         assert any(notequal)
 
     def test_trivial_solution(self):
-        algo = LRTDP(seed=42)
+        algo = LRTDP(
+            heuristic=lambda s: 0,
+            seed=42
+        )
         # Normal
         mdp = Counter(3, initial_state=0)
         R = algo.plan_on(mdp)
