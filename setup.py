@@ -29,6 +29,7 @@ setup(
         'frozendict',
         'termcolor',
         'julia',
+        'cvxpy',
     ],
     test_suite='nose.collector',
     tests_require=['nose'],
