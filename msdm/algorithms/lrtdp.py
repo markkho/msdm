@@ -4,6 +4,7 @@ import warnings
 from collections import defaultdict
 from abc import ABC, abstractmethod
 from msdm.core.utils.dictutils import defaultdict2
+from msdm.core.distributions import DictDistribution
 from msdm.core.problemclasses.mdp import MarkovDecisionProcess, TabularPolicy
 from msdm.core.algorithmclasses import Plans, PlanningResult
 
@@ -37,7 +38,7 @@ class LRTDP(Plans):
         self.lrtdp(
             mdp, heuristic=self.heuristic, iterations=self.iterations
         )
-        res = self._tear_down_plan_on(mdp)
+        res = self._tear_down_plan_on(mdp, self.heuristic)
         return res
 
     def _set_up_plan_on(self):
@@ -54,21 +55,23 @@ class LRTDP(Plans):
         else:
             self.res.event_listener = None
 
-    def _tear_down_plan_on(self, mdp):
+    def _tear_down_plan_on(self, mdp, heuristic):
         res = self.res
 
         # put together policy, q-values and initial value
         res.policy = {}
         res.Q = defaultdict(lambda : dict())
         for s, solved in res.solved.items():
-            if not solved:
-                continue
             if s in res.policy:
                 continue
-            res.policy[s] = self.policy(mdp, s)
+            res.policy[s] = DictDistribution.deterministic(self.policy(mdp, s))
             for a in mdp.actions(s):
                 res.Q[s][a] = self.Q(mdp, s, a)
-        res.policy = TabularPolicy.from_deterministic_map(res.policy)
+
+        res.policy = DefaultTabularPolicy.with_default(
+            policy_dict=res.policy,
+            default_generator=lambda s: DictDistribution.uniform(mdp.actions(s))
+        )
         res.initial_value = sum([res.V[s0]*p for s0, p in mdp.initial_state_dist().items()])
 
         #clear result
@@ -157,7 +160,7 @@ class LRTDP(Plans):
             future = 0
             if not mdp.is_terminal(ns):
                 future = self.res.V[ns]
-            q += prob * (mdp.reward(s, a, ns) + future)
+            q += prob * (mdp.reward(s, a, ns) + mdp.discount_rate*future)
         return q
 
     def policy(self, mdp, s):
@@ -184,6 +187,21 @@ class LRTDP(Plans):
             )
             for a in mdp.actions(s)
         )
+
+# TODO: this is a copy from laostar_refactor, we should consolidate
+# once this is finalized
+class DefaultTabularPolicy(TabularPolicy):
+    @classmethod
+    def with_default(cls, policy_dict, default_generator):
+        instance = DefaultTabularPolicy(policy_dict)
+        instance.default_generator = default_generator
+        return instance
+
+    def action_dist(self, s):
+        try:
+            return self[s]
+        except KeyError:
+            return self.default_generator(s)
 
 class LRTDPEventListener(ABC):
     @abstractmethod
