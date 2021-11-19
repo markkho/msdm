@@ -3,6 +3,7 @@ Hansen, E. A., & Zilberstein, S. (2001). LAO*:
 A heuristic search algorithm that finds solutions
 with loops. Artificial Intelligence, 129(1-2), 35-62.
 """
+from abc import ABC, abstractmethod
 from types import SimpleNamespace
 from typing import Callable
 import warnings, tqdm
@@ -11,7 +12,7 @@ import numpy as np
 
 from msdm.core.algorithmclasses import Plans, PlanningResult
 from msdm.core.problemclasses.mdp import MarkovDecisionProcess, TabularPolicy, HashableState
-from msdm.core.distributions.dictdistribution import DeterministicDistribution
+from msdm.core.distributions.dictdistribution import DeterministicDistribution, DictDistribution
 
 class LAOStar(Plans):
     def __init__(
@@ -19,13 +20,14 @@ class LAOStar(Plans):
         heuristic : Callable[[HashableState], float], # Function over states
         max_lao_star_iterations=int(1e5),
         dynamic_programming_iterations=100,
+        event_listener_class : "LAOStarEventListener" = None,
         seed=None,
     ):
         """
         LAO* is a heuristic search algorithm that works on MDPs.
         This algorithm converges to the optimal policy when
         provided with an admissible heuristic (one that
-        over-estimates the value at all states).
+        never under-estimates the value at all states).
 
         Parameters
         ----------
@@ -39,6 +41,9 @@ class LAOStar(Plans):
             Maximum number of policy iteration iterations in
             the value revision step.
 
+        event_listener_class : LAOStarEventListener
+            An LAO* event listener class
+
         seed : int
             Random seed
         """
@@ -46,21 +51,27 @@ class LAOStar(Plans):
         self.max_lao_star_iterations = max_lao_star_iterations
         self.dynamic_programming_iterations = dynamic_programming_iterations
         self.seed = seed
-
+        self.event_listener_class = event_listener_class
 
     def plan_on(self, mdp: MarkovDecisionProcess) -> PlanningResult:
+        if self.event_listener_class is not None:
+            self._event_listener = self.event_listener_class()
+        else:
+            self._event_listener = None
         explicit_graph, iterations = self._run_lao_star(mdp)
         solution_graph = explicit_graph.solution_graph()
         if not solution_graph.is_solved():
             warnings.warn(f"LAO* not converged after {self.max_lao_star_iterations} iterations")
 
         return PlanningResult(
-            policy=self._create_policy(solution_graph),
+            policy=self._create_policy(solution_graph, mdp),
             explicit_graph=explicit_graph,
             converged=solution_graph.is_solved(),
             solution_graph=solution_graph,
             iterations=iterations,
+            state_value_map=explicit_graph.state_value_map(),
             initial_value=explicit_graph.initial_value(),
+            event_listener=self._event_listener
         )
 
     def _run_lao_star(self, mdp):
@@ -79,14 +90,36 @@ class LAOStar(Plans):
             for s in expand_states:
                 explicit_graph.expand_at(s)
             explicit_graph.revise_value_from(expand_states)
+
+            if self._event_listener:
+                self._event_listener.main_lao_star_loop(locals())
         return explicit_graph, i
 
-    def _create_policy(self, solution_graph):
+    def _create_policy(self, solution_graph, mdp):
         pi = dict()
         for s, n in solution_graph.states_to_nodes.items():
             pi[s] = DeterministicDistribution(n.optimal_action)
-        pi = TabularPolicy(pi)
+        default_generator = lambda s: DictDistribution.uniform(mdp.actions(s))
+        pi = DefaultTabularPolicy.with_default(pi, default_generator)
         return pi
+
+class DefaultTabularPolicy(TabularPolicy):
+    @classmethod
+    def with_default(cls, policy_dict, default_generator):
+        instance = DefaultTabularPolicy(policy_dict)
+        instance.default_generator = default_generator
+        return instance
+
+    def action_dist(self, s):
+        try:
+            return self[s]
+        except KeyError:
+            return self.default_generator(s)
+
+class LAOStarEventListener(ABC):
+    @abstractmethod
+    def main_lao_star_loop(self, localvars):
+        pass
 
 class ExplicitStateGraph:
     def __init__(
@@ -130,6 +163,12 @@ class ExplicitStateGraph:
         v = 0
         for s, p in self.mdp.initial_state_dist().items():
             v += self.states_to_nodes[s].value*p
+        return v
+
+    def state_value_map(self):
+        v = {}
+        for n in self.states_to_nodes.values():
+            v[n.state] = n.value
         return v
 
     def expand_while(self, condition):
