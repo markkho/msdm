@@ -1,5 +1,5 @@
 test:
-	python -m py.test
+	python -m py.test $(ARGS)
 
 lint:
 	# Copied from .github/workflows

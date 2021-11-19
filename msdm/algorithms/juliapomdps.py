@@ -64,44 +64,8 @@ class JuliaPOMDP(Learns):
 
 if __name__ == '__main__':
     from msdm.core.distributions import DictDistribution
-    class Tiger(TabularPOMDP):
-        discount_rate : float = 0.95
-
-        def __init__(self, coherence):
-            self.coherence = coherence
-
-        def next_state_dist(self, s, a):
-            if a == 'listen':
-                return DictDistribution.deterministic(s)
-            return self.initial_state_dist()
-
-        def reward(self, s, a, ns):
-            if a == 'listen':
-                return -1
-            elif s == a:
-                return -100
-            else:
-                return 10
-
-        def actions(self, s):
-            return ['left', 'right', 'listen']
-
-        def initial_state_dist(self):
-            return DictDistribution.uniform(['left', 'right'])
-
-        def is_terminal(self, s):
-            return False
-
-        def observation_dist(self, a, ns):
-            if a != 'listen':
-                pleft = 0.5
-            elif ns == 'left':
-                pleft = self.coherence
-            else:
-                pleft = 1 - self.coherence
-            return DictDistribution(left=pleft, right=1-pleft)
-
-    mdp = Tiger(0.85)
-    res = JuliaPOMDP.IncrementalPruning().train_on(mdp)
+    from msdm.domains.tiger import Tiger
+    mdp = Tiger(0.85, discount_rate=0.95)
+    res = JuliaPOMDP.QMDP().train_on(mdp)
     print(res)
     print('VALUE', res.valuefn(mdp.initial_state_dist()))
