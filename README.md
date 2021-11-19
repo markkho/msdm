@@ -62,6 +62,7 @@ tested:
     - QMDP
     - Point-based Value-Iteration
     - Finite state controller gradient ascent
+    - Bounded finite state controller policy iteration
     - Wrappers for [POMDPs.jl](https://juliapomdp.github.io/POMDPs.jl/latest/) solvers (requires Julia installation)
 - Reinforcement Learning
     - Q-Learning
