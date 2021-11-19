@@ -33,8 +33,16 @@ class LRTDP(Plans):
         self.event_listener_class = event_listener_class
 
     def plan_on(self, mdp: MarkovDecisionProcess):
-        self.res = PlanningResult(
+        self._set_up_plan_on()
+        self.lrtdp(
+            mdp, heuristic=self.heuristic, iterations=self.iterations
         )
+        res = self._tear_down_plan_on(mdp)
+        return res
+
+    def _set_up_plan_on(self):
+        self.res = PlanningResult()
+
         if self.seed is None:
             self.res.seed = random.randint(0, int(2**30))
         else:
@@ -46,15 +54,15 @@ class LRTDP(Plans):
         else:
             self.res.event_listener = None
 
-        self.lrtdp(
-            mdp, heuristic=self.heuristic, iterations=self.iterations
-        )
-
+    def _tear_down_plan_on(self, mdp):
         res = self.res
+
+        # put together policy, q-values and initial value
         res.policy = {}
         res.Q = defaultdict(lambda : dict())
-        # for s in sum(self.res.trials, []) + [state for state, solved in res.solved.items() if solved]:
-        for s in [state for state, solved in res.solved.items() if solved]:
+        for s, solved in res.solved.items():
+            if not solved:
+                continue
             if s in res.policy:
                 continue
             res.policy[s] = self.policy(mdp, s)
@@ -174,7 +182,7 @@ class LRTDP(Plans):
                 prob * mdp.reward(s, a, ns)
                 for ns, prob in mdp.next_state_dist(s, a).items()
             )
-            for a in mdp.action_dist(s).support
+            for a in mdp.actions(s)
         )
 
 class LRTDPEventListener(ABC):
