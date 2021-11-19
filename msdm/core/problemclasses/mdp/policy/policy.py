@@ -36,7 +36,7 @@ class Policy(ABC):
             actions = ()
             rewards = ()
         return Result(**{
-            'state_traj': states + (ns, ),
+            'state_traj': states,
             'action_traj': actions,
             'reward_traj': rewards
         })
