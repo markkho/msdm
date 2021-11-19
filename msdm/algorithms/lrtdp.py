@@ -80,9 +80,6 @@ class LRTDP(Plans):
 
     def lrtdp(self, mdp, heuristic=None, iterations=None):
         # Ghallab, Nau, Traverso: Algorithm 6.17
-        if heuristic is None:
-            heuristic = lambda s: 0
-
         self.res.V = defaultdict2(heuristic)
         self.res.action_orders = dict()
 
@@ -112,6 +109,8 @@ class LRTDP(Plans):
                 self.res.solved[s] = True
             if len(visited) > self.max_trial_length:
                 break
+            if self.res.event_listener is not None:
+                self.res.event_listener.end_of_lrtdp_timestep(locals())
         if self.res.event_listener is not None:
             self.res.event_listener.end_of_lrtdp_trial(locals())
         s = visited.pop()
@@ -175,19 +174,6 @@ class LRTDP(Plans):
             self.res.action_orders[s] = action_list
         return max(action_list, key=lambda a: self.Q(mdp, s, a))
 
-    def expected_one_step_reward_heuristic(self, mdp):
-        '''
-        This admissible heuristic is a generally applicable one.
-        The heuristic value for a state is the best one-step reward.
-        '''
-        return lambda s: 0 if mdp.is_terminal(s) else max(
-            sum(
-                prob * mdp.reward(s, a, ns)
-                for ns, prob in mdp.next_state_dist(s, a).items()
-            )
-            for a in mdp.actions(s)
-        )
-
 # TODO: this is a copy from laostar_refactor, we should consolidate
 # once this is finalized
 class DefaultTabularPolicy(TabularPolicy):
@@ -206,4 +192,7 @@ class DefaultTabularPolicy(TabularPolicy):
 class LRTDPEventListener(ABC):
     @abstractmethod
     def end_of_lrtdp_trial(self, localvars):
+        pass
+    @abstractmethod
+    def end_of_lrtdp_timestep(self, localvars):
         pass
