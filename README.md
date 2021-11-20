@@ -51,28 +51,28 @@ The following algorithms have been implemented and
 tested:
 
 - Classical Planning
-    - Breadth-First Search
-    - A*
+    - Breadth-First Search (Zuse, 1945)
+    - A* (Hart, Nilsson & Raphael, 1968)
 - Stochastic Planning
-    - Value Iteration
-    - Policy Iteration
-    - Labeled Real-time Dynamic Programming
-    - LAO*
+    - Value Iteration (Bellman, 1957)
+    - Policy Iteration (Howard, 1960)
+    - Labeled Real-time Dynamic Programming ([Bonet & Geffner, 2003](https://www.aaai.org/Papers/ICAPS/2003/ICAPS03-002.pdf))
+    - LAO* ([Hansen & Zilberstein, 2003](https://www.sciencedirect.com/science/article/pii/S0004370201001060))
 - Partially Observable Planning
-    - QMDP
-    - Point-based Value-Iteration
-    - Finite state controller gradient ascent
-    - Bounded finite state controller policy iteration
+    - QMDP ([Littman, Cassandra & Kaelbling, 1995](https://www.sciencedirect.com/science/article/pii/B9781558603776500529))
+    - Point-based Value-Iteration ([Pineau, Gordon & Thrun, 2003](https://dl.acm.org/doi/abs/10.5555/1630659.1630806))
+    - Finite state controller gradient ascent ([Meuleau, Kim, Kaelbling & Cassandra, 1999](https://arxiv.org/abs/1301.6720))
+    - Bounded finite state controller policy iteration ([Poupart & Boutilier, 2003](https://dl.acm.org/doi/abs/10.5555/2981345.2981448))
     - Wrappers for [POMDPs.jl](https://juliapomdp.github.io/POMDPs.jl/latest/) solvers (requires Julia installation)
 - Reinforcement Learning
-    - Q-Learning
-    - Double Q-Learning
-    - SARSA
-    - Expected SARSA
+    - Q-Learning (Watkins, 1992)
+    - Double Q-Learning ([van Hasselt, 2010](https://proceedings.neurips.cc/paper/2010/hash/091d584fced301b442654dd8c23b3fc9-Abstract.html))
+    - SARSA ([Rummery & Niranjan, 1994](https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.17.2539&rep=rep1&type=pdf))
+    - Expected SARSA ([van Seijen, van Hasselt, Whiteson & Wiering, 2009](https://ieeexplore.ieee.org/abstract/document/4927542))
 - Multi-agent Reinforcement Learning (in progress)
-    - Correlated Q Learning
-    - Nash Q Learning
-    - Friend/Foe Q Learning
+    - Correlated Q Learning ([Greenwald & Hall, 2002](https://dl.acm.org/doi/abs/10.5555/3041838.3041869))
+    - Nash Q Learning ([Hu & Wellman, 2003](https://dl.acm.org/doi/abs/10.5555/945365.964288))
+    - Friend/Foe Q Learning ([Littman, 2001](https://dl.acm.org/doi/abs/10.5555/645530.655661))
 
 We aim to add implementations for other algorithms in the
 near future (e.g., inverse RL, deep learning, multi-agent learning and planning).

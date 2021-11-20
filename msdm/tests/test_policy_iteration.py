@@ -70,7 +70,7 @@ class MyTestCase(unittest.TestCase):
             ])
         pi_res = PolicyIteration()(gw)
         vi_res = ValueIteration()(gw)
-        lrtdp = LRTDP()(gw)
+        lrtdp = LRTDP(heuristic=lambda s: 0)(gw)
         assert pi_res.initial_value == vi_res.initial_value == lrtdp.initial_value
 
     def test_policy_iteration_gridworld2(self):

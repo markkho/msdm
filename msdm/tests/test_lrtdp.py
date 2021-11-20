@@ -1,8 +1,11 @@
 import unittest
+import copy
 
 from msdm.algorithms import ValueIteration, LRTDP
 from msdm.tests.domains import GNTFig6_6, Counter
 from msdm.domains import GridWorld
+from msdm.domains.gridmdp.windygridworld import WindyGridWorld
+from msdm.algorithms.lrtdp import LRTDPEventListener
 
 def ensure_uniform(dist):
     '''
@@ -30,7 +33,101 @@ def deterministic(dist):
         assert dist.prob(s) == 1
         return s
 
+def _test_expected_error_bound(bellman_error_margin, optimal_res, test_res, mdp):
+    """
+    For an approximate dynamic programming algorithm initialized with an
+    admissible heuristic that converges to a value function V and
+    policy $\\pi$, we know that for all s:
+
+    0 <= V(s) - V^*(s) <= \\eta x \\Phi^{\\pi}(s)
+
+    where \\Phi^{\\pi} is the expected number of steps to reach a terminal
+    state from s under \\pi and \\eta is the error margin for the
+    Bellman residual (see Ghallab, Nau & Traverso, pg 229).
+    This function tests whether the expected error bound holds from the
+    initial states of an MDP.
+    """
+    test_eval = test_res.policy.evaluate_on(mdp)
+    test_occ = test_eval.occupancy #occupancy from start state
+    test_start_steps = sum(test_occ.values())
+    value_diff = test_res.initial_value - optimal_res.initial_value
+    within_bound = 0 <= value_diff <= bellman_error_margin*test_start_steps
+    if not within_bound:
+        raise OutOfExpectedErrorBound
+    return bellman_error_margin*test_start_steps
+
+class OutOfExpectedErrorBound(Exception):
+    pass
+
 class LRTDPTestCase(unittest.TestCase):
+    def test_lrtdp_heuristics_on_stochastic_domain_multiple_discount_rates(self):
+        self._test_lrtdp_heuristics_on_stochastic_domain(discount_rate=1.0)
+        self._test_lrtdp_heuristics_on_stochastic_domain(discount_rate=.99)
+        self._test_lrtdp_heuristics_on_stochastic_domain(discount_rate=.9)
+
+    def _test_lrtdp_heuristics_on_stochastic_domain(self, discount_rate):
+        bellman_error_margin = 1e-5
+        wg = WindyGridWorld(
+            grid="""
+                ....$
+                x^x<<
+                x^x<<
+                .^x<<
+                x<<<<
+                x<<<<
+                x<<<<
+                x<<<<
+                x<<<<
+                @....
+            """,
+            step_cost=-1,
+            wall_bump_cost=-1,
+            discount_rate=discount_rate,
+            wind_probability=.5,
+            feature_rewards={'x': -50, '$': 50}
+        )
+        vi_res = ValueIteration().plan_on(wg) #the ground truth
+        lrtdp_res_admissible_shifted = LRTDP(
+            heuristic=lambda s: vi_res.valuefunc[s] + 10,
+            bellman_error_margin=bellman_error_margin,
+            seed=19299
+        ).plan_on(wg)
+        lrtdp_res_admissible_flat = LRTDP(
+            heuristic=lambda s: 50,
+            bellman_error_margin=bellman_error_margin,
+            seed=19299
+        ).plan_on(wg)
+        lrtdp_res_not_admissible = LRTDP(
+            heuristic=lambda s: 0,
+            bellman_error_margin=bellman_error_margin,
+            seed=19299
+        ).plan_on(wg)
+
+        _test_expected_error_bound(
+            bellman_error_margin=bellman_error_margin,
+            optimal_res=vi_res,
+            test_res=lrtdp_res_admissible_shifted,
+            mdp=wg
+        )
+        _test_expected_error_bound(
+            bellman_error_margin=bellman_error_margin,
+            optimal_res=vi_res,
+            test_res=lrtdp_res_admissible_flat,
+            mdp=wg
+        )
+
+        try:
+            # this should fail since we did not use an admissible heuristic
+            _test_expected_error_bound(
+                bellman_error_margin=bellman_error_margin,
+                optimal_res=vi_res,
+                test_res=lrtdp_res_not_admissible,
+                mdp=wg
+            )
+            assert False
+        except OutOfExpectedErrorBound:
+            pass
+
     def test_gridworld(self):
         mdp = GridWorld(
             tile_array=[
@@ -52,12 +149,15 @@ class LRTDPTestCase(unittest.TestCase):
                 return 0.0
             return -(abs(s['x']-goal['x']) + abs(s['y']-goal['y']))
 
-        self.assert_equal_value_iteration(LRTDP(), mdp)
+        self.assert_equal_value_iteration(
+            LRTDP(heuristic=lambda s: 0),
+            mdp
+        )
         self.assert_equal_value_iteration(LRTDP(heuristic=heuristic), mdp)
 
     def test_GNTFig6_6(self):
         mdp = GNTFig6_6()
-        m = LRTDP(seed=12388)
+        m = LRTDP(heuristic=lambda s: 0, seed=12388)
         self.assert_equal_value_iteration(m, mdp)
 
     def assert_equal_value_iteration(self, planner, mdp):
@@ -97,37 +197,70 @@ class LRTDPTestCase(unittest.TestCase):
             assert policy(s) in vi_actions
 
     def test_seed_reproducibility(self):
+        class TrialRecorder(LRTDPEventListener):
+            def __init__(self):
+                self.trial_data = [{
+                    "trial": [],
+                    "solved": []
+                }]
+            def end_of_lrtdp_timestep(self, localvars):
+                pass
+            def end_of_lrtdp_trial(self, localvars):
+                self.trial_data.append({
+                    "trial": copy.deepcopy(localvars['visited']),
+                    "solved": copy.deepcopy(localvars['self'].res.solved),
+                })
+
         mdp = GNTFig6_6()
         m = LRTDP(
+            heuristic=lambda s: 0,
             randomize_action_order=True,
+            event_listener_class=TrialRecorder,
             seed=12345
         )
         res1 = m.plan_on(mdp)
 
         m = LRTDP(
+            heuristic=lambda s: 0,
             randomize_action_order=True,
+            event_listener_class=TrialRecorder,
             seed=12345
         )
         res2 = m.plan_on(mdp)
 
-        for t1, t2 in zip(res1.trials, res2.trials):
-            for s1, s2 in zip(t1, t2):
+        trials1 = res1.event_listener.trial_data
+        trials2 = res2.event_listener.trial_data
+        for t1, t2 in zip(trials1, trials2):
+            trial1 = t1['trial']
+            trial2 = t2['trial']
+            for s1, s2 in zip(trial1, trial2):
                 assert s1 == s2
+                assert s1 in mdp.state_list
 
         m = LRTDP(
+            heuristic=lambda s: 0,
             randomize_action_order=True,
-            seed=13
+            event_listener_class=TrialRecorder,
+            seed=13004
         )
         res3 = m.plan_on(mdp)
 
         notequal = []
-        for t1, t2 in zip(res3.trials, res2.trials):
-            for s1, s2 in zip(t1, t2):
-                notequal.append(s1 != s2)
+        trials3 = res3.event_listener.trial_data
+        for t2, t3 in zip(trials2, trials3):
+            trial2 = t2['trial']
+            trial3 = t3['trial']
+            for s2, s3 in zip(trial2, trial3):
+                notequal.append(s3 != s2)
+                assert s3 in mdp.state_list
+                assert s2 in mdp.state_list
         assert any(notequal)
 
     def test_trivial_solution(self):
-        algo = LRTDP(seed=42)
+        algo = LRTDP(
+            heuristic=lambda s: 0,
+            seed=42
+        )
         # Normal
         mdp = Counter(3, initial_state=0)
         R = algo.plan_on(mdp)
