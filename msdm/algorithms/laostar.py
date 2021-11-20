@@ -1,12 +1,6 @@
-"""
-Hansen, E. A., & Zilberstein, S. (2001). LAO*:
-A heuristic search algorithm that finds solutions
-with loops. Artificial Intelligence, 129(1-2), 35-62.
-"""
 from abc import ABC, abstractmethod
-from types import SimpleNamespace
 from typing import Callable
-import warnings, tqdm
+import warnings
 import random
 import numpy as np
 
@@ -17,7 +11,7 @@ from msdm.core.distributions.dictdistribution import DeterministicDistribution, 
 class LAOStar(Plans):
     def __init__(
         self,
-        heuristic : Callable[[HashableState], float], # Function over states
+        heuristic : Callable[[HashableState], float],
         max_lao_star_iterations=int(1e5),
         dynamic_programming_iterations=100,
         event_listener_class : "LAOStarEventListener" = None,
@@ -46,6 +40,12 @@ class LAOStar(Plans):
 
         seed : int
             Random seed
+
+        References
+        ----------
+        Hansen, E. A., & Zilberstein, S. (2001). LAO*:
+        A heuristic search algorithm that finds solutions
+        with loops. Artificial Intelligence, 129(1-2), 35-62.
         """
         self.heuristic = heuristic
         self.max_lao_star_iterations = max_lao_star_iterations
