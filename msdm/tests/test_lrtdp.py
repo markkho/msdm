@@ -66,7 +66,7 @@ class LRTDPTestCase(unittest.TestCase):
         self._test_lrtdp_heuristics_on_stochastic_domain(discount_rate=.9)
 
     def _test_lrtdp_heuristics_on_stochastic_domain(self, discount_rate):
-        error_margin = 1e-5
+        bellman_error_margin = 1e-5
         wg = WindyGridWorld(
             grid="""
                 ....$
@@ -89,28 +89,28 @@ class LRTDPTestCase(unittest.TestCase):
         vi_res = ValueIteration().plan_on(wg) #the ground truth
         lrtdp_res_admissible_shifted = LRTDP(
             heuristic=lambda s: vi_res.valuefunc[s] + 10,
-            error_margin=error_margin,
+            bellman_error_margin=bellman_error_margin,
             seed=19299
         ).plan_on(wg)
         lrtdp_res_admissible_flat = LRTDP(
             heuristic=lambda s: 50,
-            error_margin=error_margin,
+            bellman_error_margin=bellman_error_margin,
             seed=19299
         ).plan_on(wg)
         lrtdp_res_not_admissible = LRTDP(
             heuristic=lambda s: 0,
-            error_margin=error_margin,
+            bellman_error_margin=bellman_error_margin,
             seed=19299
         ).plan_on(wg)
 
         _test_expected_error_bound(
-            bellman_error_margin=error_margin,
+            bellman_error_margin=bellman_error_margin,
             optimal_res=vi_res,
             test_res=lrtdp_res_admissible_shifted,
             mdp=wg
         )
         _test_expected_error_bound(
-            bellman_error_margin=error_margin,
+            bellman_error_margin=bellman_error_margin,
             optimal_res=vi_res,
             test_res=lrtdp_res_admissible_flat,
             mdp=wg
@@ -119,7 +119,7 @@ class LRTDPTestCase(unittest.TestCase):
         try:
             # this should fail since we did not use an admissible heuristic
             _test_expected_error_bound(
-                bellman_error_margin=error_margin,
+                bellman_error_margin=bellman_error_margin,
                 optimal_res=vi_res,
                 test_res=lrtdp_res_not_admissible,
                 mdp=wg

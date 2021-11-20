@@ -3,28 +3,66 @@ import copy
 import warnings
 from collections import defaultdict
 from abc import ABC, abstractmethod
+from typing import Callable
 from msdm.core.utils.dictutils import defaultdict2
 from msdm.core.distributions import DictDistribution
-from msdm.core.problemclasses.mdp import MarkovDecisionProcess, TabularPolicy
+from msdm.core.problemclasses.mdp import MarkovDecisionProcess, TabularPolicy, HashableState
 from msdm.core.algorithmclasses import Plans, PlanningResult
 
 class LRTDP(Plans):
-    '''
-    Labeled Real-Time Dynamic Programming (Bonet & Geffner 2003)
-
-    Implementation mixes names from Bonet & Geffner 2003 and Ghallab, Nau, Traverso.
-    '''
     def __init__(self,
-                 error_margin=1e-2,
-                 heuristic=None,
-                 iterations=int(2**30),
-                 randomize_action_order=False,
-                 max_trial_length=None,
-                 event_listener_class=None,
+                 heuristic : Callable[[HashableState], float],
+                 bellman_error_margin :float=1e-2,
+                 iterations : int=int(2**30),
+                 randomize_action_order : bool=False,
+                 max_trial_length : int=None,
+                 event_listener_class : "LRTDPEventListener"=None,
                  seed=None
                  ):
-        self.error_margin = error_margin
+        """
+        Labeled Real-Time Dynamic Programming (Bonet & Geffner 2003).
+
+        Parameters
+        ----------
+        heuristic : Callable[[HashableState], float]
+            State-heuristic function. If this over-estimates
+            the value at all states, then the
+            algorithm will converge to an optimal solution.
+
+        bellman_error_margin : float
+
+        iterations : int
+            Number of trials of LRTDP to run.
+
+        randomize_action_order : bool
+            False by default. If set to True, then actions at
+            a state are randomly ordered when that state is first
+            encountered and fixed to that order subsequently. This
+            ensures ties are broken randomly but consistently.
+
+        max_trial_length : int
+            By default this is infinity. The convergence properties
+            of LRTDP when this is < infinity are not guaranteed.
+
+        event_listener_class : LRTDPEventListener
+
+        seed : int
+            Random seed
+
+        References
+        ----------
+        Bonet, Blai, and Hector Geffner. "Labeled RTDP:
+        Improving the Convergence of Real-Time Dynamic
+        Programming." ICAPS. Vol. 3. 2003.
+
+        Notes
+        -----
+        This implementation mixes names from
+        Bonet & Geffner 2003 and Ghallab, Nau, Traverso.
+        """
+
         self.heuristic = heuristic
+        self.bellman_error_margin = bellman_error_margin
         self.iterations = iterations
         self.randomize_action_order = randomize_action_order
         self.seed = seed
@@ -61,9 +99,7 @@ class LRTDP(Plans):
         # put together policy, q-values and initial value
         res.policy = {}
         res.Q = defaultdict(lambda : dict())
-        for s, solved in res.solved.items():
-            if s in res.policy:
-                continue
+        for s in res.V.keys():
             res.policy[s] = DictDistribution.deterministic(self.policy(mdp, s))
             for a in mdp.actions(s):
                 res.Q[s][a] = self.Q(mdp, s, a)
@@ -128,7 +164,7 @@ class LRTDP(Plans):
             s = open.pop()
             closed.append(s)
             residual = self.res.V[s] - self.Q(mdp, s, self.policy(mdp, s))
-            if abs(residual) > self.error_margin:
+            if abs(residual) > self.bellman_error_margin:
                 flag = False
             else:
                 for ns in mdp.next_state_dist(s, self.policy(mdp, s)).support:
