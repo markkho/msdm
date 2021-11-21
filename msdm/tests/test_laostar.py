@@ -2,10 +2,12 @@ import numpy as np
 import random
 
 from msdm.algorithms.laostar import LAOStar, ExplicitStateGraph
-from msdm.domains import GridWorld
-from msdm.tests.domains import make_russell_norvig_grid
+from msdm.algorithms import PolicyIteration
+from msdm.core.problemclasses.mdp import QuickTabularMDP
+from msdm.core.distributions import DictDistribution
 from msdm.algorithms import PolicyIteration, ValueIteration
-from msdm.tests.domains import Counter
+from msdm.tests.domains import Counter, make_russell_norvig_grid
+from msdm.domains import GridWorld
 
 def test_laostar_random_action_ordering_flag():
     from frozendict import frozendict
@@ -60,6 +62,92 @@ def test_laostar_random_action_ordering_flag():
     nonrand_states_visited = list(nonrand_res.explicit_graph.states_to_nodes.keys())
     rand_states_visited = list(rand_res.explicit_graph.states_to_nodes.keys())
     assert set(nonrand_states_visited) != set(rand_states_visited)
+
+def test_best_breadth_first_state_evaluation_order():
+    def actions_CD_order(s):
+        return {
+            "A": ("A", "B"),
+            "B": ("B", "CD"),
+            "C": ("C", "CX"),
+            "D": ("D", "DY")
+        }.get(s, s)
+    def actions_DC_order(s):
+        return {
+            "A": ("A", "B"),
+            "B": ("B", "DC"),
+            "C": ("C", "CX"),
+            "D": ("D", "DY")
+        }.get(s, s)
+    def next_state_dist(s, a):
+        # note we assume the order of the support will be preserved
+        # when LAO* is building its explicit graph
+        return DictDistribution.uniform(list(a))
+    def reward(s, a, ns):
+        return {
+            "X": 1,
+            "Y": 1
+        }.get(ns, 0)
+    def is_terminal(s):
+        return s in "XY"
+
+    # these two MDPs are value-equivalent - only difference is the next state order
+    # at state B, action CD is different
+    mdp_CD = QuickTabularMDP(
+        next_state_dist=next_state_dist,
+        reward=reward,
+        actions=actions_CD_order,
+        initial_state="A",
+        is_terminal=is_terminal,
+        discount_rate=.99
+    )
+    mdp_DC = QuickTabularMDP(
+        next_state_dist=next_state_dist,
+        reward=reward,
+        actions=actions_DC_order,
+        initial_state="A",
+        is_terminal=is_terminal,
+        discount_rate=.99
+    )
+    pi_res_CD = PolicyIteration().plan_on(mdp_CD)
+    pi_res_DC = PolicyIteration().plan_on(mdp_DC)
+    assert pi_res_CD.initial_value == pi_res_DC.initial_value
+
+    # D should always be expanded first since it is better
+    # according to the heuristic
+    lao_D_heuristic = LAOStar(
+        heuristic=lambda s: {"C": 0, "D": 1}.get(s, .5),
+        randomize_action_order=False,
+        randomize_nextstate_order=False
+    )
+    lao_D_heuristic_rand = LAOStar(
+        heuristic=lambda s: {"C": 0, "D": 1}.get(s, .5),
+        randomize_action_order=False,
+        randomize_nextstate_order=True,
+        seed=12948
+    )
+    lao_res_D_heuristic_CD = lao_D_heuristic.plan_on(mdp_CD)
+    lao_res_D_heuristic_DC = lao_D_heuristic.plan_on(mdp_DC)
+    lao_res_D_heuristic_rand = lao_D_heuristic_rand.plan_on(mdp_CD)
+
+    D_heuristic_order = ["A", "B", "D", "Y", "C", "X"]
+
+    assert lao_res_D_heuristic_rand.explicit_graph.states_by_expandedorder() == D_heuristic_order
+    assert lao_res_D_heuristic_CD.explicit_graph.states_by_expandedorder() == D_heuristic_order
+    assert lao_res_D_heuristic_DC.explicit_graph.states_by_expandedorder() == D_heuristic_order
+
+
+    # C or D should be evaluated first, depending on the mdp's order since the heuristic is tied
+    lao_CD_heuristic = LAOStar(
+        heuristic=lambda s: {"C": 1, "D": 1}.get(s, .5),
+        randomize_action_order=False,
+        randomize_nextstate_order=False
+    )
+    lao_res_CD_heuristic_CD = lao_CD_heuristic.plan_on(mdp_CD)
+    lao_res_CD_heuristic_DC = lao_CD_heuristic.plan_on(mdp_DC)
+
+    CD_order = lao_res_CD_heuristic_CD.explicit_graph.states_by_expandedorder()
+    DC_order = lao_res_CD_heuristic_DC.explicit_graph.states_by_expandedorder()
+    assert CD_order != DC_order
 
 def test_laostar_correctness():
     VALUE_TOLERANCE = 1e-8
@@ -120,6 +208,7 @@ def test_explicit_state_graph_expansion_and_dynamic_programming():
         mdp=gw,
         heuristic=lambda s: 0,
         randomize_action_order=True,
+        randomize_nextstate_order=True,
         rng=random.Random(1234197),
         dynamic_programming_iterations=100,
     )
@@ -159,6 +248,7 @@ def test_explicit_state_graph_with_heuristic():
         mdp=gw,
         heuristic=lambda s: -(abs(s['x'] - goal['x']) + abs(s['y'] - goal['y'])),
         randomize_action_order=True,
+        randomize_nextstate_order=True,
         rng=random,
         dynamic_programming_iterations=100,
     )

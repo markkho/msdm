@@ -15,6 +15,7 @@ class LAOStar(Plans):
         max_lao_star_iterations=int(1e5),
         dynamic_programming_iterations=100,
         randomize_action_order : bool=True,
+        randomize_nextstate_order : bool=True,
         event_listener_class : "LAOStarEventListener" = None,
         seed=None,
     ):
@@ -42,6 +43,8 @@ class LAOStar(Plans):
             visited (and then fixed thereafter). Otherwise,
             the order is based on what is returned by the MDP.
 
+        randomize_nextstate_order : bool
+
         event_listener_class : LAOStarEventListener
             An LAO* event listener class
 
@@ -58,6 +61,7 @@ class LAOStar(Plans):
         self.max_lao_star_iterations = max_lao_star_iterations
         self.dynamic_programming_iterations = dynamic_programming_iterations
         self.randomize_action_order = randomize_action_order
+        self.randomize_nextstate_order = randomize_nextstate_order
         self.seed = seed
         self.event_listener_class = event_listener_class
 
@@ -88,6 +92,7 @@ class LAOStar(Plans):
             mdp=mdp,
             heuristic=self.heuristic,
             randomize_action_order=self.randomize_action_order,
+            randomize_nextstate_order=self.randomize_nextstate_order,
             rng=rng,
             dynamic_programming_iterations=self.dynamic_programming_iterations,
         )
@@ -98,7 +103,7 @@ class LAOStar(Plans):
             expand_states = [solution_graph.best_breadth_first_tip_state(), ]
             for s in expand_states:
                 explicit_graph.expand_at(s)
-            explicit_graph.revise_value_from(expand_states)
+            ancestors = explicit_graph.revise_value_from(expand_states)
 
             if self._event_listener:
                 self._event_listener.main_lao_star_loop(locals())
@@ -136,6 +141,7 @@ class ExplicitStateGraph:
         mdp,
         heuristic,
         randomize_action_order,
+        randomize_nextstate_order,
         rng=random,
         dynamic_programming_iterations=100,
     ):
@@ -146,6 +152,7 @@ class ExplicitStateGraph:
 
         self.dynamic_programming_iterations = dynamic_programming_iterations
         self.randomize_action_order = randomize_action_order
+        self.randomize_nextstate_order = randomize_nextstate_order
 
         self.states_to_nodes = {}
         self.initial_states = sorted(mdp.initial_state_dist().support, key=lambda s: self.rng.random())
@@ -153,6 +160,16 @@ class ExplicitStateGraph:
             self._initialize_node(s)
 
         self.VALUE_DECIMAL_PRECISION = 10
+
+    def states_by_visitorder(self):
+        states = list(self.states_to_nodes.keys())
+        order = sorted(states, key=lambda s: self.states_to_nodes[s]['visitorder'])
+        return order
+
+    def states_by_expandedorder(self):
+        states = [s for s, n in self.states_to_nodes.items() if n['expanded']]
+        order = sorted(states, key=lambda s: self.states_to_nodes[s]['expandedorder'])
+        return order
 
     def solution_graph(self):
         """Return solution graph from initial states"""
@@ -193,7 +210,10 @@ class ExplicitStateGraph:
         s = state
         for a in node.action_order:
             assert len(node.action_nextstates[a]) == 0, "Unexpanded nodes should not have next states explored"
-            for ns in sorted(self.mdp.next_state_dist(s, a).support, key = lambda _ : self.rng.random()):
+            action_nextstates = list(self.mdp.next_state_dist(s, a).support)
+            if self.randomize_nextstate_order:
+                action_nextstates = sorted(action_nextstates, key = lambda _ : self.rng.random())
+            for ns in action_nextstates:
                 if ns not in self.states_to_nodes:
                     nextnode = self._initialize_node(ns, parent_node=node)
                 else:
@@ -210,8 +230,9 @@ class ExplicitStateGraph:
         for state in states:
             node = self.states_to_nodes[state]
             self.update_ancestors_of(node=node, ancestors=ancestors)
-        ancestors = list(ancestors.values())
-        self.dynamic_programming(ancestors)
+        ancestor_list = list(ancestors.values())
+        self.dynamic_programming(ancestor_list)
+        return ancestors
 
     def update_ancestors_of(self, node, ancestors):
         """
@@ -321,8 +342,7 @@ class ExplicitStateGraph:
                 if tf[si, ai, -1] > 0:
                     rf[si, ai, -1] /= tf[si, ai, -1]
 
-        assert np.isclose(tf[:-1, :, :].sum(-1), 1).all(), "Non-terminal transitions need to sum to 1.0"
-        tf[:-1, :, :] = tf[:-1, :, :]/tf[:-1, :, :].sum(-1, keepdims=True)
+        assert np.isclose(tf[:-1].sum(-1)[am[:-1].astype(bool)], 1).all(), "Non-terminal valid action transitions need to sum to 1.0"
         assert (rf[-1, :, :] == 0).all(), "Terminal to terminal rewards must be 0"
         return tf, rf, am
 
@@ -350,18 +370,16 @@ class SolutionGraph:
         self.states_to_nodes = {}
         self.nonterminal_tip_states = []
         for s0 in explicit_graph.initial_states:
-            frontier = {s0, }
+            frontier = [s0, ]
             while frontier:
                 s = frontier.pop()
                 if s in self.states_to_nodes:
-                    continue
-                if s in frontier:
                     continue
                 node = explicit_graph.states_to_nodes[s]
                 self.states_to_nodes[s] = node
                 if node.expanded:
                     nextstates = node.action_nextstates[node.optimal_action]
-                    frontier.update(nextstates)
+                    frontier.extend(nextstates)
                 else:
                     self.nonterminal_tip_states.append(node.state)
 
@@ -373,7 +391,6 @@ class SolutionGraph:
         Return the tip state with the highest value
         and was initialized earliest.
         """
-        best_node = None
         max_val = -float('inf')
         min_visit = float('inf')
         for s in self.nonterminal_tip_states:
@@ -381,9 +398,13 @@ class SolutionGraph:
             if n.value > max_val:
                 best_node = n
                 min_visit = n.visitorder
-            elif n.visitorder < min_visit:
+                max_val = n.value
+            elif n.value == max_val and n.visitorder < min_visit:
                 best_node = n
                 min_visit = n.visitorder
+                max_val = n.value
+        assert best_node.value == max_val
+        assert best_node.visitorder == min_visit
         return best_node.state
 
 class Node(dict):
