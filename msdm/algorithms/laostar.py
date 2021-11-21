@@ -14,6 +14,7 @@ class LAOStar(Plans):
         heuristic : Callable[[HashableState], float],
         max_lao_star_iterations=int(1e5),
         dynamic_programming_iterations=100,
+        randomize_action_order : bool=True,
         event_listener_class : "LAOStarEventListener" = None,
         seed=None,
     ):
@@ -35,6 +36,12 @@ class LAOStar(Plans):
             Maximum number of policy iteration iterations in
             the value revision step.
 
+        randomize_action_order : bool
+            If set to True, then the order of actions in a
+            state node are randomized when the node is first
+            visited (and then fixed thereafter). Otherwise,
+            the order is based on what is returned by the MDP.
+
         event_listener_class : LAOStarEventListener
             An LAO* event listener class
 
@@ -50,6 +57,7 @@ class LAOStar(Plans):
         self.heuristic = heuristic
         self.max_lao_star_iterations = max_lao_star_iterations
         self.dynamic_programming_iterations = dynamic_programming_iterations
+        self.randomize_action_order = randomize_action_order
         self.seed = seed
         self.event_listener_class = event_listener_class
 
@@ -79,6 +87,7 @@ class LAOStar(Plans):
         explicit_graph = ExplicitStateGraph(
             mdp=mdp,
             heuristic=self.heuristic,
+            randomize_action_order=self.randomize_action_order,
             rng=rng,
             dynamic_programming_iterations=self.dynamic_programming_iterations,
         )
@@ -126,32 +135,22 @@ class ExplicitStateGraph:
         self,
         mdp,
         heuristic,
+        randomize_action_order,
         rng=random,
         dynamic_programming_iterations=100,
     ):
         self.mdp = mdp
         self.heuristic = heuristic
         self.rng = rng
-        self.state_list = []
         self.n_expanded = 0
 
         self.dynamic_programming_iterations = dynamic_programming_iterations
+        self.randomize_action_order = randomize_action_order
 
         self.states_to_nodes = {}
         self.initial_states = sorted(mdp.initial_state_dist().support, key=lambda s: self.rng.random())
         for s in self.initial_states:
-            self.states_to_nodes[s] = Node(
-                state=s,
-                value=self.heuristic(s),
-                actions=sorted(mdp.actions(s), key=lambda a : rng.random()),
-                optimal_action=rng.choice(mdp.actions(s)),
-                expanded=False,
-                expandedorder=-1,
-                visitorder=len(self.state_list),
-                parent_states=set([]),
-                action_nextstates={a : [] for a in mdp.actions(s)}
-            )
-            self.state_list.append(s)
+            self._initialize_node(s)
 
         self.VALUE_DECIMAL_PRECISION = 10
 
@@ -192,23 +191,11 @@ class ExplicitStateGraph:
         node.expandedorder = self.n_expanded
         self.n_expanded += 1
         s = state
-        for a in node.actions:
+        for a in node.action_order:
             assert len(node.action_nextstates[a]) == 0, "Unexpanded nodes should not have next states explored"
             for ns in sorted(self.mdp.next_state_dist(s, a).support, key = lambda _ : self.rng.random()):
                 if ns not in self.states_to_nodes:
-                    nextnode = Node(
-                        state=ns,
-                        value=self.heuristic(ns),
-                        actions=sorted(self.mdp.actions(ns), key=lambda a : self.rng.random()),
-                        optimal_action=self.rng.choice(self.mdp.actions(ns)),
-                        expanded=False,
-                        expandedorder=-1,
-                        visitorder=len(self.state_list),
-                        parent_states={node.state},
-                        action_nextstates={na : [] for na in self.mdp.actions(ns)}
-                    )
-                    self.states_to_nodes[ns] = nextnode
-                    self.state_list.append(ns)
+                    nextnode = self._initialize_node(ns, parent_node=node)
                 else:
                     nextnode = self.states_to_nodes[ns]
                     nextnode.parent_states.add(node.state)
@@ -250,17 +237,15 @@ class ExplicitStateGraph:
 
     def dynamic_programming(self, nodes):
         """Perform dynamic programming updates over a set of nodes"""
-        actions = sorted(set.union(*[set(n.actions) for n in nodes]), key=lambda _: self.rng.random())
-        tf, rf, am = self._state_nodes_to_matrices(nodes, actions)
+        dp_action_order = list(set.union(*[set(n.action_order) for n in nodes]))
+        tf, rf, am = self._state_nodes_to_matrices(nodes, dp_action_order)
         pi, v, q = self._policy_iteration(tf, rf, am)
 
-        action_index = {a: i for i, a in enumerate(actions)}
         for si, node in enumerate(nodes):
             assert id(self.states_to_nodes[node.state]) == id(node)
             assert np.isclose(pi[si, :].sum(), 1)
-            max_val = q[si, :].max()
-            optimal_actions = [a for a in actions if q[si, action_index[a]] == max_val]
-            optimal_action = self.rng.choice(optimal_actions)
+            action_vals = {a: v for a, v in zip(dp_action_order, q[si, :])}
+            optimal_action = max(node.action_order, key=lambda a: action_vals[a])
             node.optimal_action = optimal_action
             node.value = v[si]
 
@@ -340,6 +325,25 @@ class ExplicitStateGraph:
         tf[:-1, :, :] = tf[:-1, :, :]/tf[:-1, :, :].sum(-1, keepdims=True)
         assert (rf[-1, :, :] == 0).all(), "Terminal to terminal rewards must be 0"
         return tf, rf, am
+
+    def _initialize_node(self, s, parent_node=None):
+        assert s not in self.states_to_nodes
+        if self.randomize_action_order:
+            action_order = sorted(self.mdp.actions(s), key=lambda a : self.rng.random())
+        else:
+            action_order = self.mdp.actions(s)
+        self.states_to_nodes[s] = Node(
+            state=s,
+            value=self.heuristic(s),
+            action_order=action_order,
+            optimal_action=action_order[0],
+            expanded=False,
+            expandedorder=-1,
+            visitorder=len(self.states_to_nodes),
+            parent_states=set([]) if parent_node is None else {parent_node.state},
+            action_nextstates={a : [] for a in self.mdp.actions(s)}
+        )
+        return self.states_to_nodes[s]
 
 class SolutionGraph:
     def __init__(self, explicit_graph):

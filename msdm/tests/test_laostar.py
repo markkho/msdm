@@ -7,6 +7,60 @@ from msdm.tests.domains import make_russell_norvig_grid
 from msdm.algorithms import PolicyIteration, ValueIteration
 from msdm.tests.domains import Counter
 
+def test_laostar_random_action_ordering_flag():
+    from frozendict import frozendict
+    RIGHT = frozendict({'dx': 1, 'dy': 0})
+    UP = frozendict({'dy': 1, 'dx': 0})
+    class DefaultRightUpActionGridWorld(GridWorld):
+        def actions(self, s):
+            return (
+                RIGHT,
+                UP,
+                frozendict({'dx': -1, 'dy': 0}),
+                frozendict({'dy': -1, 'dx': 0}),
+                frozendict({'dx': 0, 'dy': 0}),
+            )
+
+    gw_params = dict(
+        tile_array=[
+            "......g",
+            ".......",
+            ".......",
+            "...s...",
+            ".......",
+            ".......",
+            ".......",
+        ]
+    )
+    gw = DefaultRightUpActionGridWorld(**gw_params)
+    pi_res = PolicyIteration().plan_on(GridWorld(**gw_params, wall_features=""))
+
+    nonrandomized_action_order_lao = LAOStar(heuristic=lambda s: pi_res.V[s], randomize_action_order=False, seed=1239123)
+    nonrand_res = nonrandomized_action_order_lao.plan_on(gw)
+    nonrand_action_traj = nonrand_res.policy.run_on(gw).action_traj
+    nonrand_expected_traj = [RIGHT]*3 + [UP]*3
+    nonrand_match = [taken == expected for taken, expected in zip(nonrand_action_traj, nonrand_expected_traj)]
+    assert len(nonrand_match) == 6
+    assert all(nonrand_match)
+    nonrand_action_order = \
+        [tuple(n.action_order) for n in nonrand_res.explicit_graph.states_to_nodes.values()]
+    assert len(set(nonrand_action_order)) == 1
+
+    randomized_action_order_lao = LAOStar(heuristic=lambda s: pi_res.V[s], randomize_action_order=True, seed=123123)
+    rand_res = randomized_action_order_lao.plan_on(gw)
+    rand_action_traj = rand_res.policy.run_on(gw).action_traj
+    rand_match = [taken == expected for taken, expected in zip(rand_action_traj, nonrand_expected_traj)]
+    assert len(rand_match) == 6
+    assert not all(rand_match)
+    rand_action_orders = \
+        [tuple(n.action_order) for n in rand_res.explicit_graph.states_to_nodes.values()]
+    assert len(set(rand_action_orders)) > 1
+
+
+    nonrand_states_visited = list(nonrand_res.explicit_graph.states_to_nodes.keys())
+    rand_states_visited = list(rand_res.explicit_graph.states_to_nodes.keys())
+    assert set(nonrand_states_visited) != set(rand_states_visited)
+
 def test_laostar_correctness():
     VALUE_TOLERANCE = 1e-8
     mdps = [
@@ -65,12 +119,13 @@ def test_explicit_state_graph_expansion_and_dynamic_programming():
     explicit_graph = ExplicitStateGraph(
         mdp=gw,
         heuristic=lambda s: 0,
+        randomize_action_order=True,
         rng=random.Random(1234197),
         dynamic_programming_iterations=100,
     )
     # this procedure should encounter all reachable states
     explicit_graph.expand_while(lambda s: True)
-    assert len(explicit_graph.state_list) == len(gw.reachable_states())
+    assert len(explicit_graph.states_to_nodes) == len(gw.reachable_states())
 
     # the solution graph should be solved
     solution_graph = explicit_graph.solution_graph()
@@ -103,6 +158,7 @@ def test_explicit_state_graph_with_heuristic():
     explicit_graph = ExplicitStateGraph(
         mdp=gw,
         heuristic=lambda s: -(abs(s['x'] - goal['x']) + abs(s['y'] - goal['y'])),
+        randomize_action_order=True,
         rng=random,
         dynamic_programming_iterations=100,
     )
