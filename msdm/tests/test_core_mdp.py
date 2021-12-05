@@ -2,8 +2,10 @@ import unittest
 import numpy as np
 from frozendict import frozendict
 from msdm.domains import GridWorld
-from msdm.algorithms import ValueIteration
-from msdm.core.problemclasses.mdp import TabularPolicy, TabularMarkovDecisionProcess
+from msdm.algorithms import PolicyIteration, ValueIteration
+from msdm.core.problemclasses.mdp import TabularPolicy, TabularMarkovDecisionProcess, QuickTabularMDP
+from msdm.core.distributions import DictDistribution
+
 
 np.seterr(divide='ignore')
 
@@ -109,6 +111,20 @@ class CoreTestCase(unittest.TestCase):
             assert pi1.initial_value == pi2.initial_value
             assert pi1.iterations == pi2.iterations
             assert pi1.converged == pi2.converged
+
+def test_tabularpolicy_softmax():
+    mdp = QuickTabularMDP(
+        next_state_dist=lambda s, a: DictDistribution({s + a: .9, s: .1}) if 0 <= s+a < 6 else DictDistribution({s: 1}),
+        reward=lambda s, a, ns: -1,
+        actions=(-1, 1),
+        initial_state_dist=DictDistribution({0: 1}),
+        is_terminal=lambda s: s == 5
+    )
+    res = PolicyIteration().plan_on(mdp)
+    softhard_pi = TabularPolicy.from_q_matrix(mdp.state_list, mdp.action_list, res._qvaluemat, inverse_temperature=1e10)
+    hard_v0 = res.policy.evaluate_on(mdp).initial_value
+    softhard_v0 = softhard_pi.evaluate_on(mdp).initial_value
+    assert np.isclose(hard_v0, softhard_v0)
 
 if __name__ == '__main__':
     unittest.main()

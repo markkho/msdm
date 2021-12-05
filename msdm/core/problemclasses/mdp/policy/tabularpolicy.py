@@ -45,11 +45,10 @@ class TabularPolicy(dict, Policy):
                 else:
                     policy[s] = UniformDistribution([actions[ai] for ai in np.where(binary_policy)[0]])
         else:
-            pi = np.exp(inverse_temperature*(q - np.max(q, axis=-1, keepdims=True)))
-            pi = pi/pi.sum(axis=-1, keepdims=True)
+            logits = inverse_temperature*(q - np.max(q, axis=-1, keepdims=True))
             policy = {}
             for si, s in enumerate(states):
-                policy[s] = SoftmaxDistribution(dict(zip(actions, pi[si])))
+                policy[s] = SoftmaxDistribution(dict(zip(actions, logits[si])))
         return TabularPolicy(policy)
 
     @classmethod
