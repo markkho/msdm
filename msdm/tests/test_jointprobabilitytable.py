@@ -73,6 +73,26 @@ def test_join_with_subset_of_variables(p=.13, q=.87):
     assert pt1.join(pt2).normalize().isclose(pt12, rtol=1e-12, atol=1e-12), \
         (list(pt1.join(pt2).probs), list(pt12.probs))
 
+def test_joint_probability_dist_then(p=.13, q=.87):
+    pa = JointProbabilityTable.from_pairs([
+        [dict(a=0), p],
+        [dict(a=1), 1-p],
+    ])
+    pb_a = JointProbabilityTable.from_pairs([
+        [dict(a=0, b=0), q/2],
+        [dict(a=0, b=1), (1 -q)/2],
+        [dict(a=1, b=0), (1 -q)/2],
+        [dict(a=1, b=1), q/2],
+    ])
+    def func_b_a(a):
+        return JointProbabilityTable.from_pairs([
+            [dict(b=a), q],
+            [dict(b=1-a), 1 - q]
+        ])
+    join_pab = pa.join(pb_a).normalize()
+    then_pab = pa.then(func_b_a).normalize()
+    assert join_pab.isclose(then_pab)
+
 def test_join_with_overlapping_variables(p=.5, q=.1):
     pt1 = JointProbabilityTable.from_pairs([
         [dict(a=0, b=0), p/2],
@@ -159,7 +179,6 @@ def test_equality_with_implicit_prob():
         implicit_prob=.2
     )
     assert pt4 == pt2
-
 
 def test_common_cause_example(prob_ab=.88, prob_ac=.77):
     # a is a common cause of b and c, but a is uniform

@@ -1,4 +1,5 @@
 from collections import defaultdict
+import inspect
 import itertools
 import numpy as np
 from msdm.core.distributions import DictDistribution
@@ -79,6 +80,30 @@ class JointProbabilityTable(DictDistribution):
         joint_table.implicit_prob = other.implicit_prob*self.implicit_prob
         return joint_table
 
+    def then(self, function):
+        """
+        Apply a function to each assignment in the table.
+        The function should return another joint probability table.
+        """
+
+        signature = get_signature(function)
+        marg_then_dist = defaultdict(float)
+        if signature['input_variables'][0] in ("self", "cls"):
+            args = signature['input_variables'][1:]
+        else:
+            args = signature['input_variables']
+        for assignment, prob in self.items():
+            assignment_dict = assignment.to_dict()
+            then_dist = function(
+                **{arg: assignment_dict[arg] for arg in args}
+            )
+            assert isinstance(then_dist, JointProbabilityTable)
+            for then_assignment, then_prob in then_dist.items():
+                marg_prob = prob*then_prob
+                if marg_prob > 0.:
+                    marg_then_dist[then_assignment + assignment] += marg_prob
+        return JointProbabilityTable(marg_then_dist)
+
     def _check_valid(self):
         # check that all assignments are over the same set of variables
         top_variables = set(next(iter(self.keys())).variables())
@@ -105,6 +130,18 @@ class JointProbabilityTable(DictDistribution):
 
     def __ne__(self, other):
         return not (self == other)
+
+def get_signature(function):
+    sig = inspect.signature(function)
+    input_variables = list(sig.parameters.keys())
+    if sig.return_annotation == inspect._empty:
+        output_variables = []
+    else:
+        output_variables = list(sig.return_annotation)
+    return dict(
+        input_variables=input_variables,
+        output_variables=output_variables
+    )
 
 class InconsistentVariablesError(Exception):
     pass
