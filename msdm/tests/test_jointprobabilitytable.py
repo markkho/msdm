@@ -36,6 +36,16 @@ def test_marginalization_with_from_pairs():
     })
     assert pt1 == pt2
 
+def test_null_table():
+    pt = JointProbabilityTable.from_pairs([
+        [dict(a=1, b=2), .3],
+        [dict(a=1, b=2), .3],
+        [dict(a=1, b=3), .4],
+    ])
+    assert pt.join(JointProbabilityTable.null_table()) == pt
+    assert id(pt.join(JointProbabilityTable.null_table())) != id(pt)
+    assert pt.then(lambda a, b: None) == pt
+
 def test_join_with_no_shared_variables(p=.52, q=.92):
     pt1 = JointProbabilityTable.from_pairs([
         [dict(a=0), p],
@@ -92,6 +102,50 @@ def test_joint_probability_dist_then(p=.13, q=.87):
     join_pab = pa.join(pb_a).normalize()
     then_pab = pa.then(func_b_a).normalize()
     assert join_pab.isclose(then_pab)
+
+def test_joint_probability_dist_multiple_then(p=.91, q=.97):
+    # mixture of experts A->B<-C
+    pac = JointProbabilityTable.from_pairs([
+        [dict(a=0, c=0), 1/4],
+        [dict(a=0, c=1), 1/4],
+        [dict(a=1, c=0), 1/4],
+        [dict(a=1, c=1), 1/4],
+    ])
+    def pb_a(a):
+        if a == 1:
+            return JointProbabilityTable.from_pairs([
+                [dict(b=0), 1 - p],
+                [dict(b=1), p],
+            ])
+        return JointProbabilityTable.from_pairs([
+            [dict(b=0), .5],
+            [dict(b=1), .5],
+        ])
+
+    def pb_c(c):
+        if c == 1:
+            return JointProbabilityTable.from_pairs([
+                [dict(b=0), 1 - q],
+                [dict(b=1), q],
+            ])
+        return JointProbabilityTable.from_pairs([
+            [dict(b=0), .5],
+            [dict(b=1), .5],
+        ])
+    assert pac.then(pb_a, pb_c) == pac.then(pb_c, pb_a)
+    pabc = pac.then(pb_a, pb_c).normalize()
+
+    pabc_exp = JointProbabilityTable.from_pairs([
+        [dict(a=0, b=0, c=0), .5*.5],
+        [dict(a=0, b=1, c=0), .5*.5],
+        [dict(a=0, b=0, c=1), .5*(1-q)],
+        [dict(a=0, b=1, c=1), .5*q],
+        [dict(a=1, b=0, c=0), (1-p)*.5],
+        [dict(a=1, b=1, c=0), p*.5],
+        [dict(a=1, b=0, c=1), (1-p)*(1-q)],
+        [dict(a=1, b=1, c=1), p*q],
+    ]).normalize()
+    assert pabc_exp.isclose(pabc)
 
 def test_join_with_overlapping_variables(p=.5, q=.1):
     pt1 = JointProbabilityTable.from_pairs([

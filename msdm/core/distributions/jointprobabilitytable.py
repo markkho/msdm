@@ -4,6 +4,7 @@ import itertools
 import numpy as np
 from msdm.core.distributions import DictDistribution
 
+
 class JointProbabilityTable(DictDistribution):
     """
     Representation of a distribution over variables.
@@ -16,6 +17,17 @@ class JointProbabilityTable(DictDistribution):
     that variable assignment.
     """
     implicit_prob = 0
+
+    @classmethod
+    def null_table(cls):
+        return null_joint_probability_table
+
+    @classmethod
+    def deterministic(cls, assignment):
+        if isinstance(assignment, dict):
+            assignment = Assignment.from_kwargs(**assignment)
+        assert isinstance(assignment, Assignment)
+        return JointProbabilityTable({assignment: 1.0})
 
     @classmethod
     def from_pairs(cls, pairs, implicit_prob=0):
@@ -80,12 +92,11 @@ class JointProbabilityTable(DictDistribution):
         joint_table.implicit_prob = other.implicit_prob*self.implicit_prob
         return joint_table
 
-    def then(self, function):
+    def _single_then(self, function):
         """
         Apply a function to each assignment in the table.
         The function should return another joint probability table.
         """
-
         signature = get_signature(function)
         marg_then_dist = defaultdict(float)
         if signature['input_variables'][0] in ("self", "cls"):
@@ -97,12 +108,26 @@ class JointProbabilityTable(DictDistribution):
             then_dist = function(
                 **{arg: assignment_dict[arg] for arg in args}
             )
+            if then_dist is None:
+                then_dist = JointProbabilityTable.null_table()
             assert isinstance(then_dist, JointProbabilityTable)
             for then_assignment, then_prob in then_dist.items():
                 marg_prob = prob*then_prob
                 if marg_prob > 0.:
                     marg_then_dist[then_assignment + assignment] += marg_prob
         return JointProbabilityTable(marg_then_dist)
+
+    def then(self, *functions):
+        """
+        For each function, apply it to each assignment in the
+        current table. Then join all the resulting tables.
+        All functions should return another joint probability table.
+        The returned table will not be normalized.
+        """
+        table = JointProbabilityTable.null_table()
+        for function in functions:
+            table = table.join(self._single_then(function))
+        return table
 
     def _check_valid(self):
         # check that all assignments are over the same set of variables
@@ -123,7 +148,6 @@ class JointProbabilityTable(DictDistribution):
             raise UnnormalizedDistributionError(f"Probabilities sum to {sum(self.probs)}")
 
     def __eq__(self, other):
-        print(self.implicit_prob, other.implicit_prob)
         if self.implicit_prob != other.implicit_prob:
             return False
         return super().__eq__(other)
@@ -145,6 +169,7 @@ def get_signature(function):
 
 class InconsistentVariablesError(Exception):
     pass
+
 class UnnormalizedDistributionError(Exception):
     pass
 
@@ -166,7 +191,7 @@ class Assignment(frozenset):
     def __str__(self):
         return \
             "Assignment((\n" + \
-            ",\n".join([f"  ('{k}', {v})" for k, v in self]) + \
+            ",\n".join([f"  ({repr(k)}, {repr(v)})" for k, v in self]) + \
             "\n))"
 
     def __add__(self, other):
@@ -206,3 +231,7 @@ class Assignment(frozenset):
 
 class ConflictingKeyError(Exception):
     pass
+
+null_joint_probability_table = JointProbabilityTable.from_pairs([
+    [dict(), 1.0]
+])
