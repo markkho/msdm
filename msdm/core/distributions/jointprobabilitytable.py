@@ -2,6 +2,7 @@ from collections import defaultdict
 import inspect
 import itertools
 import numpy as np
+import pandas as pd
 from msdm.core.distributions import DictDistribution
 
 
@@ -112,6 +113,8 @@ class JointProbabilityTable(DictDistribution):
                 then_dist = JointProbabilityTable.null_table()
             assert isinstance(then_dist, JointProbabilityTable)
             for then_assignment, then_prob in then_dist.items():
+                if not assignment.compatible_with(then_assignment):
+                    continue
                 marg_prob = prob*then_prob
                 if marg_prob > 0.:
                     marg_then_dist[then_assignment + assignment] += marg_prob
@@ -124,10 +127,28 @@ class JointProbabilityTable(DictDistribution):
         All functions should return another joint probability table.
         The returned table will not be normalized.
         """
-        table = JointProbabilityTable.null_table()
+        assert self.implicit_prob == 0., "Only explicit tables work"
+        table = self
         for function in functions:
-            table = table.join(self._single_then(function))
+            table = table._single_then(function)
         return table
+
+    def groupby(self, columns):
+        """
+        Parameters:
+        ----------
+        columns: float or callable from variables to True/False
+        """
+        marg = defaultdict(float)
+        for assignment, prob in self.items():
+            if isinstance(columns, (list, tuple)):
+                marg_assignment = \
+                    Assignment([(v, val) for v, val in assignment if v in columns])
+            elif callable(columns):
+                marg_assignment = \
+                    Assignment([(v, val) for v, val in assignment if columns(v)])
+            marg[marg_assignment] += prob
+        return JointProbabilityTable(marg)
 
     def _check_valid(self):
         # check that all assignments are over the same set of variables
@@ -146,6 +167,7 @@ class JointProbabilityTable(DictDistribution):
             )
         if self.implicit_prob == 0 and not np.isclose(sum(self.probs), 1.0):
             raise UnnormalizedDistributionError(f"Probabilities sum to {sum(self.probs)}")
+        return True
 
     def __eq__(self, other):
         if self.implicit_prob != other.implicit_prob:
@@ -154,6 +176,13 @@ class JointProbabilityTable(DictDistribution):
 
     def __ne__(self, other):
         return not (self == other)
+
+    def _repr_html_(self):
+        return self.as_dataframe().to_html()
+
+    def as_dataframe(self):
+        df = pd.DataFrame([{**a.to_dict(), "prob": prob} for a, prob in self.items()])
+        return df
 
 def get_signature(function):
     sig = inspect.signature(function)
