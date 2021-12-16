@@ -132,7 +132,12 @@ def test_joint_probability_dist_multiple_then(p=.91, q=.97):
             [dict(b=0), .5],
             [dict(b=1), .5],
         ])
-    assert pac.then(pb_a, pb_c) == pac.then(pb_c, pb_a)
+    assert pac.then(pb_c).then(pb_a) == pac.then(pb_a).then(pb_c), \
+        "single `then` should be order invariant"
+    assert pac.then(pb_a, pb_c) == pac.then(pb_c, pb_a), \
+        "grouped `then` should be order invariant"
+    assert pac.then(pb_c, pb_a) == pac.then(pb_c).then(pb_a), \
+        "`then` should be grouped/single invariant"
     pabc = pac.then(pb_a, pb_c).normalize()
 
     pabc_exp = JointProbabilityTable.from_pairs([
