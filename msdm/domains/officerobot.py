@@ -140,6 +140,7 @@ def deliver_mail_effect(location, has_mail, deliver_mail) -> ["next_has_mail"]:
     if deliver_mail and has_mail and location == "office":
         return JointProbabilityTable.from_pairs([
             [dict(has_mail=False), deliver_mail_prob],
+            [dict(has_mail=False), 1 - deliver_mail_prob],
         ])
 
 @functools.lru_cache()
