@@ -100,14 +100,11 @@ class JointProbabilityTable(DictDistribution):
         """
         signature = get_signature(function)
         marg_then_dist = defaultdict(float)
-        if signature['input_variables'][0] in ("self", "cls"):
-            args = signature['input_variables'][1:]
-        else:
-            args = signature['input_variables']
+        args = signature['input_variables']
         for assignment, prob in self.items():
             assignment_dict = assignment.to_dict()
             then_dist = function(
-                **{arg: assignment_dict[arg] for arg in args}
+                *[assignment_dict[arg] for arg in args]
             )
             if then_dist is None:
                 then_dist = JointProbabilityTable.null_table()
@@ -158,10 +155,7 @@ class JointProbabilityTable(DictDistribution):
                 kwargs = {columns.get(v, v): val for v, val in assignment}
             elif callable(columns):
                 kwargs = {columns(v): val for v, val in assignment}
-            # new_assignment = Assignment.from_kwargs(**kwargs)
             new_table.append([kwargs, self[assignment]])
-            # self[new_assignment] = self[assignment]
-            # del self[assignment]
         return JointProbabilityTable.from_pairs(new_table)
 
     def _check_valid(self):
