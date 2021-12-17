@@ -150,6 +150,20 @@ class JointProbabilityTable(DictDistribution):
             marg[marg_assignment] += prob
         return JointProbabilityTable(marg)
 
+    def rename_columns(self, columns):
+        assignments = list(self.keys())
+        new_table = []
+        for assignment in assignments:
+            if isinstance(columns, dict):
+                kwargs = {columns.get(v, v): val for v, val in assignment}
+            elif callable(columns):
+                kwargs = {columns(v): val for v, val in assignment}
+            # new_assignment = Assignment.from_kwargs(**kwargs)
+            new_table.append([kwargs, self[assignment]])
+            # self[new_assignment] = self[assignment]
+            # del self[assignment]
+        return JointProbabilityTable.from_pairs(new_table)
+
     def _check_valid(self):
         # check that all assignments are over the same set of variables
         top_variables = set(next(iter(self.keys())).variables())
