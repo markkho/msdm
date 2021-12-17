@@ -7,6 +7,7 @@ import numpy as np
 from msdm.core.algorithmclasses import Plans, PlanningResult
 from msdm.core.problemclasses.mdp import MarkovDecisionProcess, TabularPolicy, HashableState
 from msdm.core.distributions.dictdistribution import DeterministicDistribution, DictDistribution
+from msdm.core.exceptions import SpecificationException, AlgorithmException
 
 class LAOStar(Plans):
     def __init__(
@@ -57,6 +58,8 @@ class LAOStar(Plans):
         A heuristic search algorithm that finds solutions
         with loops. Artificial Intelligence, 129(1-2), 35-62.
         """
+        if not callable(heuristic):
+            heuristic = (lambda heuristic: lambda s: heuristic)(heuristic)
         self.heuristic = heuristic
         self.max_lao_star_iterations = max_lao_star_iterations
         self.dynamic_programming_iterations = dynamic_programming_iterations
@@ -209,7 +212,10 @@ class ExplicitStateGraph:
         self.n_expanded += 1
         s = state
         for a in node.action_order:
-            assert len(node.action_nextstates[a]) == 0, "Unexpanded nodes should not have next states explored"
+            if len(node.action_nextstates[a]) != 0:
+                if len(set(node.action_order)) != len(node.action_order):
+                    raise SpecificationException(f"Duplicate actions in state {s}: {node.action_order}")
+                raise AlgorithmException("Unexpanded nodes should not have next states explored")
             action_nextstates = list(self.mdp.next_state_dist(s, a).support)
             if self.randomize_nextstate_order:
                 action_nextstates = sorted(action_nextstates, key = lambda _ : self.rng.random())

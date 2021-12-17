@@ -8,6 +8,7 @@ from msdm.core.distributions import DictDistribution
 from msdm.algorithms import PolicyIteration, ValueIteration
 from msdm.tests.domains import Counter, make_russell_norvig_grid
 from msdm.domains import GridWorld
+from msdm.core.exceptions import SpecificationException, AlgorithmException
 
 def test_laostar_random_action_ordering_flag():
     from frozendict import frozendict
@@ -148,6 +149,32 @@ def test_best_breadth_first_state_evaluation_order():
     CD_order = lao_res_CD_heuristic_CD.explicit_graph.states_by_expandedorder()
     DC_order = lao_res_CD_heuristic_DC.explicit_graph.states_by_expandedorder()
     assert CD_order != DC_order
+
+def test_laostar_duplicate_actions():
+    def actions(s):
+        return {
+            "A": ("A", "B", "B"),
+            "B": ("B", "X"),
+        }.get(s, s)
+    def next_state_dist(s, a):
+        return DictDistribution.uniform(list(a))
+    def reward(s, a, ns):
+        return -1
+    def is_terminal(s):
+        return s == "X"
+    mdp = QuickTabularMDP(
+        next_state_dist=next_state_dist,
+        reward=reward,
+        actions=actions,
+        initial_state="A",
+        is_terminal=is_terminal,
+        discount_rate=.99
+    )
+    try:
+        LAOStar(heuristic=0).plan_on(mdp)
+        assert False
+    except SpecificationException:
+        pass
 
 def test_laostar_correctness():
     VALUE_TOLERANCE = 1e-8
