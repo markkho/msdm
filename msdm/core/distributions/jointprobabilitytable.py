@@ -1,6 +1,6 @@
-from collections import defaultdict
 import inspect
 import itertools
+import functools
 import numpy as np
 import pandas as pd
 from msdm.core.distributions import DictDistribution
@@ -9,16 +9,7 @@ from msdm.core.distributions import DictDistribution
 class JointProbabilityTable(DictDistribution):
     """
     Representation of a distribution over variables.
-    `implicit_prob` is set to 0 by default,
-    which means un-represented rows can be ignored.
-    If `implicit_prob` is set to a non-zero value,
-    un-represented rows that are created when joining
-    with other JointProbabilityTable instances will
-    assume the input tables assign that value to
-    that variable assignment.
     """
-    implicit_prob = 0
-
     @classmethod
     def null_table(cls):
         return null_joint_probability_table
@@ -31,7 +22,7 @@ class JointProbabilityTable(DictDistribution):
         return JointProbabilityTable({assignment: 1.0})
 
     @classmethod
-    def from_pairs(cls, pairs, implicit_prob=0):
+    def from_pairs(cls, pairs):
         """
         Construct a `JointProbabilityTable` from [assignment, prob] pairs.
 
@@ -40,16 +31,14 @@ class JointProbabilityTable(DictDistribution):
         pairs : Iterable
             An iterable of [assignment, prob] pairs. `assignment`s can
             be dictionaries or `Assignment` objects.
-        implicit_prob : float
         """
-        table = defaultdict(float)
+        table = {}
         for assignment, prob in pairs:
             if isinstance(assignment, dict):
                 assignment = Assignment.from_kwargs(**assignment)
             assert isinstance(assignment, Assignment)
-            table[assignment] += prob
+            table[assignment] = table.get(assignment, 0.0) + prob
         table = JointProbabilityTable(table)
-        table.implicit_prob = implicit_prob
         return table
 
     def variables(self):
@@ -57,40 +46,19 @@ class JointProbabilityTable(DictDistribution):
         return top_variables
 
     def normalize(self):
-        assert self.implicit_prob == 0., f"Cannot normalize if implicit_prob value is {self.implicit_prob}"
         normalizing_factor = sum([v for v in self.values()])
         table = {assignment: prob/normalizing_factor for assignment, prob in self.items()}
         return JointProbabilityTable(table)
 
     def join(self, other):
         """Join two probability tables"""
-        # first pass - find compatible assignments and combine values, tracking which are
-        # unique to each table
-        self_outer = dict(self.items())
-        other_outer = dict(other.items())
         joint_table = {}
         for (self_assn, self_prob), (other_assn, other_prob) in itertools.product(self.items(), other.items()):
             if self_assn.compatible_with(other_assn):
                 joint_prob = self_prob*other_prob
                 if joint_prob > 0:
-                    joint_table[self_assn + other_assn] = joint_prob
-                if self_assn in self_outer:
-                    del self_outer[self_assn]
-                if other_assn in other_outer:
-                    del other_outer[other_assn]
-
-        # second pass - if any appear only in the outer of either table, use non-zero implicit_prob values
-        assert other.implicit_prob >= 0
-        if other.implicit_prob > 0:
-            for self_assn, self_prob in self_outer.items():
-                joint_table[self_assn] = self_prob*other.implicit_prob
-
-        assert self.implicit_prob >= 0
-        if self.implicit_prob > 0:
-            for other_assn, other_prob in other_outer.items():
-                joint_table[other_assn] = other_prob*self.implicit_prob
+                    joint_table[self_assn.__quickadd__(other_assn)] = joint_prob
         joint_table = JointProbabilityTable(joint_table)
-        joint_table.implicit_prob = other.implicit_prob*self.implicit_prob
         return joint_table
 
     def _single_then(self, function):
@@ -99,22 +67,27 @@ class JointProbabilityTable(DictDistribution):
         The function should return another joint probability table.
         """
         signature = get_signature(function)
-        marg_then_dist = defaultdict(float)
+        marg_then_dist = {}
         args = signature['input_variables']
         for assignment, prob in self.items():
-            assignment_dict = assignment.to_dict()
+            if prob == 0.:
+                continue
+            assignment_dict = dict(assignment)
             then_dist = function(
                 *[assignment_dict[arg] for arg in args]
             )
             if then_dist is None:
-                then_dist = JointProbabilityTable.null_table()
-            assert isinstance(then_dist, JointProbabilityTable)
+                marg_then_dist[assignment] = marg_then_dist.get(assignment, 0.) + prob
+                continue
             for then_assignment, then_prob in then_dist.items():
+                if then_prob == 0.:
+                    continue
                 if not assignment.compatible_with(then_assignment):
                     continue
                 marg_prob = prob*then_prob
-                if marg_prob > 0.:
-                    marg_then_dist[then_assignment + assignment] += marg_prob
+                joint_assignment = then_assignment.__quickadd__(assignment)
+                marg_then_dist[joint_assignment] = \
+                    marg_then_dist.get(joint_assignment, 0.0) + marg_prob
         return JointProbabilityTable(marg_then_dist)
 
     def then(self, *functions):
@@ -124,7 +97,6 @@ class JointProbabilityTable(DictDistribution):
         All functions should return another joint probability table.
         The returned table will not be normalized.
         """
-        assert self.implicit_prob == 0., "Only explicit tables work"
         table = self
         for function in functions:
             table = table._single_then(function)
@@ -136,7 +108,7 @@ class JointProbabilityTable(DictDistribution):
         ----------
         columns: float or callable from variables to True/False
         """
-        marg = defaultdict(float)
+        marg = {}
         for assignment, prob in self.items():
             if isinstance(columns, (list, tuple)):
                 marg_assignment = \
@@ -144,7 +116,7 @@ class JointProbabilityTable(DictDistribution):
             elif callable(columns):
                 marg_assignment = \
                     Assignment.from_pairs([(v, val) for v, val in assignment if columns(v)])
-            marg[marg_assignment] += prob
+            marg[marg_assignment] = marg.get(marg_assignment, 0.0) + prob
         return JointProbabilityTable(marg)
 
     def rename_columns(self, columns):
@@ -169,17 +141,11 @@ class JointProbabilityTable(DictDistribution):
                 )
 
         #check that probabilities sum to 1
-        if self.implicit_prob != 0:
-            raise UnnormalizedDistributionError(
-                f"Table is only normalized if implicit_prob == 0 (self.implicit_prob = {self.implicit_prob})"
-            )
-        if self.implicit_prob == 0 and not np.isclose(sum(self.probs), 1.0):
+        if not np.isclose(sum(self.probs), 1.0):
             raise UnnormalizedDistributionError(f"Probabilities sum to {sum(self.probs)}")
         return True
 
     def __eq__(self, other):
-        if self.implicit_prob != other.implicit_prob:
-            return False
         return super().__eq__(other)
 
     def __hash__(self):
@@ -195,6 +161,7 @@ class JointProbabilityTable(DictDistribution):
         df = pd.DataFrame([{**a.to_dict(), "prob": prob} for a, prob in self.items()])
         return df
 
+@functools.lru_cache(maxsize=int(1e3))
 def get_signature(function):
     sig = inspect.signature(function)
     input_variables = list(sig.parameters.keys())
@@ -203,8 +170,8 @@ def get_signature(function):
     else:
         output_variables = list(sig.return_annotation)
     return dict(
-        input_variables=input_variables,
-        output_variables=output_variables
+        input_variables=tuple(input_variables),
+        output_variables=tuple(output_variables)
     )
 
 class InconsistentVariablesError(Exception):
@@ -238,14 +205,18 @@ class Assignment(frozenset):
             ",\n".join([f"  ({repr(k)}, {repr(v)})" for k, v in self]) + \
             "\n))"
 
+    def __quickadd__(self, other):
+        """Combine Assignment instances without checking for conflicts"""
+        return Assignment(frozenset.__or__(self, other))
+
     def __add__(self, other):
         """We can combine assignments as long as the values of shared variables match"""
-        combined = {}
-        for k, v in itertools.chain(self, other):
+        combined, shorter = (dict(self), other) if len(self) >= len(other) else (dict(other), self)
+        for k, v in shorter:
             if combined.get(k, v) != v:
                 raise ConflictingKeyError(f"Values of '{k}' conflict: self={combined[k]}, other={v}")
             combined[k] = v
-        return Assignment.from_kwargs(**combined)
+        return Assignment(combined.items())
 
     def to_dict(self):
         return {k: v for k, v in self}
@@ -261,8 +232,8 @@ class Assignment(frozenset):
         shared_variables = self.shared_variables(other)
         if len(shared_variables) == 0:
             return True
-        self_dict = self.to_dict()
-        other_dict = other.to_dict()
+        self_dict = dict(self)
+        other_dict = dict(other)
         for k in shared_variables:
             if self_dict[k] != other_dict[k]:
                 return False
