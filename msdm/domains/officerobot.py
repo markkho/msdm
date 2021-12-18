@@ -6,9 +6,9 @@ from msdm.core.distributions.jointprobabilitytable import \
 from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess
 import functools
 
+
 movement_prob = .99
 movement_list = ["clockwise", "counter_clockwise", "stay"]
-
 
 coffee_request_prob = .2
 coffee_request_persistence = .99
@@ -16,7 +16,7 @@ has_coffee_persistence = .99
 get_coffee_prob = .999999
 deliver_coffee_prob = .999999
 
-mail_waiting_prob = .1
+mail_waiting_prob = .2
 mail_waiting_persistence = .99
 has_mail_persistence = .99
 get_mail_prob = .999999
@@ -27,14 +27,7 @@ messier_prob = .1
 mess_remain_prob = .89
 tidy_levels = [0, 1, 2, 3, 4, 5]
 
-def lru_cache(maxsize):
-    def wrapper(fn):
-        cached = functools.lru_cache(maxsize=maxsize)(fn)
-        wrapped = functools.wraps(fn)(cached)
-        return wrapped
-    return wrapper
-
-@functools.lru_cache()
+@functools.lru_cache(maxsize=None)
 def movement_effect(location, movement) -> ["next_location"]:
     if movement == "stay":
         return JointProbabilityTable.from_pairs([
@@ -67,7 +60,7 @@ def movement_effect(location, movement) -> ["next_location"]:
         [dict(next_location=location), 1 - movement_prob],
     ])
 
-@functools.lru_cache()
+@functools.lru_cache(maxsize=None)
 def get_coffee_effect(location, has_coffee, get_coffee) -> ['next_has_coffee']:
     if location == "coffee_room" and get_coffee and not has_coffee:
         return JointProbabilityTable.from_pairs([
@@ -75,7 +68,7 @@ def get_coffee_effect(location, has_coffee, get_coffee) -> ['next_has_coffee']:
             [dict(next_has_coffee=False), 1 - get_coffee_prob],
         ])
 
-@functools.lru_cache()
+@functools.lru_cache(maxsize=None)
 def deliver_coffee_effect(location, has_coffee, coffee_request, deliver_coffee) -> ['next_coffee_request', 'next_has_coffee']:
     if deliver_coffee and has_coffee and location == "office" and coffee_request:
         return JointProbabilityTable.from_pairs([
@@ -83,14 +76,14 @@ def deliver_coffee_effect(location, has_coffee, coffee_request, deliver_coffee) 
             [dict(next_has_coffee=True, next_coffee_request=True), 1 - deliver_coffee_prob],
         ])
 
-@functools.lru_cache()
+@functools.lru_cache(maxsize=None)
 def has_coffee_effect(has_coffee) -> ['next_has_coffee']:
     return JointProbabilityTable.from_pairs([
         [dict(next_has_coffee=has_coffee), has_coffee_persistence],
         [dict(next_has_coffee=(not has_coffee)), 1 - has_coffee_persistence],
     ])
 
-@functools.lru_cache()
+@functools.lru_cache(maxsize=None)
 def coffee_request_effect(coffee_request) -> ['next_coffee_request']:
     if not coffee_request:
         return JointProbabilityTable.from_pairs([
@@ -102,32 +95,28 @@ def coffee_request_effect(coffee_request) -> ['next_coffee_request']:
         [dict(next_coffee_request=False), 1 - coffee_request_persistence]
     ])
 
-@functools.lru_cache()
+@functools.lru_cache(maxsize=None)
 def cleaning_effect(location, tidiness, clean) -> ["next_tidiness"]:
     if clean and location == "lab":
-        t = JointProbabilityTable.from_pairs([
-            [dict(next_tidiness=min(max(tidy_levels), tidiness+1)), clean_prob],
-            *[
-                [dict(next_tidiness=i), (1-clean_prob)/len(tidy_levels)]
-                for i in tidy_levels
-            ]
+        inc_tidiness = min(max(tidy_levels), tidiness+1)
+        dec_tidiness = max(min(tidy_levels), tidiness-1)
+        return JointProbabilityTable.from_pairs([
+            [dict(next_tidiness=inc_tidiness), clean_prob],
+            [dict(next_tidiness=tidiness), (1-clean_prob)/2],
+            [dict(next_tidiness=dec_tidiness), (1-clean_prob)/2],
         ])
-        t._check_valid()
-        return t
 
-@functools.lru_cache()
+@functools.lru_cache(maxsize=None)
 def mess_effect(tidiness) -> ["next_tidiness"]:
-    rand_prob = 1 - mess_remain_prob - messier_prob
+    inc_tidiness = min(max(tidy_levels), tidiness+1)
+    dec_tidiness = max(min(tidy_levels), tidiness-1)
     return JointProbabilityTable.from_pairs([
-        [dict(next_tidiness=max(min(tidy_levels), tidiness-1)), messier_prob],
+        [dict(next_tidiness=dec_tidiness), messier_prob],
         [dict(next_tidiness=tidiness), mess_remain_prob],
-        *[
-            [dict(next_tidiness=i), rand_prob/len(tidy_levels)]
-            for i in tidy_levels
-        ]
+        [dict(next_tidiness=inc_tidiness), 1 - mess_remain_prob - messier_prob],
     ])
 
-@functools.lru_cache()
+@functools.lru_cache(maxsize=None)
 def get_mail_effect(location, mail_waiting, get_mail, has_mail) -> ["next_mail_waiting", "next_has_mail"]:
     if get_mail and not has_mail and location == "mailroom" and mail_waiting:
         return JointProbabilityTable.from_pairs([
@@ -135,22 +124,22 @@ def get_mail_effect(location, mail_waiting, get_mail, has_mail) -> ["next_mail_w
             [dict(next_mail_waiting=True, next_has_mail=False), 1 - get_mail_prob],
         ])
 
-@functools.lru_cache()
+@functools.lru_cache(maxsize=None)
 def deliver_mail_effect(location, has_mail, deliver_mail) -> ["next_has_mail"]:
     if deliver_mail and has_mail and location == "office":
         return JointProbabilityTable.from_pairs([
-            [dict(has_mail=False), deliver_mail_prob],
-            [dict(has_mail=False), 1 - deliver_mail_prob],
+            [dict(next_has_mail=False), deliver_mail_prob],
+            [dict(next_has_mail=True), 1-deliver_mail_prob],
         ])
 
-@functools.lru_cache()
+@functools.lru_cache(maxsize=None)
 def has_mail_effect(has_mail) -> ['next_has_mail']:
     return JointProbabilityTable.from_pairs([
         [dict(next_has_mail=has_mail), has_mail_persistence],
         [dict(next_has_mail=(not has_mail)), 1 - has_mail_persistence],
     ])
 
-@functools.lru_cache()
+@functools.lru_cache(maxsize=None)
 def mail_arrival_effect(mail_waiting) -> ["next_mail_waiting"]:
     if not mail_waiting:
         return JointProbabilityTable.from_pairs([
@@ -166,33 +155,28 @@ def next_state_dist(s, a):
     dist = JointProbabilityTable.from_pairs([
         [s+a, 1.0]
     ])
-    move_dist = dist.then(movement_effect)
 
-    clean_dist = dist.then(cleaning_effect)
-    clean_dist = clean_dist.then(mess_effect)
-
-    coffee_dist = dist.then(has_coffee_effect)
-    coffee_dist = coffee_dist.then(get_coffee_effect)
-    coffee_dist = coffee_dist.then(deliver_coffee_effect)
-    coffee_dist = coffee_dist.then(coffee_request_effect)
-
-#     mail_dist = dist.then(has_mail_effect)
-#     mail_dist = mail_dist.then(get_mail_effect)
-#     mail_dist = mail_dist.then(mail_arrival_effect)
-#     mail_dist = mail_dist.then(deliver_mail_effect)
-
-    dist = move_dist.join(clean_dist).join(coffee_dist)
-#     .join(mail_dist)
+    dist = dist.then(movement_effect)
+    dist = dist.then(has_coffee_effect)
+    dist = dist.then(get_coffee_effect)
+    dist = dist.then(deliver_coffee_effect)
+    dist = dist.then(coffee_request_effect)
+    dist = dist.then(has_mail_effect)
+    dist = dist.then(get_mail_effect)
+    dist = dist.then(mail_arrival_effect)
+    dist = dist.then(deliver_mail_effect)
+    dist = dist.then(cleaning_effect)
+    dist = dist.then(mess_effect)
     ns_dist = dist.normalize().groupby(lambda c: "next_" in c)
     return ns_dist.rename_columns(lambda c: c.replace("next_", ""))
 
 def initial_state_dist():
     return JointProbabilityTable.deterministic(
         dict(
-            location="coffee_room",
-            coffee_request=True,
+            location="office",
+            coffee_request=False,
             has_coffee=False,
-            has_mail=False,
+            has_mail=True,
             tidiness=2,
             mail_waiting=False
         )
@@ -201,9 +185,9 @@ def initial_state_dist():
 def reward(s, a, ns):
     r = 0
     r += -5 if s['coffee_request'] else 0
-    r += -.1*(max(tidy_levels) - s['tidiness']) if s['tidiness'] is not None else 0
-    r += -1 if s['mail_waiting'] or s['holding'] == 'mail' else 0
-    r += -.1 if a['clean'] else 0
+    r += -1*(max(tidy_levels) - s['tidiness']) if s['tidiness'] is not None else 0
+    r += -5 if s['mail_waiting'] or s['has_mail'] else 0
+    r += -1 if a['clean'] else 0
     return r
 
 def make_action_list():
