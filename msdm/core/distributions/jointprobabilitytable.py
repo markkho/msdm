@@ -140,10 +140,10 @@ class JointProbabilityTable(DictDistribution):
         for assignment, prob in self.items():
             if isinstance(columns, (list, tuple)):
                 marg_assignment = \
-                    Assignment([(v, val) for v, val in assignment if v in columns])
+                    Assignment.from_pairs([(v, val) for v, val in assignment if v in columns])
             elif callable(columns):
                 marg_assignment = \
-                    Assignment([(v, val) for v, val in assignment if columns(v)])
+                    Assignment.from_pairs([(v, val) for v, val in assignment if columns(v)])
             marg[marg_assignment] += prob
         return JointProbabilityTable(marg)
 
@@ -218,6 +218,10 @@ class Assignment(frozenset):
     Represents an assignment of values to variables.
     """
     @classmethod
+    def from_pairs(cls, pairs):
+        return Assignment(pairs)
+
+    @classmethod
     def from_kwargs(cls, **kwargs):
         return Assignment(((k, v) for k, v in kwargs.items()))
 
@@ -226,7 +230,7 @@ class Assignment(frozenset):
             yield k
 
     def __repr__(self):
-        return f"Assignment(({', '.join([str(kv) for kv in self])}))"
+        return f"Assignment.from_pairs(({', '.join([str(kv) for kv in self])}))"
 
     def __str__(self):
         return \
