@@ -3,6 +3,7 @@ warnings.warn("officerobot.py is still experimental.")
 
 from msdm.core.distributions.jointprobabilitytable import \
     Assignment, JointProbabilityTable
+from msdm.core.distributions.factors import make_factor
 from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess
 import functools
 
@@ -27,7 +28,7 @@ messier_prob = .1
 mess_remain_prob = .89
 tidy_levels = [0, 1, 2, 3, 4, 5]
 
-@functools.lru_cache(maxsize=None)
+@make_factor()
 def movement_effect(location, movement) -> ["next_location"]:
     if movement == "stay":
         return JointProbabilityTable.from_pairs([
@@ -60,7 +61,7 @@ def movement_effect(location, movement) -> ["next_location"]:
         [dict(next_location=location), 1 - movement_prob],
     ])
 
-@functools.lru_cache(maxsize=None)
+@make_factor()
 def get_coffee_effect(location, has_coffee, get_coffee) -> ['next_has_coffee']:
     if location == "coffee_room" and get_coffee and not has_coffee:
         return JointProbabilityTable.from_pairs([
@@ -68,7 +69,7 @@ def get_coffee_effect(location, has_coffee, get_coffee) -> ['next_has_coffee']:
             [dict(next_has_coffee=False), 1 - get_coffee_prob],
         ])
 
-@functools.lru_cache(maxsize=None)
+@make_factor()
 def deliver_coffee_effect(location, has_coffee, coffee_request, deliver_coffee) -> ['next_coffee_request', 'next_has_coffee']:
     if deliver_coffee and has_coffee and location == "office" and coffee_request:
         return JointProbabilityTable.from_pairs([
@@ -76,14 +77,14 @@ def deliver_coffee_effect(location, has_coffee, coffee_request, deliver_coffee) 
             [dict(next_has_coffee=True, next_coffee_request=True), 1 - deliver_coffee_prob],
         ])
 
-@functools.lru_cache(maxsize=None)
+@make_factor()
 def has_coffee_effect(has_coffee) -> ['next_has_coffee']:
     return JointProbabilityTable.from_pairs([
         [dict(next_has_coffee=has_coffee), has_coffee_persistence],
         [dict(next_has_coffee=(not has_coffee)), 1 - has_coffee_persistence],
     ])
 
-@functools.lru_cache(maxsize=None)
+@make_factor()
 def coffee_request_effect(coffee_request) -> ['next_coffee_request']:
     if not coffee_request:
         return JointProbabilityTable.from_pairs([
@@ -95,7 +96,7 @@ def coffee_request_effect(coffee_request) -> ['next_coffee_request']:
         [dict(next_coffee_request=False), 1 - coffee_request_persistence]
     ])
 
-@functools.lru_cache(maxsize=None)
+@make_factor()
 def cleaning_effect(location, tidiness, clean) -> ["next_tidiness"]:
     if clean and location == "lab":
         inc_tidiness = min(max(tidy_levels), tidiness+1)
@@ -106,7 +107,7 @@ def cleaning_effect(location, tidiness, clean) -> ["next_tidiness"]:
             [dict(next_tidiness=dec_tidiness), (1-clean_prob)/2],
         ])
 
-@functools.lru_cache(maxsize=None)
+@make_factor()
 def mess_effect(tidiness) -> ["next_tidiness"]:
     inc_tidiness = min(max(tidy_levels), tidiness+1)
     dec_tidiness = max(min(tidy_levels), tidiness-1)
@@ -116,7 +117,7 @@ def mess_effect(tidiness) -> ["next_tidiness"]:
         [dict(next_tidiness=inc_tidiness), 1 - mess_remain_prob - messier_prob],
     ])
 
-@functools.lru_cache(maxsize=None)
+@make_factor()
 def get_mail_effect(location, mail_waiting, get_mail, has_mail) -> ["next_mail_waiting", "next_has_mail"]:
     if get_mail and not has_mail and location == "mailroom" and mail_waiting:
         return JointProbabilityTable.from_pairs([
@@ -124,7 +125,7 @@ def get_mail_effect(location, mail_waiting, get_mail, has_mail) -> ["next_mail_w
             [dict(next_mail_waiting=True, next_has_mail=False), 1 - get_mail_prob],
         ])
 
-@functools.lru_cache(maxsize=None)
+@make_factor()
 def deliver_mail_effect(location, has_mail, deliver_mail) -> ["next_has_mail"]:
     if deliver_mail and has_mail and location == "office":
         return JointProbabilityTable.from_pairs([
@@ -132,14 +133,14 @@ def deliver_mail_effect(location, has_mail, deliver_mail) -> ["next_has_mail"]:
             [dict(next_has_mail=True), 1-deliver_mail_prob],
         ])
 
-@functools.lru_cache(maxsize=None)
+@make_factor()
 def has_mail_effect(has_mail) -> ['next_has_mail']:
     return JointProbabilityTable.from_pairs([
         [dict(next_has_mail=has_mail), has_mail_persistence],
         [dict(next_has_mail=(not has_mail)), 1 - has_mail_persistence],
     ])
 
-@functools.lru_cache(maxsize=None)
+@make_factor()
 def mail_arrival_effect(mail_waiting) -> ["next_mail_waiting"]:
     if not mail_waiting:
         return JointProbabilityTable.from_pairs([
@@ -156,17 +157,17 @@ def next_state_dist(s, a):
         [s+a, 1.0]
     ])
 
-    dist = dist.then(movement_effect)
-    dist = dist.then(has_coffee_effect)
-    dist = dist.then(get_coffee_effect)
-    dist = dist.then(deliver_coffee_effect)
-    dist = dist.then(coffee_request_effect)
-    dist = dist.then(has_mail_effect)
-    dist = dist.then(get_mail_effect)
-    dist = dist.then(mail_arrival_effect)
-    dist = dist.then(deliver_mail_effect)
-    dist = dist.then(cleaning_effect)
-    dist = dist.then(mess_effect)
+    dist = dist.join(movement_effect)
+    dist = dist.join(has_coffee_effect)
+    dist = dist.join(get_coffee_effect)
+    dist = dist.join(deliver_coffee_effect)
+    dist = dist.join(coffee_request_effect)
+    dist = dist.join(has_mail_effect)
+    dist = dist.join(get_mail_effect)
+    dist = dist.join(mail_arrival_effect)
+    dist = dist.join(deliver_mail_effect)
+    dist = dist.join(cleaning_effect)
+    dist = dist.join(mess_effect)
     ns_dist = dist.normalize().groupby(lambda c: "next_" in c)
     return ns_dist.rename_columns(lambda c: c.replace("next_", ""))
 

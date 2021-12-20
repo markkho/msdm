@@ -50,8 +50,7 @@ class JointProbabilityTable(DictDistribution):
         table = {assignment: prob/normalizing_factor for assignment, prob in self.items()}
         return JointProbabilityTable(table)
 
-    def join(self, other):
-        """Join two probability tables"""
+    def _table_join(self, other):
         joint_table = {}
         for (self_assn, self_prob), (other_assn, other_prob) in itertools.product(self.items(), other.items()):
             if self_assn.compatible_with(other_assn):
@@ -61,46 +60,100 @@ class JointProbabilityTable(DictDistribution):
         joint_table = JointProbabilityTable(joint_table)
         return joint_table
 
-    def _single_then(self, function):
+    def _factor_join(self, factor):
         """
-        Apply a function to each assignment in the table.
-        The function should return another joint probability table.
+        Computes the joint distribution of the current
+        distribution and a conditional distribution
+        in the form of a function that takes in elements of
+        the support of `self` and returns a distribution.
+        That is, it computes:
+        P(A, B) = P(A | B) P(B)
+        where P(B) is self and P(A | B) is other.
         """
-        signature = get_signature(function)
-        marg_then_dist = {}
+        signature = factor.signature
+        marg_join_dist = {}
         args = signature['input_variables']
         for assignment, prob in self.items():
             if prob == 0.:
                 continue
             assignment_dict = dict(assignment)
-            then_dist = function(
+            cond_dist = factor(
                 *[assignment_dict[arg] for arg in args]
             )
-            if then_dist is None:
-                marg_then_dist[assignment] = marg_then_dist.get(assignment, 0.) + prob
+            if cond_dist is None:
+                marg_join_dist[assignment] = marg_join_dist.get(assignment, 0.) + prob
                 continue
-            for then_assignment, then_prob in then_dist.items():
-                if then_prob == 0.:
+            for cond_assignment, cond_prob in cond_dist.items():
+                if cond_prob == 0.:
                     continue
-                if not assignment.compatible_with(then_assignment):
+                if not assignment.compatible_with(cond_assignment):
+                    # This means the assignment and returned
+                    # cond_assignment share values, but they don't agree.
+                    # This should then have 0 probability.
+                    # This can happen if assignment has return variables set
+                    # that are not passed into `function`
                     continue
-                marg_prob = prob*then_prob
-                joint_assignment = then_assignment.__quickadd__(assignment)
-                marg_then_dist[joint_assignment] = \
-                    marg_then_dist.get(joint_assignment, 0.0) + marg_prob
-        return JointProbabilityTable(marg_then_dist)
+                joint_prob = prob*cond_prob
+                joint_assignment = cond_assignment.__quickadd__(assignment)
+                marg_join_dist[joint_assignment] = \
+                    marg_join_dist.get(joint_assignment, 0.0) + joint_prob
+        return JointProbabilityTable(marg_join_dist)
 
-    def then(self, *functions):
-        """
-        For each function, apply it to each assignment in the
-        current table. Then join all the resulting tables.
-        All functions should return another joint probability table.
-        The returned table will not be normalized.
-        """
+    def _single_join(self, other):
+        """Join two probability tables"""
+        if isinstance(other, JointProbabilityTable):
+            return self._table_join(other)
+        elif hasattr(other, '_is_factor') and other._is_factor:
+            return self._factor_join(other)
+        else:
+            raise ValueError("Unknown join type")
+
+    def join(self, *others):
         table = self
-        for function in functions:
-            table = table._single_then(function)
+        for other in others:
+            table = table._single_join(other)
         return table
+
+    # def _single_then(self, function):
+    #     """
+    #     Apply a function to each assignment in the table.
+    #     The function should return another joint probability table.
+    #     """
+    #     signature = get_signature(function)
+    #     marg_then_dist = {}
+    #     args = signature['input_variables']
+    #     for assignment, prob in self.items():
+    #         if prob == 0.:
+    #             continue
+    #         assignment_dict = dict(assignment)
+    #         then_dist = function(
+    #             *[assignment_dict[arg] for arg in args]
+    #         )
+    #         if then_dist is None:
+    #             marg_then_dist[assignment] = marg_then_dist.get(assignment, 0.) + prob
+    #             continue
+    #         for then_assignment, then_prob in then_dist.items():
+    #             if then_prob == 0.:
+    #                 continue
+    #             if not assignment.compatible_with(then_assignment):
+    #                 continue
+    #             marg_prob = prob*then_prob
+    #             joint_assignment = then_assignment.__quickadd__(assignment)
+    #             marg_then_dist[joint_assignment] = \
+    #                 marg_then_dist.get(joint_assignment, 0.0) + marg_prob
+    #     return JointProbabilityTable(marg_then_dist)
+
+    # def then(self, *functions):
+    #     """
+    #     For each function, apply it to each assignment in the
+    #     current table. Then join all the resulting tables.
+    #     All functions should return another joint probability table.
+    #     The returned table will not be normalized.
+    #     """
+    #     table = self
+    #     for function in functions:
+    #         table = table._single_then(function)
+    #     return table
 
     def groupby(self, columns):
         """
@@ -145,9 +198,6 @@ class JointProbabilityTable(DictDistribution):
             raise UnnormalizedDistributionError(f"Probabilities sum to {sum(self.probs)}")
         return True
 
-    def __eq__(self, other):
-        return super().__eq__(other)
-
     def __hash__(self):
         return hash((frozenset(self), frozenset(self.values())))
 
@@ -161,18 +211,21 @@ class JointProbabilityTable(DictDistribution):
         df = pd.DataFrame([{**a.to_dict(), "prob": prob} for a, prob in self.items()])
         return df
 
-@functools.lru_cache(maxsize=int(1e3))
-def get_signature(function):
-    sig = inspect.signature(function)
-    input_variables = list(sig.parameters.keys())
-    if sig.return_annotation == inspect._empty:
-        output_variables = []
-    else:
-        output_variables = list(sig.return_annotation)
-    return dict(
-        input_variables=tuple(input_variables),
-        output_variables=tuple(output_variables)
-    )
+# @functools.lru_cache(maxsize=int(1e3))
+# def get_signature(function):
+#     sig = inspect.signature(function)
+#     input_variables = list(sig.parameters.keys())
+#     if sig.return_annotation == inspect._empty:
+#         output_variables = []
+#     else:
+#         output_variables = list(sig.return_annotation)
+#     return dict(
+#         input_variables=tuple(input_variables),
+#         output_variables=tuple(output_variables)
+#     )
+#
+class ConflictingAssignmentsError(Exception):
+    pass
 
 class InconsistentVariablesError(Exception):
     pass
