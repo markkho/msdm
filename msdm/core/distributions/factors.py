@@ -45,7 +45,8 @@ def combine(factors, use_cache=True, debug_mode=False):
     """
     Combines a list of factors into a new factor function,
     which is equivalent to a factor graph resulting from
-    combining the factors. Factors need to be passed in
+    combining the factors and then marginalizing out the 
+    internal variables. Factors need to be passed in
     in the order that they should be evaluated (i.e., topological order).
 
     Parameters
@@ -69,6 +70,7 @@ def combine(factors, use_cache=True, debug_mode=False):
                 [dict({input_assignment_str}), 1.0]
             ])
             dist = dist.join(*factors)
+            dist = dist.groupby([{output_str}])
             return dist
         return combined
     combined = make_combined(factors)
@@ -90,11 +92,14 @@ def get_input_output_variables(factors):
             output_variables = list(f.variables())
         elif hasattr(f, '_is_factor') and f._is_factor:
             sig = f.signature
+            if sig['output_variables'] == float:
+                continue
+            else:
+                output_variables = sig['output_variables']
             if len(sig['input_variables']) == 0:
                 input_variables = [None]
             else:
                 input_variables = sig['input_variables']
-            output_variables = sig['output_variables']
         else:
             raise ValueError("Inputs must be a factor or JointProbabilityTable")
         for input_v in input_variables:
@@ -114,18 +119,29 @@ def get_input_output_variables(factors):
 
 def debug_wrap(function):
     signature = get_signature(function)
-    output_variables = set(signature['output_variables'])
+    if signature['output_variables'] == float:
+        output_variables = float
+    else:
+        output_variables = set(signature['output_variables'])
+        if len(output_variables & set(signature['input_variables'])) > 0:
+            raise SpecificationException("Overlap between inputs and outputs")
 
     @functools.wraps(function)
     def debugged_function(*args, **kwds):
         result = function(*args, **kwds)
+
         if result is None:
             return result
-        if not isinstance(result, JointProbabilityTable):
+        elif isinstance(result, (int, float)):
+            if output_variables != float:
+                raise SpecificationException("Return type does not match signature")
+            return result
+        elif not isinstance(result, JointProbabilityTable):
             raise ValueError((
-                f"{function.__name__} does not return None or a JointProbabilityTable "
+                f"{function.__name__} does not return None, int, float, or a JointProbabilityTable "
                 f"for args={args}, kwds={kwds}; return = {result}"
             ))
+
         for assignment, prob in result.items():
             assert isinstance(assignment, Assignment)
             variables = set(assignment.variables())
@@ -188,10 +204,14 @@ def get_signature(function):
         raise SpecificationException((
             f"Output variables required in call signature "
             f"for {function.__name__} "
-            f"(e.g., f(input_var) -> ['my_output_var']:)"
+            f"(e.g., f(input_var) -> ['my_output_var'] or f(input_vars) -> float)"
         ))
-    output_variables = list(sig.return_annotation)
+
+    if sig.return_annotation == float:
+        output_variables = float
+    else:
+        output_variables = tuple(sig.return_annotation)
     return dict(
         input_variables=tuple(input_variables),
-        output_variables=tuple(output_variables)
+        output_variables=output_variables
     )

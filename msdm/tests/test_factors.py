@@ -2,10 +2,45 @@ import inspect
 import functools
 from collections import defaultdict
 import textwrap
+from msdm.core.exceptions import SpecificationException
 from msdm.core.distributions.jointprobabilitytable import \
     Assignment, JointProbabilityTable
 from msdm.core.distributions.factors import \
     combine, make_factor, InconsistentVariablesException
+
+def test_xor_potential_function():
+    @make_factor(debug_mode=True)
+    def fx() -> ['x']:
+        return JointProbabilityTable.from_pairs([
+            [dict(x=0), 1/2],
+            [dict(x=1), 1/2],
+        ])
+
+    @make_factor(debug_mode=True)
+    def fy() -> ['y']:
+        return JointProbabilityTable.from_pairs([
+            [dict(y=0), 1/2],
+            [dict(y=1), 1/2],
+        ])
+
+    @make_factor(debug_mode=True)
+    def pot(x, y) -> float:
+        return x != y
+
+    expected = JointProbabilityTable.from_pairs([
+        [dict(x=1, y=0), .5],
+        [dict(x=0, y=1), .5],
+    ])
+    assert combine([fx, fy, pot])().normalize() == expected
+
+def test_input_output_variable_overlap_catch():
+    try:
+        @make_factor(debug_mode=True)
+        def g(x, y, z) -> ['z']:
+            return None
+        assert False
+    except SpecificationException:
+        pass
 
 def test_combine_factors():
     # todo: test debugging and combining
@@ -45,8 +80,8 @@ def test_combine_factors():
         ])
 
     assert f1(3, 6).join(f2).join(f3) == combine([f1, f2, f3])(3, 6)
-    assert f0().join(f1) == combine([f0, f1])()
-    assert combine([f0, f1, f2])() == f0().join(f1).join(f2)
+    assert f0().join(f1).groupby(['z']) == combine([f0, f1])()
+    assert combine([f0, f1, f2])() == f0().join(f1).join(f2).groupby(['z', 'z2'])
     assert combine([f0, f1])().join(f2) == combine([f0, f1, f2])()
 
 def test_factor_debug_mode():
@@ -73,7 +108,7 @@ def test_factor_debug_mode():
     try:
         g_catch()
         assert False
-    except ValueError:
+    except SpecificationException:
         pass
 
 def test_combine_tables_and_factors():
@@ -102,11 +137,11 @@ def test_combine_tables_and_factors():
         [(Assignment.from_kwargs(x=6, y=3)+assn, p) for assn, p in f1(6, 3).items()]
     )
     # it shouldn't be necessary to normalize these
-    from_tables = f0().join(f1_table)
+    from_tables = f0().join(f1_table).groupby(['z'])
     from_combine = combine([f0, f1])()
-    from_table_combine1 = combine([f0(), f1_table])()
-    from_table_combine2 = combine([f0, f1_table])()
-    from_table_combine3 = combine([f0(), f1])()
+    from_table_combine1 = combine([f0(), f1_table])().groupby(['z'])
+    from_table_combine2 = combine([f0, f1_table])().groupby(['z'])
+    from_table_combine3 = combine([f0(), f1])().groupby(['z'])
     assert from_combine.isclose(from_tables)
     assert from_combine.isclose(from_table_combine1)
     assert from_combine.isclose(from_table_combine2)

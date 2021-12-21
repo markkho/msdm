@@ -62,13 +62,6 @@ class JointProbabilityTable(DictDistribution):
 
     def _factor_join(self, factor):
         """
-        Computes the joint distribution of the current
-        distribution and a conditional distribution
-        in the form of a function that takes in elements of
-        the support of `self` and returns a distribution.
-        That is, it computes:
-        P(A, B) = P(A | B) P(B)
-        where P(B) is self and P(A | B) is other.
         """
         signature = factor.signature
         marg_join_dist = {}
@@ -77,21 +70,24 @@ class JointProbabilityTable(DictDistribution):
             if prob == 0.:
                 continue
             assignment_dict = dict(assignment)
-            cond_dist = factor(
+            factor_result = factor(
                 *[assignment_dict[arg] for arg in args]
             )
-            if cond_dist is None:
+            if factor_result is None:
                 marg_join_dist[assignment] = marg_join_dist.get(assignment, 0.) + prob
                 continue
-            for cond_assignment, cond_prob in cond_dist.items():
+
+            # factor is a potential
+            if isinstance(factor_result, (int, float)):
+                if factor_result > 0.0:
+                    marg_join_dist[assignment] = marg_join_dist.get(assignment, 0.) + prob*factor_result
+                continue
+
+            # factor is a conditional distribution
+            for cond_assignment, cond_prob in factor_result.items():
                 if cond_prob == 0.:
                     continue
                 if not assignment.compatible_with(cond_assignment):
-                    # This means the assignment and returned
-                    # cond_assignment share values, but they don't agree.
-                    # This should then have 0 probability.
-                    # This can happen if assignment has return variables set
-                    # that are not passed into `function`
                     continue
                 joint_prob = prob*cond_prob
                 joint_assignment = cond_assignment.__quickadd__(assignment)
@@ -113,47 +109,6 @@ class JointProbabilityTable(DictDistribution):
         for other in others:
             table = table._single_join(other)
         return table
-
-    # def _single_then(self, function):
-    #     """
-    #     Apply a function to each assignment in the table.
-    #     The function should return another joint probability table.
-    #     """
-    #     signature = get_signature(function)
-    #     marg_then_dist = {}
-    #     args = signature['input_variables']
-    #     for assignment, prob in self.items():
-    #         if prob == 0.:
-    #             continue
-    #         assignment_dict = dict(assignment)
-    #         then_dist = function(
-    #             *[assignment_dict[arg] for arg in args]
-    #         )
-    #         if then_dist is None:
-    #             marg_then_dist[assignment] = marg_then_dist.get(assignment, 0.) + prob
-    #             continue
-    #         for then_assignment, then_prob in then_dist.items():
-    #             if then_prob == 0.:
-    #                 continue
-    #             if not assignment.compatible_with(then_assignment):
-    #                 continue
-    #             marg_prob = prob*then_prob
-    #             joint_assignment = then_assignment.__quickadd__(assignment)
-    #             marg_then_dist[joint_assignment] = \
-    #                 marg_then_dist.get(joint_assignment, 0.0) + marg_prob
-    #     return JointProbabilityTable(marg_then_dist)
-
-    # def then(self, *functions):
-    #     """
-    #     For each function, apply it to each assignment in the
-    #     current table. Then join all the resulting tables.
-    #     All functions should return another joint probability table.
-    #     The returned table will not be normalized.
-    #     """
-    #     table = self
-    #     for function in functions:
-    #         table = table._single_then(function)
-    #     return table
 
     def groupby(self, columns):
         """
@@ -211,19 +166,6 @@ class JointProbabilityTable(DictDistribution):
         df = pd.DataFrame([{**a.to_dict(), "prob": prob} for a, prob in self.items()])
         return df
 
-# @functools.lru_cache(maxsize=int(1e3))
-# def get_signature(function):
-#     sig = inspect.signature(function)
-#     input_variables = list(sig.parameters.keys())
-#     if sig.return_annotation == inspect._empty:
-#         output_variables = []
-#     else:
-#         output_variables = list(sig.return_annotation)
-#     return dict(
-#         input_variables=tuple(input_variables),
-#         output_variables=tuple(output_variables)
-#     )
-#
 class ConflictingAssignmentsError(Exception):
     pass
 
