@@ -41,8 +41,11 @@ class JointProbabilityTable(DictDistribution):
         table = JointProbabilityTable(table)
         return table
 
+    def first(self):
+        return next(iter(self.items()))
+
     def variables(self):
-        top_variables = list(next(iter(self.keys())).variables())
+        top_variables = list(self.first()[0].variables())
         return top_variables
 
     def normalize(self):
@@ -191,6 +194,17 @@ class Assignment(frozenset):
         for k, v in self:
             yield k
 
+    def to_dict(self):
+        return {k: v for k, v in self}
+
+    def items(self):
+        for k, v in self:
+            yield k, v
+
+    def values(self):
+        for k, v in self:
+            yield v
+
     def __repr__(self):
         return f"Assignment.from_pairs(({', '.join([str(kv) for kv in self])}))"
 
@@ -212,13 +226,6 @@ class Assignment(frozenset):
                 raise ConflictingKeyError(f"Values of '{k}' conflict: self={combined[k]}, other={v}")
             combined[k] = v
         return Assignment(combined.items())
-
-    def to_dict(self):
-        return {k: v for k, v in self}
-
-    def items(self):
-        for k, v in self:
-            yield k, v
 
     def shared_variables(self, other):
         return set(self.variables()) & set(other.variables())
