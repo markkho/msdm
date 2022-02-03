@@ -102,7 +102,6 @@ class AStarSearch(Plans):
 
         while queue:
             (f, g, r), s = heapq.heappop(queue)
-            print('state', (f, g, r), s)
 
             if mdp.is_terminal(s):
                 path = reconstruct_path(camefrom, start, s)
