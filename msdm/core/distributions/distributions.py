@@ -124,6 +124,17 @@ class FiniteDistribution(Distribution[Event]):
             dist[e] = p/norm
         return DictDistribution(dist)
 
+    def factor(self, predicate: Callable[[Event], float]):
+        dist = {}
+        norm = 0
+        for e, p in self.items():
+            likelihood = predicate(e)
+            if likelihood > 0:
+                dist[e] = p*likelihood
+                norm += dist[e]
+        dist = {e: p/norm for e, p in dist.items()}
+        return DictDistribution(dist)
+
     def joint(self, other: "FiniteDistribution"):
         return DictDistribution({
             (a, b): pa * pb

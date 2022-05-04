@@ -125,6 +125,13 @@ class DistributionTestCase(unittest.TestCase):
             (1, 1): 4/9,
         }))
 
+    def test_factor(self):
+        d = DictDistribution({'aa': .25, 'ab': .25, 'ba': .25, 'bb': .25})
+        cond_d = d.factor(lambda e: .9 if e[0] == 'a' else .1)
+        exp = {'aa': .25*.9, 'ab': .25*.9, 'ba': .25*.1, 'bb': .25*.1}
+        exp = DictDistribution({e: p/sum(exp.values()) for e, p in exp.items()})
+        assert cond_d.isclose(exp)
+
     def test_joint(self):
         d = DictDistribution(a=0.25, b=0.75).joint(DictDistribution({0: 0.1, 1: 0.9}))
         assert d.isclose(DictDistribution({
