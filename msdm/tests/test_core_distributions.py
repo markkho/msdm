@@ -132,6 +132,13 @@ class DistributionTestCase(unittest.TestCase):
         exp = DictDistribution({e: p/sum(exp.values()) for e, p in exp.items()})
         assert cond_d.isclose(exp)
 
+    def test_chain(self):
+        d = DictDistribution({'a': .1, 'b': .9})
+        d2 = d.chain(lambda e: DictDistribution({e+'a': .25, e+'b': .75}))
+        exp = {'aa': .1*.25, 'ab': .1*.75, 'ba': .9*.25, 'bb': .9*.75}
+        exp = DictDistribution({e: p for e, p in exp.items()})
+        assert d2.isclose(exp)
+
     def test_joint(self):
         d = DictDistribution(a=0.25, b=0.75).joint(DictDistribution({0: 0.1, 1: 0.9}))
         assert d.isclose(DictDistribution({

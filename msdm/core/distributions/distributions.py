@@ -135,6 +135,25 @@ class FiniteDistribution(Distribution[Event]):
         dist = {e: p/norm for e, p in dist.items()}
         return DictDistribution(dist)
 
+    def chain(self, function: Callable[[Event], Distribution]) -> Distribution:
+        """
+        Chain a function defined over elements of the current distribution
+        that returns a new distribution [e.g., f(y | x)]. The new distribution
+        corresponds to the joint distribution with the "prior"
+        variables marginalized out [i.e., sum_x(f(y | x) p(x))].
+        """
+        cum_dist = defaultdict(float)
+        for e, p in self.items():
+            new_dist = function(e)
+            for new_e, new_p in new_dist.items():
+                cum_dist[new_e] += p*new_p
+        return DictDistribution(cum_dist)
+
+    # NOTE: should we have chain return a joint distribution and "then" return
+    # the version with the previous variables marginalized out?
+
+    # NOTE: should we have explicit versions of things like mix, multiply etc?
+
     def joint(self, other: "FiniteDistribution"):
         return DictDistribution({
             (a, b): pa * pb
