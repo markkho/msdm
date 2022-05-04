@@ -139,6 +139,12 @@ class DistributionTestCase(unittest.TestCase):
         exp = DictDistribution({e: p for e, p in exp.items()})
         assert d2.isclose(exp)
 
+    def test_is_normalized(self):
+        d1 = DictDistribution({'a': .1, 'b': .9})
+        assert d1.is_normalized()
+        d2 = DictDistribution({'a': .1, 'b': .8})
+        assert not d2.is_normalized()
+
     def test_joint(self):
         d = DictDistribution(a=0.25, b=0.75).joint(DictDistribution({0: 0.1, 1: 0.9}))
         assert d.isclose(DictDistribution({

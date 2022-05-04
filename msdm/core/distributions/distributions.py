@@ -161,5 +161,8 @@ class FiniteDistribution(Distribution[Event]):
             for b, pb in other.items()
         })
 
+    def is_normalized(self, rtol=1e-05, atol=1e-08):
+        return math.isclose(sum(self.probs), 1, rel_tol=rtol, abs_tol=atol)
+
 # Importing down here to avoid a cyclic reference.
 from msdm.core.distributions.dictdistribution import DictDistribution
