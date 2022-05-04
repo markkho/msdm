@@ -97,7 +97,9 @@ class DistributionTestCase(unittest.TestCase):
 
     def test_uniform_and_deterministic_dist(self):
         assert DictDistribution(a=0.5, b=0.5).isclose(DictDistribution.uniform(['a', 'b']))
+        assert len(DictDistribution.uniform(['a', 'b'])) == 2
         assert DictDistribution(a=1).isclose(DictDistribution.deterministic('a'))
+        assert len(DictDistribution.deterministic('a')) == 1
 
     def test_expectation(self):
         assert DictDistribution({0: 0.25, 1: 0.75}).expectation(lambda x: x) == 0.75
