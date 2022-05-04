@@ -1,4 +1,5 @@
 from msdm.core.distributions.distributions import FiniteDistribution
+from collections import defaultdict
 import random
 
 
@@ -42,6 +43,13 @@ class DictDistribution(FiniteDistribution,dict):
     @classmethod
     def deterministic(cls, element):
         return DeterministicDistribution(element)
+
+    @classmethod
+    def from_pairs(cls, element_probs):
+        dist = defaultdict(float)
+        for e, p in element_probs:
+            dist[e] += p
+        return DictDistribution(dist)
 
     @property
     def support(self):

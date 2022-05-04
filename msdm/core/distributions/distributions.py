@@ -149,10 +149,9 @@ class FiniteDistribution(Distribution[Event]):
                 cum_dist[new_e] += p*new_p
         return DictDistribution(cum_dist)
 
-    # NOTE: should we have chain return a joint distribution and "then" return
-    # the version with the previous variables marginalized out?
-
-    # NOTE: should we have explicit versions of things like mix, multiply etc?
+    def normalize(self):
+        total = sum(self.values())
+        return DictDistribution({e: p/total for e, p in self.items()})
 
     def joint(self, other: "FiniteDistribution"):
         return DictDistribution({

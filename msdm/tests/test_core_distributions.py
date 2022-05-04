@@ -145,6 +145,17 @@ class DistributionTestCase(unittest.TestCase):
         d2 = DictDistribution({'a': .1, 'b': .8})
         assert not d2.is_normalized()
 
+    def test_from_pairs(self):
+        d1 = DictDistribution({"a": .2, "b": .8})
+        d2 = DictDistribution.from_pairs([("a", .2), ("b", .8)])
+        assert d1.isclose(d2)
+
+    def test_normalize(self):
+        d = DictDistribution({'a': .1, 'b': .8})
+        assert not d.is_normalized()
+        d = d.normalize()
+        assert d.is_normalized()
+
     def test_joint(self):
         d = DictDistribution(a=0.25, b=0.75).joint(DictDistribution({0: 0.1, 1: 0.9}))
         assert d.isclose(DictDistribution({
