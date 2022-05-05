@@ -125,11 +125,11 @@ class DistributionTestCase(unittest.TestCase):
             (1, 1): 4/9,
         }))
 
-    def test_factor(self):
+    def test_condition_real(self):
         d = DictDistribution({'aa': .25, 'ab': .25, 'ba': .25, 'bb': .25})
-        cond_d = d.factor(lambda e: .9 if e[0] == 'a' else .1)
-        exp = {'aa': .25*.9, 'ab': .25*.9, 'ba': .25*.1, 'bb': .25*.1}
-        exp = DictDistribution({e: p/sum(exp.values()) for e, p in exp.items()})
+        cond_d = d.condition(lambda e: .2 if e[0] == 'a' else .1)
+        exp = {'aa': .25*.2, 'ab': .25*.2, 'ba': .25*.1, 'bb': .25*.1}
+        exp = DictDistribution({e: p/sum(exp.values()) for e, p in exp.items()}) # normalized
         assert cond_d.isclose(exp)
 
     def test_chain(self):

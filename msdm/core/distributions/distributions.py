@@ -117,30 +117,36 @@ class FiniteDistribution(Distribution[Event]):
             tot += real_function(e)*p
         return tot
 
-    def condition(self, predicate: Callable[[Event], bool]):
-        dist = {e: p for e, p in self.items() if predicate(e)}
-        norm = sum(dist.values())
-        for e, p in dist.items():
-            dist[e] = p/norm
-        return DictDistribution(dist)
+    def condition(self, predicate: Callable[[Event], float]):
+        """
+        Given a function that returns probabilities for
+        each element, return a new *normalized* distribution
+        with initial probabilities multiplied by function probabilities.
 
-    def factor(self, predicate: Callable[[Event], float]):
+        This is useful for calculating a posterior distribution. E.g.
+        ```
+        prior_x = DictDistribution(a=.5, b=.5)
+        likelihood_x = lambda x : {'a': .2, 'b': .5}[x]
+        posterior_x = prior.condition(likelihood_x)
+        ```
+        """
         dist = {}
         norm = 0
         for e, p in self.items():
-            likelihood = predicate(e)
-            if likelihood > 0:
-                dist[e] = p*likelihood
+            weight = predicate(e)
+            if weight > 0:
+                dist[e] = p*weight
                 norm += dist[e]
         dist = {e: p/norm for e, p in dist.items()}
         return DictDistribution(dist)
 
     def chain(self, function: Callable[[Event], Distribution]) -> Distribution:
         """
-        Chain a function defined over elements of the current distribution
-        that returns a new distribution [e.g., f(y | x)]. The new distribution
-        corresponds to the joint distribution with the "prior"
-        variables marginalized out [i.e., sum_x(f(y | x) p(x))].
+        Chain a function f that returns a new distribution over Y, given
+        an element from the current support X [e.g., y ~ f(x)].
+        The final distribution corresponds to the
+        joint distribution with the "prior"
+        variables marginalized out [i.e., sum_x(p_f(y | x)p(x))].
         """
         cum_dist = defaultdict(float)
         for e, p in self.items():
