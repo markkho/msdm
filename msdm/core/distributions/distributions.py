@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Sequence, Any, TypeVar, Generic, Tuple, Callable
+from typing import Sequence, Any, TypeVar, Generic, Tuple, Callable, Union
 import random
 import math
 from collections import defaultdict
@@ -19,6 +19,10 @@ class FiniteDistribution(Distribution[Event]):
     @property
     @abstractmethod
     def support(self) -> Sequence[Event]:
+        pass
+
+    @abstractmethod
+    def __len__(self):
         pass
 
     def sample(self, *, rng=random, k=1) -> Event:
@@ -102,23 +106,66 @@ class FiniteDistribution(Distribution[Event]):
         return True
 
     def marginalize(self, projection: Callable[[Event], Event]):
+        """
+        Marginalize the distribution according to the
+        projection function. `projection` must return hashable values.
+        """
         newdist = defaultdict(lambda : 0)
         for e, p in self.items():
             newdist[projection(e)] += p
         return DictDistribution(newdist)
 
     def expectation(self, real_function: Callable[[Event], float] = lambda e: e):
+        """
+        Return the expected value of real_function under
+        the distribution.
+        """
         tot = 0
         for e, p in self.items():
             tot += real_function(e)*p
         return tot
 
-    def condition(self, predicate: Callable[[Event], bool]):
-        dist = {e: p for e, p in self.items() if predicate(e)}
-        norm = sum(dist.values())
-        for e, p in dist.items():
-            dist[e] = p/norm
+    def condition(self, predicate: Callable[[Event], Union[bool, float]]):
+        """
+        Given a function that returns probabilities for
+        each element, return a new *normalized* distribution
+        with initial probabilities multiplied by function probabilities.
+
+        This is useful for calculating a posterior distribution. E.g.
+        ```
+        prior_x = DictDistribution(a=.5, b=.5)
+        likelihood_x = lambda x : {'a': .2, 'b': .5}[x]
+        posterior_x = prior.condition(likelihood_x)
+        ```
+        """
+        dist = {}
+        norm = 0
+        for e, p in self.items():
+            weight = predicate(e)
+            if weight > 0:
+                dist[e] = p*weight
+                norm += dist[e]
+        dist = {e: p/norm for e, p in dist.items()}
         return DictDistribution(dist)
+
+    def chain(self, function: Callable[[Event], Distribution]) -> Distribution:
+        """
+        Chain a function f that returns a new distribution over Y, given
+        an element from the current support X [e.g., y ~ f(x)].
+        The final distribution corresponds to the
+        joint distribution with the "prior"
+        variables marginalized out [i.e., p(y) = sum_x(p_f(y | x)p(x))].
+        """
+        cum_dist = defaultdict(float)
+        for e, p in self.items():
+            new_dist = function(e)
+            for new_e, new_p in new_dist.items():
+                cum_dist[new_e] += p*new_p
+        return DictDistribution(cum_dist)
+
+    def normalize(self):
+        total = sum(self.values())
+        return DictDistribution({e: p/total for e, p in self.items()})
 
     def joint(self, other: "FiniteDistribution"):
         return DictDistribution({
@@ -126,6 +173,9 @@ class FiniteDistribution(Distribution[Event]):
             for a, pa in self.items()
             for b, pb in other.items()
         })
+
+    def is_normalized(self, rtol=1e-05, atol=1e-08):
+        return math.isclose(sum(self.probs), 1, rel_tol=rtol, abs_tol=atol)
 
 # Importing down here to avoid a cyclic reference.
 from msdm.core.distributions.dictdistribution import DictDistribution

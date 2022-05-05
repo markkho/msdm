@@ -97,7 +97,9 @@ class DistributionTestCase(unittest.TestCase):
 
     def test_uniform_and_deterministic_dist(self):
         assert DictDistribution(a=0.5, b=0.5).isclose(DictDistribution.uniform(['a', 'b']))
+        assert len(DictDistribution.uniform(['a', 'b'])) == 2
         assert DictDistribution(a=1).isclose(DictDistribution.deterministic('a'))
+        assert len(DictDistribution.deterministic('a')) == 1
 
     def test_expectation(self):
         assert DictDistribution({0: 0.25, 1: 0.75}).expectation(lambda x: x) == 0.75
@@ -122,6 +124,37 @@ class DistributionTestCase(unittest.TestCase):
             (1, 0): 3/9,
             (1, 1): 4/9,
         }))
+
+    def test_condition_real(self):
+        d = DictDistribution({'aa': .25, 'ab': .25, 'ba': .25, 'bb': .25})
+        cond_d = d.condition(lambda e: .2 if e[0] == 'a' else .1)
+        exp = {'aa': .25*.2, 'ab': .25*.2, 'ba': .25*.1, 'bb': .25*.1}
+        exp = DictDistribution({e: p/sum(exp.values()) for e, p in exp.items()}) # normalized
+        assert cond_d.isclose(exp)
+
+    def test_chain(self):
+        d = DictDistribution({'a': .1, 'b': .9})
+        d2 = d.chain(lambda e: DictDistribution({e+'a': .25, e+'b': .75}))
+        exp = {'aa': .1*.25, 'ab': .1*.75, 'ba': .9*.25, 'bb': .9*.75}
+        exp = DictDistribution({e: p for e, p in exp.items()})
+        assert d2.isclose(exp)
+
+    def test_is_normalized(self):
+        d1 = DictDistribution({'a': .1, 'b': .9})
+        assert d1.is_normalized()
+        d2 = DictDistribution({'a': .1, 'b': .8})
+        assert not d2.is_normalized()
+
+    def test_from_pairs(self):
+        d1 = DictDistribution({"a": .2, "b": .8})
+        d2 = DictDistribution.from_pairs([("a", .2), ("b", .8)])
+        assert d1.isclose(d2)
+
+    def test_normalize(self):
+        d = DictDistribution({'a': .1, 'b': .8})
+        assert not d.is_normalized()
+        d = d.normalize()
+        assert d.is_normalized()
 
     def test_joint(self):
         d = DictDistribution(a=0.25, b=0.75).joint(DictDistribution({0: 0.1, 1: 0.9}))
