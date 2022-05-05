@@ -154,7 +154,7 @@ class FiniteDistribution(Distribution[Event]):
         an element from the current support X [e.g., y ~ f(x)].
         The final distribution corresponds to the
         joint distribution with the "prior"
-        variables marginalized out [i.e., sum_x(p_f(y | x)p(x))].
+        variables marginalized out [i.e., p(y) = sum_x(p_f(y | x)p(x))].
         """
         cum_dist = defaultdict(float)
         for e, p in self.items():
