@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Sequence, Any, TypeVar, Generic, Tuple, Callable
+from typing import Sequence, Any, TypeVar, Generic, Tuple, Callable, Union
 import random
 import math
 from collections import defaultdict
@@ -125,7 +125,7 @@ class FiniteDistribution(Distribution[Event]):
             tot += real_function(e)*p
         return tot
 
-    def condition(self, predicate: Callable[[Event], float]):
+    def condition(self, predicate: Callable[[Event], Union[bool, float]]):
         """
         Given a function that returns probabilities for
         each element, return a new *normalized* distribution
