@@ -35,7 +35,7 @@ class DeterministicDistribution(FiniteDistribution):
     def __len__(self):
         return 1
 
-class DictDistribution(FiniteDistribution,dict):
+class DictDistribution(dict,FiniteDistribution):
     @classmethod
     def uniform(cls, support):
         return UniformDistribution(support)
@@ -57,3 +57,5 @@ class DictDistribution(FiniteDistribution,dict):
 
     def prob(self, e):
         return self.get(e, 0.0)
+
+    __or__ = FiniteDistribution.__or__
