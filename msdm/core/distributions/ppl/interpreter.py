@@ -85,6 +85,39 @@ class Interpreter(ast.NodeTransformer):
         self.ast_restorer.register_node_to_restore(node)
         return ast.Name(id=_result_name, ctx=ast.Load())
 
+    def visit_UnaryOp(self, node):
+        """
+        Special ~ (__invert__) operator for sampling from a
+        `Distribution` object handled here
+        """
+        if not isinstance(node.op, ast.Invert):
+            self.generic_visit(node)
+            return node
+        node_operand = self.visit(node.operand)
+        compiled_op = self.comp_node_manager.get_compiled_node(node_operand, "eval")
+        _result_name = self.temp_vars.new_varname("__invert_res")
+        def run_UnaryOp(context):
+            # we don't know if the operand is a Distribution until runtime
+            operand = context.get(unparse(node_operand))
+            if isinstance(operand, Distribution):
+                for val, prob in operand.items():
+                    if prob == 0:
+                        continue
+                    new_context = context.updated_copy(
+                        context={_result_name: val},
+                        score=math.log(prob)
+                    )
+                    yield new_context
+            else:
+                val = ~operand
+                new_context = context.updated_copy(
+                    context={_result_name: val},
+                )
+                yield new_context
+        self.contexts_manager.update(run_UnaryOp)
+        self.ast_restorer.register_node_to_restore(node)
+        return ast.Name(id=_result_name, ctx=ast.Load())
+        
     def visit_If(self, node):
         node_test = self.visit(node.test)
         compiled_test = self.comp_node_manager.get_compiled_node(node_test, "eval")

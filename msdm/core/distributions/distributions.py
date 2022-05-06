@@ -11,6 +11,9 @@ class Distribution(ABC, Generic[Event]):
     def sample(self, *, rng=random) -> Event:
         pass
 
+    def __invert__(self):
+        return self.sample()
+
 class FiniteDistribution(Distribution[Event]):
     @abstractmethod
     def prob(self, e: Event) -> float:
