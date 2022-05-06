@@ -20,7 +20,6 @@ class Interpreter(ast.NodeTransformer):
             ast_restorer.register_children(node)
         self.contexts_manager = ContextsManager(context)
         self.ast_restorer = ast_restorer
-        self.comp_node_manager = CompiledNodeManager()
         self.temp_vars = TemporaryVariableManager()
         self.visit(node)
         self.ast_restorer.restore_nodes()
@@ -28,7 +27,7 @@ class Interpreter(ast.NodeTransformer):
 
     def visit_statement(self, node):
         ast.NodeTransformer.generic_visit(self, node)
-        compiled_node = self.comp_node_manager.get_compiled_node(node, "exec")
+        compiled_node = compile_node(node, "exec")
         def run_statement(context):
             exec(compiled_node, context.global_context, context.context)
             yield context
@@ -53,7 +52,7 @@ class Interpreter(ast.NodeTransformer):
         It will simply call the function like normal.
         """
         ast.NodeTransformer.generic_visit(self, node)
-        compiled_node = self.comp_node_manager.get_compiled_node(node, "eval")
+        compiled_node = compile_node(node, "eval")
         _result_name = self.temp_vars.new_varname("__call_res")
         def run_Call(context):
             called_name = unparse(node.func)
@@ -94,7 +93,7 @@ class Interpreter(ast.NodeTransformer):
             self.generic_visit(node)
             return node
         node_operand = self.visit(node.operand)
-        compiled_op = self.comp_node_manager.get_compiled_node(node_operand, "eval")
+        compiled_op = compile_node(node_operand, "eval")
         _result_name = self.temp_vars.new_varname("__invert_res")
         def run_UnaryOp(context):
             # we don't know if the operand is a Distribution until runtime
@@ -117,10 +116,10 @@ class Interpreter(ast.NodeTransformer):
         self.contexts_manager.update(run_UnaryOp)
         self.ast_restorer.register_node_to_restore(node)
         return ast.Name(id=_result_name, ctx=ast.Load())
-        
+
     def visit_If(self, node):
         node_test = self.visit(node.test)
-        compiled_test = self.comp_node_manager.get_compiled_node(node_test, "eval")
+        compiled_test = compile_node(node_test, "eval")
         def run_If(context):
             if eval(compiled_test, context.global_context, context.context):
                 yield from Interpreter().run(
@@ -137,7 +136,7 @@ class Interpreter(ast.NodeTransformer):
 
     def visit_Return(self, node):
         ast.NodeTransformer.generic_visit(self, node)
-        compiled_val = self.comp_node_manager.get_compiled_node(node.value, "eval")
+        compiled_val = compile_node(node.value, "eval")
         def run_Return(context):
             context.context['__returnval'] = eval(compiled_val, context.global_context, context.context)
             yield context.updated_copy(status="return")
@@ -146,7 +145,7 @@ class Interpreter(ast.NodeTransformer):
 
     def visit_IfExp(self, node):
         node_test = self.visit(node.test)
-        compiled_test = self.comp_node_manager.get_compiled_node(node_test, "eval")
+        compiled_test = compile_node(node_test, "eval")
         _res_name = self.temp_vars.new_varname("__ifexp_val")
         node_if = ast.Assign(
             targets=[ast.Name(id=_res_name, ctx=ast.Store())],
@@ -176,7 +175,7 @@ class Interpreter(ast.NodeTransformer):
     def visit_FunctionDef(self, node):
         raise NotImplementedError
         # TODO: handle def of functions with sampling (i.e., nondeterminisim)
-        # compiled_node = self.comp_node_manager.get_compiled_node(node, "exec")
+        # compiled_node = compile_node(node, "exec")
         # def run_FunctionDef(context):
         #     exec(compiled_node, context.global_context, context.context)
         #     yield context
@@ -195,6 +194,10 @@ class Interpreter(ast.NodeTransformer):
 
 NodeRecord = namedtuple("NodeRecord", "node parent field field_is_list field_idx")
 class ASTRestorer:
+    """
+    This saves information about the original structure of an AST,
+    so that it can be "restored" later.
+    """
     def __init__(self):
         self.node_records = {}
         self.to_restore = []
@@ -236,18 +239,9 @@ class ASTRestorer:
             else:
                 setattr(record.parent, record.field, node)
 
-class CompiledNodeManager:
-    def __init__(self):
-        self.compiled_nodes = {}
-
-    def get_compiled_node(self, node, mode):
-        node_hash = hash(node)
-        if (node_hash, mode) in self.compiled_nodes:
-            return self.compiled_nodes[(node_hash, mode)]
-        else:
-            compiled_node = compile(unparse(node), "<string>", mode)
-            self.compiled_nodes[(node_hash, mode)] = compiled_node
-            return compiled_node
+def compile_node(node, mode):
+    # can this be done faster by compiling node directly?
+    return compile(unparse(node), "<string>", mode)
 
 class TemporaryVariableManager:
     def __init__(self):
