@@ -1,6 +1,5 @@
 import functools
 from collections import defaultdict
-import re
 import ast
 from astunparse import unparse
 import textwrap
@@ -9,6 +8,7 @@ import functools
 import math
 from msdm.core.distributions.dictdistribution import DictDistribution
 from msdm.core.distributions.ppl.interpreter import Interpreter, ASTRestorer, Context
+from msdm.core.distributions.ppl.utils import strip_comments 
 
 @functools.lru_cache()
 def reify(function):
@@ -94,10 +94,6 @@ def function_closure(func):
         return dict(zip(closure_keys, closure_values))
     else:
         return {}
-
-def strip_comments(code):
-    code = str(code)
-    return re.sub(r'(?m)^ *#.*\n?', '', code)
 
 def get_function_ast(func):
     root = ast.parse(textwrap.dedent(strip_comments(inspect.getsource(func)))).body[0]

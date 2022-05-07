@@ -5,7 +5,7 @@ from types import SimpleNamespace
 import textwrap
 from msdm.core.distributions.ppl.interpreter import Interpreter, \
     Context, factor
-from msdm.core.distributions.ppl.reify import strip_comments
+from msdm.core.distributions.ppl.utils import strip_comments
 from msdm.core.distributions import uniform, flip
 from msdm.core.distributions import DictDistribution
 
