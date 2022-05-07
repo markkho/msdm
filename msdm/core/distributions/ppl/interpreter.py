@@ -38,10 +38,13 @@ class Interpreter(ast.NodeTransformer):
         self,
         node,
         context=None,
+        ast_restorer=None
     ):
+        if ast_restorer is None:
+            ast_restorer = ASTRestorer()
+            ast_restorer.register_children(node)
         self.contexts_manager = ContextsManager(context)
-        self.ast_restorer = ASTRestorer()
-        self.ast_restorer.register_children(node)
+        self.ast_restorer = ast_restorer
         self.temp_vars = TemporaryVariableManager()
         self.visit(node)
         self.ast_restorer.restore_nodes()
