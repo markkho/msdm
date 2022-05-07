@@ -14,6 +14,22 @@ def factor(prob):
 
 class Interpreter(ast.NodeTransformer):
     RETURN_VAR_NAME = '__returnval'
+    @classmethod
+    def is_Distribution_sample(cls, called):
+        """
+        Used to determine at runtime if a
+        Distribution.sample has been called.
+        """
+        return (
+            called.__name__ == "sample" and \
+            inspect.ismethod(called) and \
+            issubclass(called.__self__.__class__, Distribution)
+        )
+    @classmethod
+    def is_factor_statement(cls, called):
+        # factor is a special function defined in this module
+        return called == factor
+
     def run(
         self,
         node,
@@ -62,15 +78,11 @@ class Interpreter(ast.NodeTransformer):
         def run_Call(context):
             called_name = unparse(node.func)
             called = context.get(called_name)
-            if called == factor: #factor is a special function defined in this module
+            if self.is_factor_statement(called):
                 new_prob = eval(compiled_node, context.global_context, context.context)
                 if new_prob > 0:
                     yield context.updated_copy(score=math.log(new_prob))
-            elif ( #is a sample method from a Distribution
-                called.__name__ == "sample" and \
-                inspect.ismethod(called) and \
-                issubclass(called.__self__.__class__, Distribution)
-            ):
+            elif self.is_Distribution_sample(called):
                 for val, prob in called.__self__.items():
                     if prob == 0:
                         continue
