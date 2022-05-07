@@ -34,7 +34,8 @@ def reify(function):
             score=0,
             status=None
         )
-        return_contexts = Interpreter().run(
+        interpreter =Interpreter()
+        return_contexts = interpreter.run(
             body,
             context,
             ast_restorer=ast_restorer
@@ -42,7 +43,7 @@ def reify(function):
         dist = defaultdict(lambda : 0)
         norm = 0
         for context in return_contexts:
-            returnval = context.context.get('__returnval', None)
+            returnval = context.context.get(interpreter.RETURN_VAR_NAME, None)
             prob = math.exp(context.score)
             dist[returnval] += prob
             norm += prob

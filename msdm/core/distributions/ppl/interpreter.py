@@ -1,7 +1,11 @@
 from collections import namedtuple, defaultdict
 import ast
+try:
+    ast.unparse
+    unparse = lambda node : ast.unparse(ast.fix_missing_locations(node))
+except AttributeError:
+    from astunparse import unparse
 import inspect
-from astunparse import unparse
 import math
 from msdm.core.distributions.distributions import Distribution
 
@@ -9,6 +13,7 @@ def factor(prob):
     return prob
 
 class Interpreter(ast.NodeTransformer):
+    RETURN_VAR_NAME = '__returnval'
     def run(
         self,
         node,
@@ -138,7 +143,7 @@ class Interpreter(ast.NodeTransformer):
         ast.NodeTransformer.generic_visit(self, node)
         compiled_val = compile_node(node.value, "eval")
         def run_Return(context):
-            context.context['__returnval'] = eval(compiled_val, context.global_context, context.context)
+            context.context[self.RETURN_VAR_NAME] = eval(compiled_val, context.global_context, context.context)
             yield context.updated_copy(status="return")
         self.contexts_manager.update(run_Return)
         return node
@@ -160,36 +165,37 @@ class Interpreter(ast.NodeTransformer):
                 yield from Interpreter().run(
                     ast.Module(body=node_if),
                     context,
-                    ast_restorer=self.ast_restorer
                 )
             else:
                 yield from Interpreter().run(
                     ast.Module(body=node_else),
                     context,
-                    ast_restorer=self.ast_restorer
                 )
         self.contexts_manager.update(run_If)
         self.ast_restorer.register_node_to_restore(node)
         return ast.Name(id=_res_name, ctx=ast.Load())
-
-    def visit_FunctionDef(self, node):
-        raise NotImplementedError
-        # TODO: handle def of functions with sampling (i.e., nondeterminisim)
-        # compiled_node = compile_node(node, "exec")
-        # def run_FunctionDef(context):
-        #     exec(compiled_node, context.global_context, context.context)
-        #     yield context
-        # self.contexts_manager.update(run_FunctionDef)
 
     def visit_not_implemented(self, node):
         raise NotImplementedError(
             f"{node.__class__.__name__} interpreter not implemented"
         )
 
-    visit_For = visit_While = \
+    # likely to implement
+    visit_Lambda = \
+    visit_not_implemented
+
+    # maybe supported someday
+    visit_For = visit_While = visit_With = visit_Match = \
+    visit_Break = visit_Continue = \
     visit_ListComp = visit_SetComp = visit_GeneratorExp = \
     visit_DictComp = \
-    visit_Break = visit_Continue = \
+    visit_FunctionDef = \
+    visit_not_implemented
+
+    # unlikely to be supported
+    visit_Global = visit_Nonlocal = \
+    visit_AsyncFunctionDef = visit_AsyncFor = AsyncWith = \
+    visit_ClassDef = visit_Import = \
     visit_not_implemented
 
 NodeRecord = namedtuple("NodeRecord", "node parent field field_is_list field_idx")
