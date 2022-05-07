@@ -13,6 +13,10 @@ def factor(prob):
     return prob
 
 class Interpreter(ast.NodeTransformer):
+    """
+    Interprets an AST as probablistic program traces by
+    walking down the AST and enumerating all branches.
+    """
     RETURN_VAR_NAME = '__returnval'
     @classmethod
     def is_Distribution_sample(cls, called):
@@ -34,13 +38,10 @@ class Interpreter(ast.NodeTransformer):
         self,
         node,
         context=None,
-        ast_restorer=None
     ):
-        if ast_restorer is None:
-            ast_restorer = ASTRestorer()
-            ast_restorer.register_children(node)
         self.contexts_manager = ContextsManager(context)
-        self.ast_restorer = ast_restorer
+        self.ast_restorer = ASTRestorer()
+        self.ast_restorer.register_children(node)
         self.temp_vars = TemporaryVariableManager()
         self.visit(node)
         self.ast_restorer.restore_nodes()
@@ -81,7 +82,10 @@ class Interpreter(ast.NodeTransformer):
             if self.is_factor_statement(called):
                 new_prob = eval(compiled_node, context.global_context, context.context)
                 if new_prob > 0:
-                    yield context.updated_copy(score=math.log(new_prob))
+                    yield context.updated_copy(
+                        context={_result_name: new_prob},
+                        score=math.log(new_prob)
+                    )
             elif self.is_Distribution_sample(called):
                 for val, prob in called.__self__.items():
                     if prob == 0:
@@ -135,6 +139,12 @@ class Interpreter(ast.NodeTransformer):
         return ast.Name(id=_result_name, ctx=ast.Load())
 
     def visit_If(self, node):
+        """
+        if <cond>:
+            <stmts>
+        else:
+            <stmts>
+        """
         node_test = self.visit(node.test)
         compiled_test = compile_node(node_test, "eval")
         def run_If(context):
@@ -152,6 +162,7 @@ class Interpreter(ast.NodeTransformer):
         return node
 
     def visit_Return(self, node):
+        """return <exp> by assigning it to a variable"""
         ast.NodeTransformer.generic_visit(self, node)
         compiled_val = compile_node(node.value, "eval")
         def run_Return(context):
@@ -161,6 +172,7 @@ class Interpreter(ast.NodeTransformer):
         return node
 
     def visit_IfExp(self, node):
+        """<exp> if <cond> else <exp>"""
         node_test = self.visit(node.test)
         compiled_test = compile_node(node_test, "eval")
         _res_name = self.temp_vars.new_varname("__ifexp_val")
