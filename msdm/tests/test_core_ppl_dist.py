@@ -132,3 +132,21 @@ def test_compare_lazy_eager_reified_functions_timing():
     eager_time = timeit.timeit(lambda : F_eager(random.random()).prob(1), number=100)
     lazy_time = timeit.timeit(lambda : F_lazy(random.random()).prob(1), number=100)
     assert abs(eager_time - lazy_time) < 1
+
+def test_lazy_reifer_factor_check():
+    def f1():
+        blah.test()
+        factor(test.factor(10))
+        return a + b
+    try:
+        LazyFunctionReifier(f1, check_factor_statements=True)
+        raise
+    except SyntaxError:
+        pass
+    LazyFunctionReifier(f1, check_factor_statements=False)
+
+    def f2():
+        blah.test()
+        test.factor(test.factor(10))
+        return a + b
+    LazyFunctionReifier(f2, check_factor_statements=True)

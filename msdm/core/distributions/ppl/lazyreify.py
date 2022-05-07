@@ -1,4 +1,6 @@
 import functools
+import ast
+import inspect
 from msdm.core.utils.funcutils import method_cache
 from msdm.core.distributions.distributions import FiniteDistribution
 from msdm.core.distributions.ppl.reify import FunctionReifier
@@ -38,8 +40,10 @@ class LazyFunctionReifier(FunctionReifier):
     Handles creating a reified function that
     returns `LazilyReifiedDistribution`s.
     """
-    def __init__(self, function):
+    def __init__(self, function, check_factor_statements=True):
         FunctionReifier.__init__(self, function)
+        if check_factor_statements:
+            FactorCheck().visit(self.func_ast)
         self._normal_reified_func = self.reified_function
         @functools.wraps(self._normal_reified_func)
         def wrapped(*args, **kwargs):
@@ -50,3 +54,13 @@ class LazyFunctionReifier(FunctionReifier):
             )
         wrapped._original_function = self._normal_reified_func._original_function
         self.reified_function = wrapped
+
+class FactorCheck(ast.NodeVisitor):
+    def visit_Call(self, node):
+        if isinstance(node.func, ast.Name) and node.func.id == "factor":
+            raise SyntaxError(
+                "Lazy sampling with factor statements is disallowed. "+
+                "If you want to ignore factor statements, set "+
+                "`check_factor_statements=False`"
+            )
+        self.generic_visit(node)
