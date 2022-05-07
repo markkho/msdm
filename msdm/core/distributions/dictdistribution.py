@@ -58,4 +58,11 @@ class DictDistribution(dict,FiniteDistribution):
     def prob(self, e):
         return self.get(e, 0.0)
 
+    items = dict.items
+    values = dict.values
+    __len__ = dict.__len__
     __or__ = FiniteDistribution.__or__
+    __and__ = FiniteDistribution.__and__
+    __mul__ = FiniteDistribution.__mul__
+    __rmul__ = FiniteDistribution.__rmul__
+    __repr__ = FiniteDistribution.__repr__
