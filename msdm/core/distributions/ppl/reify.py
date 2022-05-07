@@ -1,100 +1,88 @@
+import inspect
+import textwrap
 import functools
 from collections import defaultdict
-import ast
-from astunparse import unparse
-import textwrap
-import inspect
-import functools
 import math
-from msdm.core.distributions.dictdistribution import DictDistribution
+import ast
+try:
+    ast.unparse
+    unparse = lambda node : ast.unparse(ast.fix_missing_locations(node))
+except AttributeError:
+    from astunparse import unparse
+
 from msdm.core.distributions.ppl.interpreter import Interpreter, ASTRestorer, Context
-from msdm.core.distributions.ppl.utils import strip_comments 
+from msdm.core.distributions.ppl.utils import strip_comments
+from msdm.core.distributions.dictdistribution import DictDistribution
 
-@functools.lru_cache()
-def reify(function):
-    """
-    Transform the function into one that returns explicit,
-    normalized `DictDistribution`s over return values.
-    """
-    func_ast = get_function_ast(function)
-    body = ast.Module(body=func_ast.body)
-    arg_extractor = arg_extractor_factory(function)
+class FunctionReifier:
+    ARG_VARS_NAME = "__arg_vars"
+    def __init__(self, function):
+        self.function = function
+        self.func_ast = self.get_function_ast(function)
+        self.func_ast_body = ast.Module(body=self.func_ast.body)
+        self.ast_restorer = ASTRestorer()
 
-    # this way we don't have to re-register body nodes on every call
-    ast_restorer = ASTRestorer()
-    ast_restorer.register_children(body)
+        # this way we don't have to re-register body nodes on every call
+        self.ast_restorer.register_children(self.func_ast)
 
-    @functools.wraps(function)
-    def distribution_function(*_args, **_kwargs):
-        closure_vars = function_closure(function)
-        arg_vars = arg_extractor(_args, _kwargs)
-        context = Context(
-            context={**closure_vars, **arg_vars},
-            global_context=function.__globals__,
-            score=0,
-            status=None
+        # Get arguments to func as a dictionary
+        # HACK - this will miss non-literal default values not in global scope
+        arg_string = unparse(self.func_ast.args).strip()
+        self.compiled_arg_extractor_script = compile(
+            source=textwrap.dedent(f"""
+                def dummy_func({arg_string}):
+                    return locals()
+                {self.ARG_VARS_NAME} = dummy_func(*args, **kws)
+            """),
+            filename="<string>",
+            mode="exec"
         )
-        interpreter =Interpreter()
-        return_contexts = interpreter.run(
-            body,
-            context,
-            ast_restorer=ast_restorer
-        )
-        dist = defaultdict(lambda : 0)
-        norm = 0
-        for context in return_contexts:
-            returnval = context.context.get(interpreter.RETURN_VAR_NAME, None)
-            prob = math.exp(context.score)
-            dist[returnval] += prob
-            norm += prob
-        dist = {e: p/norm for e, p in dist.items()}
-        return DictDistribution(dist)
-    return distribution_function
 
-def arg_extractor_factory(func):
-    # save the values of global variables involved in the function signature
-    # HACK to get arguments of func as a dictionary - misses default values from local scope of function definition
-    func_def_ast = get_function_ast(func)
-    func_args_node = ast.Module(body=[
-        ast.FunctionDef(
-            name=func_def_ast.name,
-            args=func_def_ast.args,
-            body=[ast.Return(
-                value=ast.Call(
-                    func=ast.Name(id='locals', ctx=ast.Load()),
-                    args=[],
-                    keywords=[]
-                ),
-            )],
-            decorator_list=[],
-            returns=None
-        ),
-        ast.Assign(
-            targets=[ast.Name(id='_arg_vars', ctx=ast.Store())],
-            value=ast.Call(
-                func=ast.Name(id=func_def_ast.name, ctx=ast.Load()),
-                args=[ast.Starred(value=ast.Name(id='_args', ctx=ast.Load()), ctx=ast.Load())],
-                keywords=[ast.keyword(arg=None, value=ast.Name(id='_kwargs', ctx=ast.Load()))]
+        self.reified_function = self._create_reified_function()
+
+    def extract_arg_kws(self, args, kws):
+        context = {'args': args, 'kws': kws}
+        exec(self.compiled_arg_extractor_script, self.function.__globals__, context)
+        return context[self.ARG_VARS_NAME]
+
+    def closure(self):
+        if self.function.__closure__ is not None:
+            closure_keys = self.function.__code__.co_freevars
+            closure_values = [cell.cell_contents for cell in self.function.__closure__]
+            return dict(zip(closure_keys, closure_values))
+        else:
+            return {}
+
+    @classmethod
+    def get_function_ast(cls, func):
+        root = ast.parse(textwrap.dedent(strip_comments(inspect.getsource(func)))).body[0]
+        return root
+
+    def _create_reified_function(self):
+        # @functools.wraps(self.function)
+        def wrapper(*args, **kws):
+            init_context = Context(
+                context={
+                    **self.closure(),
+                    **self.extract_arg_kws(args=args, kws=kws)
+                },
+                global_context=self.function.__globals__,
+                score=0,
+                status=None
             )
-        )
-    ])
-    compiled_arg_script = compile(unparse(func_args_node), "<string>", "exec")
-    def arg_extractor(_args, _kwargs):
-        closure_vars = function_closure(func)
-        func_arg_context = {**closure_vars, '_args': _args, '_kwargs': _kwargs}
-        exec(compiled_arg_script, func.__globals__, func_arg_context)
-        return func_arg_context['_arg_vars']
-    return arg_extractor
-
-def function_closure(func):
-    # get closure associated with func
-    if func.__closure__ is not None:
-        closure_keys = func.__code__.co_freevars
-        closure_values = [cell.cell_contents for cell in func.__closure__]
-        return dict(zip(closure_keys, closure_values))
-    else:
-        return {}
-
-def get_function_ast(func):
-    root = ast.parse(textwrap.dedent(strip_comments(inspect.getsource(func)))).body[0]
-    return root
+            return_contexts = Interpreter().run(
+                node=self.func_ast_body,
+                context=init_context,
+                ast_restorer=self.ast_restorer
+            )
+            dist = defaultdict(lambda : 0)
+            norm = 0
+            for context in return_contexts:
+                returnval = context.context.get(Interpreter.RETURN_VAR_NAME, None)
+                prob = math.exp(context.score)
+                dist[returnval] += prob
+                norm += prob
+            dist = {e: p/norm for e, p in dist.items()}
+            return DictDistribution(dist)
+        wrapper._original_function = self.function
+        return wrapper
