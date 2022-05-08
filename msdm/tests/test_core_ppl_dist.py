@@ -3,6 +3,7 @@ import random
 import timeit
 from msdm.core.distributions import uniform, flip, DictDistribution
 from msdm.core.distributions.ppl.reify import FunctionReifier
+from msdm.core.distributions.ppl.interpreter import factor
 from msdm.core.distributions.ppl.lazyreify import LazyFunctionReifier
 
 def test_argument_extraction():
@@ -134,9 +135,9 @@ def test_compare_lazy_eager_reified_functions_timing():
     assert abs(eager_time - lazy_time) < 1
 
 def test_lazy_reifer_factor_check():
-    def f1():
-        blah.test()
-        factor(test.factor(10))
+    def f1(a, b):
+        a.test()
+        factor(a.factor(10))
         return a + b
     try:
         LazyFunctionReifier(f1, check_factor_statements=True)
@@ -145,8 +146,8 @@ def test_lazy_reifer_factor_check():
         pass
     LazyFunctionReifier(f1, check_factor_statements=False)
 
-    def f2():
-        blah.test()
-        test.factor(test.factor(10))
+    def f2(a, b):
+        a.test()
+        a.factor(a.factor(10))
         return a + b
     LazyFunctionReifier(f2, check_factor_statements=True)
