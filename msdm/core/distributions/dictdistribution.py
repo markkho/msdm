@@ -4,17 +4,17 @@ import random
 
 
 class UniformDistribution(FiniteDistribution):
-    def __init__(self, support):
+    def __init__(self, support, check_unique=True):
+        if check_unique:
+            assert len(support) == len(set(support)), (
+                f'Invalid support {support}: some event is duplicated.'
+            )
         self._support = support
-        self._support_set = set(support)
-        assert len(self._support) == len(self._support_set), (
-            f'Invalid support {self._support}: some event is duplicated.'
-        )
     @property
     def support(self):
         return self._support
     def prob(self, e):
-        if e in self._support_set:
+        if e in self._support:
             return 1/len(self.support)
         return 0
     def sample(self, *, rng=random):
