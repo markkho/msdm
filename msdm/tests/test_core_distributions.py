@@ -6,6 +6,7 @@ import pandas as pd
 from scipy.special import softmax
 from msdm.core.distributions import DiscreteFactorTable, DictDistribution,\
     UniformDistribution, DeterministicDistribution, SoftmaxDistribution
+import pytest
 
 def toDF(p):
     df = pd.DataFrame(p.support)
@@ -95,9 +96,17 @@ class DistributionTestCase(unittest.TestCase):
             res = d & DictDistribution({'a': 0.5, 'b': 0.25, 'c': 0.25})
             assert res.isclose(DictDistribution({'a': 2/3, 'b': 1/3}))
 
-    def test_uniform_and_deterministic_dist(self):
-        assert DictDistribution(a=0.5, b=0.5).isclose(DictDistribution.uniform(['a', 'b']))
-        assert len(DictDistribution.uniform(['a', 'b'])) == 2
+    def test_uniform_dist(self):
+        d = DictDistribution.uniform(['a', 'b'])
+        assert DictDistribution(a=0.5, b=0.5).isclose(d)
+        assert len(d) == 2
+
+        # Handles duplicates by raising
+        with pytest.raises(AssertionError) as e:
+            DictDistribution.uniform('abb')
+        assert 'some event is duplicated' in str(e)
+
+    def test_deterministic_dist(self):
         assert DictDistribution(a=1).isclose(DictDistribution.deterministic('a'))
         assert len(DictDistribution.deterministic('a')) == 1
 
