@@ -15,8 +15,6 @@ class UniformDistribution(FiniteDistribution):
         return 0
     def sample(self, *, rng=random):
         return rng.choice(self._support)
-    def __len__(self):
-        return len(self._support)
 
 class DeterministicDistribution(FiniteDistribution):
     def __init__(self, value):
@@ -32,8 +30,6 @@ class DeterministicDistribution(FiniteDistribution):
         return self.value
     def items(self):
         yield self.value, 1
-    def __len__(self):
-        return 1
 
 class DictDistribution(dict,FiniteDistribution):
     @classmethod
@@ -60,7 +56,6 @@ class DictDistribution(dict,FiniteDistribution):
 
     items = dict.items
     values = dict.values
-    __len__ = dict.__len__
     __or__ = FiniteDistribution.__or__
     __and__ = FiniteDistribution.__and__
     __mul__ = FiniteDistribution.__mul__

@@ -21,9 +21,8 @@ class FiniteDistribution(Distribution[Event]):
     def support(self) -> Sequence[Event]:
         pass
 
-    @abstractmethod
     def __len__(self):
-        pass
+        return len(self.support)
 
     def sample(self, *, rng=random, k=1) -> Event:
         support = self.support
