@@ -245,5 +245,18 @@ class DFTTestCase(unittest.TestCase):
             pp
         ))
 
+    def test_subclass(self):
+        class Subclass(DictDistribution):
+            pass
+
+        Subclass.from_dict_class = Subclass
+        d = (Subclass(dict(a=1)) * (1/2)) | (Subclass(dict(b=1)) * (1/2))
+        assert isinstance(d, Subclass)
+        assert d.isclose(DictDistribution(dict(a=1/2, b=1/2)))
+
+        # Left term of operator chooses class
+        assert isinstance(Subclass(dict(a=1)) | DictDistribution(dict(b=1)), Subclass)
+        assert isinstance(DictDistribution(dict(a=1)) | Subclass(dict(b=1)), DictDistribution)
+
 if __name__ == '__main__':
     unittest.main()

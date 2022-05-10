@@ -67,7 +67,7 @@ class FiniteDistribution(Distribution[Event]):
             newdist[e] += other.score(e)
             norm += math.exp(newdist[e])
         lognorm = math.log(norm)
-        return DictDistribution({e: math.exp(l - lognorm) for e, l in newdist.items()})
+        return type(self).from_dict_class({e: math.exp(l - lognorm) for e, l in newdist.items()})
 
     def __or__(self, other: "FiniteDistribution[Event]") -> "FiniteDistribution[Event]":
         """Disjunction/Mixture"""
@@ -76,10 +76,10 @@ class FiniteDistribution(Distribution[Event]):
             newdist[e] += p
         for e, p in other.items():
             newdist[e] += p
-        return DictDistribution(newdist)
+        return type(self).from_dict_class(newdist)
 
     def __mul__(self, num: float):
-        return DictDistribution({e: p*num for e, p in self.items()})
+        return type(self).from_dict_class({e: p*num for e, p in self.items()})
 
     def __rmul__(self, other):
         return self * other
@@ -113,7 +113,7 @@ class FiniteDistribution(Distribution[Event]):
         newdist = defaultdict(lambda : 0)
         for e, p in self.items():
             newdist[projection(e)] += p
-        return DictDistribution(newdist)
+        return type(self).from_dict_class(newdist)
 
     def expectation(self, real_function: Callable[[Event], float] = lambda e: e):
         """
@@ -146,7 +146,7 @@ class FiniteDistribution(Distribution[Event]):
                 dist[e] = p*weight
                 norm += dist[e]
         dist = {e: p/norm for e, p in dist.items()}
-        return DictDistribution(dist)
+        return type(self).from_dict_class(dist)
 
     def chain(self, function: Callable[[Event], Distribution]) -> Distribution:
         """
@@ -161,14 +161,14 @@ class FiniteDistribution(Distribution[Event]):
             new_dist = function(e)
             for new_e, new_p in new_dist.items():
                 cum_dist[new_e] += p*new_p
-        return DictDistribution(cum_dist)
+        return type(self).from_dict_class(cum_dist)
 
     def normalize(self):
         total = sum(self.values())
-        return DictDistribution({e: p/total for e, p in self.items()})
+        return type(self).from_dict_class({e: p/total for e, p in self.items()})
 
     def joint(self, other: "FiniteDistribution"):
-        return DictDistribution({
+        return type(self).from_dict_class({
             (a, b): pa * pb
             for a, pa in self.items()
             for b, pb in other.items()
@@ -179,3 +179,4 @@ class FiniteDistribution(Distribution[Event]):
 
 # Importing down here to avoid a cyclic reference.
 from msdm.core.distributions.dictdistribution import DictDistribution
+FiniteDistribution.from_dict_class = DictDistribution
