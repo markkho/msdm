@@ -5,7 +5,7 @@ from msdm.core.distributions.dictdistribution import DictDistribution, Determini
 from msdm.core.distributions.softmaxdistribution import SoftmaxDistribution
 
 def flip(p=.5):
-    return DictDistribution({0:1-p, 1:p})
+    return DictDistribution({False:1-p, True:p})
 
 def uniform(support):
     return DictDistribution.uniform(support)
