@@ -46,7 +46,7 @@ class FunctionReifier:
         return context[self.ARG_VARS_NAME]
 
     def closure(self):
-        if self.function.__closure__ is not None:
+        if hasattr(self.function, "__closure__") and self.function.__closure__ is not None:
             closure_keys = self.function.__code__.co_freevars
             closure_values = [cell.cell_contents for cell in self.function.__closure__]
             return dict(zip(closure_keys, closure_values))

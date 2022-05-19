@@ -12,12 +12,16 @@ class LazilyReifiedDistribution(FiniteDistribution):
         self._reified_function = reified_function
         self.args = args
         self.kwargs = kwargs
+        self._reified = False
 
     @method_cache
     def _reified_dist(self):
+        self._reified = True
         return self._reified_function(*self.args, **self.kwargs)
 
     def sample(self, *, rng=None):
+        if self._reified:
+            return self._reified_dist().sample(rng=rng)
         if rng is not None:
             # for this to work, the function needs to take rng as a variable
             return self._function(*self.args, **self.kwargs, rng=rng)
