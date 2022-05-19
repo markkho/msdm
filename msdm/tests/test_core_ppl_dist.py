@@ -1,10 +1,19 @@
 import numpy as np
 import random
 import timeit
-from msdm.core.distributions import uniform, flip, DictDistribution
+from collections import Counter
+from msdm.core.distributions import  DictDistribution
 from msdm.core.distributions.ppl.reify import FunctionReifier
 from msdm.core.distributions.ppl.interpreter import factor
 from msdm.core.distributions.ppl.lazyreify import LazyFunctionReifier
+
+def uniform_w_repeat(elements):
+    return DictDistribution({
+        e: c/len(elements) for e, c in Counter(elements).items()
+    })
+
+def flip(p):
+    return DictDistribution({True: p, False: 1 - p})
 
 def test_argument_extraction():
     def f(a, b, c=10, **kws):
@@ -72,13 +81,13 @@ def test_function_reification():
     def f(p=.5):
         cond = ~flip(p)
         if cond:
-            return ~uniform('aab')
+            return ~uniform_w_repeat('aab')
         else:
-            return ~uniform('abb')
+            return ~uniform_w_repeat('abb')
     F = FunctionReifier(f).reified_function
 
     # default value
-    assert F().isclose(uniform('ab'))
+    assert F().isclose(uniform_w_repeat('ab'))
 
     # arg and kw
     for p in [0, .1, .5, .6, .9, 1.0, .88823923]:
@@ -98,13 +107,13 @@ def test_lazy_function_reification():
     def f(p=.5):
         cond = ~flip(p)
         if cond:
-            return ~uniform('aab')
+            return ~uniform_w_repeat('aab')
         else:
-            return ~uniform('abb')
+            return ~uniform_w_repeat('abb')
     F = LazyFunctionReifier(f).reified_function
 
     # default value
-    assert F().isclose(uniform('ab'))
+    assert F().isclose(uniform_w_repeat('ab'))
 
     # arg and kw
     for p in [0, .1, .5, .6, .9, 1.0, .88823923]:

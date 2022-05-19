@@ -2,12 +2,20 @@ import ast
 import math
 from collections import defaultdict
 from types import SimpleNamespace
+from collections import Counter
 import textwrap
 from msdm.core.distributions.ppl.interpreter import Interpreter, \
     Context, factor
 from msdm.core.distributions.ppl.utils import strip_comments
-from msdm.core.distributions import uniform, flip
 from msdm.core.distributions import DictDistribution
+
+def uniform_w_repeat(elements):
+    return DictDistribution({
+        e: c/len(elements) for e, c in Counter(elements).items()
+    })
+
+def flip(p):
+    return DictDistribution({True: p, False: 1 - p})
 
 def clean_code(code):
     return textwrap.dedent(strip_comments(code))
@@ -184,8 +192,8 @@ def test_factor_statement():
     )
     res = _compare_stochastic_outcome(
         code="""
-        x = uniform('ab').sample()
-        y = uniform('abb').sample()
+        x = uniform_w_repeat('ab').sample()
+        y = uniform_w_repeat('abb').sample()
         factor(x == y)
         """,
         varlist=('x', 'y'),
@@ -194,7 +202,7 @@ def test_factor_statement():
             ('b', 'b'): .5*(2/3)
         }),
         init_vars=dict(
-            uniform=uniform,
+            uniform_w_repeat=uniform_w_repeat,
             factor=factor
         )
     )
@@ -202,10 +210,10 @@ def test_factor_statement():
 def test_If_statement():
     res = _compare_stochastic_outcome(
         code="""
-        if uniform([True, False, False]).sample():
-            x = uniform('ab').sample()
+        if uniform_w_repeat([True, False, False]).sample():
+            x = uniform_w_repeat('ab').sample()
         else:
-            x = uniform('ccd').sample()
+            x = uniform_w_repeat('ccd').sample()
         """,
         varlist=('x',),
         exp_dist=DictDistribution({
@@ -215,15 +223,15 @@ def test_If_statement():
             ('d',): (2/3)*(1/3),
         }),
         init_vars=dict(
-            uniform=uniform
+            uniform_w_repeat=uniform_w_repeat
         )
     )
     res = _compare_stochastic_outcome(
         code="""
-        if uniform([True, False, False]).sample():
-            x = uniform('ab').sample()
+        if uniform_w_repeat([True, False, False]).sample():
+            x = uniform_w_repeat('ab').sample()
         else:
-            x = uniform('ccd').sample()
+            x = uniform_w_repeat('ccd').sample()
         """,
         varlist=('x',),
         exp_dist=DictDistribution({
@@ -233,18 +241,18 @@ def test_If_statement():
             ('d',): (2/3)*(1/3),
         }),
         init_vars=dict(
-            uniform=uniform
+            uniform_w_repeat=uniform_w_repeat
         )
     )
     res = _compare_stochastic_outcome(
         code="""
-        if uniform([True, False, False]).sample():
-            x = uniform('ab').sample()
+        if uniform_w_repeat([True, False, False]).sample():
+            x = uniform_w_repeat('ab').sample()
         else:
-            if uniform([True, False, False]).sample():
-                x = uniform('ccd').sample()
+            if uniform_w_repeat([True, False, False]).sample():
+                x = uniform_w_repeat('ccd').sample()
             else:
-                x = uniform('eff').sample()
+                x = uniform_w_repeat('eff').sample()
         """,
         varlist=('x',),
         exp_dist=DictDistribution({
@@ -256,17 +264,17 @@ def test_If_statement():
             ('f',): (2/3)*(2/3)*(2/3),
         }),
         init_vars=dict(
-            uniform=uniform
+            uniform_w_repeat=uniform_w_repeat
         )
     )
     res = _compare_stochastic_outcome(
         code="""
-        if uniform([True, False, False]).sample():
-            x = uniform('ab').sample()
-        elif uniform([True, False, False]).sample():
-            x = uniform('ccd').sample()
+        if uniform_w_repeat([True, False, False]).sample():
+            x = uniform_w_repeat('ab').sample()
+        elif uniform_w_repeat([True, False, False]).sample():
+            x = uniform_w_repeat('ccd').sample()
         else:
-            x = uniform('eff').sample()
+            x = uniform_w_repeat('eff').sample()
         """,
         varlist=('x',),
         exp_dist=DictDistribution({
@@ -278,15 +286,15 @@ def test_If_statement():
             ('f',): (2/3)*(2/3)*(2/3),
         }),
         init_vars=dict(
-            uniform=uniform
+            uniform_w_repeat=uniform_w_repeat
         )
     )
 
 def test_IfExp():
     res = _compare_stochastic_outcome(
         code="""
-        cond_dist = uniform([True, False, False])
-        x = uniform('ab').sample() if cond_dist.sample() else uniform('ccd').sample()
+        cond_dist = uniform_w_repeat([True, False, False])
+        x = uniform_w_repeat('ab').sample() if cond_dist.sample() else uniform_w_repeat('ccd').sample()
         """,
         varlist=('x',),
         exp_dist=DictDistribution({
@@ -296,17 +304,17 @@ def test_IfExp():
             ('d',): (2/3)*(1/3),
         }),
         init_vars=dict(
-            uniform=uniform
+            uniform_w_repeat=uniform_w_repeat
         )
     )
     res = _compare_stochastic_outcome(
         code="""
-        cond_dist = uniform([True, False, False])
-        x = uniform('ab').sample() if \
+        cond_dist = uniform_w_repeat([True, False, False])
+        x = uniform_w_repeat('ab').sample() if \
             cond_dist.sample() else \
-                uniform('ccd').sample() if \
+                uniform_w_repeat('ccd').sample() if \
                 cond_dist.sample() else \
-                uniform('eff').sample()
+                uniform_w_repeat('eff').sample()
         """,
         varlist=('x',),
         exp_dist=DictDistribution({
@@ -318,6 +326,6 @@ def test_IfExp():
             ('f',): (2/3)*(2/3)*(2/3),
         }),
         init_vars=dict(
-            uniform=uniform
+            uniform_w_repeat=uniform_w_repeat
         )
     )
