@@ -6,7 +6,7 @@ def readme():
 
 setup(
     name='msdm',
-    version='0.7',
+    version='0.8',
     description='Models of sequential decision making',
     keywords = [
         'reinforcement learning',
@@ -14,7 +14,7 @@ setup(
         'cognitive science'
     ],
     url='https://github.com/markkho/msdm',
-    download_url = 'https://github.com/markkho/msdm/archive/refs/tags/v0.7.tar.gz',
+    download_url = 'https://github.com/markkho/msdm/archive/refs/tags/v0.8.tar.gz',
     author="Mark Ho",
     author_email='mark.ho.cs@gmail.com',
     license='MIT',
