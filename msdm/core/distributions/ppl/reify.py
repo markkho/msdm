@@ -21,6 +21,7 @@ class FunctionReifier:
         self.func_ast = self.get_function_ast(function)
         self.func_ast_body = ast.Module(body=self.func_ast.body)
         self.ast_restorer = ASTRestorer()
+        self.running = False
 
         # this way we don't have to re-register body nodes on every call
         self.ast_restorer.register_children(self.func_ast)
@@ -61,6 +62,14 @@ class FunctionReifier:
     def _create_reified_function(self):
         # @functools.wraps(self.function)
         def wrapper(*args, **kws):
+            if self.running:
+                raise ReifiedFunctionRunningError(
+                    f"This reified stochastic function (originally named `{self.function.__name__}`)"+\
+                    " is already being interpreted, so its AST has been modified. "+\
+                    "This may be because it is being called recursively, which is not supported "+\
+                    "by the current `FunctionReifier` implementation."
+                )
+            self.running = True
             init_context = Context(
                 context={
                     **self.closure(),
@@ -83,6 +92,10 @@ class FunctionReifier:
                 dist[returnval] += prob
                 norm += prob
             dist = {e: p/norm for e, p in dist.items()}
+            self.running = False
             return DictDistribution(dist)
         wrapper._original_function = self.function
+        wrapper._function_reifier = self
         return wrapper
+
+class ReifiedFunctionRunningError(RuntimeError): pass
