@@ -3,17 +3,15 @@ import random
 import timeit
 from collections import Counter
 from msdm.core.distributions import  DictDistribution
-from msdm.core.distributions.ppl.reify import FunctionReifier
+from msdm.core.distributions.ppl.reify import FunctionReifier, ReifiedFunctionRunningError, reify
 from msdm.core.distributions.ppl.interpreter import factor
 from msdm.core.distributions.ppl.lazyreify import LazyFunctionReifier
+from msdm.core.distributions.ppl.utils import flip
 
 def uniform_w_repeat(elements):
     return DictDistribution({
         e: c/len(elements) for e, c in Counter(elements).items()
     })
-
-def flip(p):
-    return DictDistribution({True: p, False: 1 - p})
 
 def test_argument_extraction():
     def f(a, b, c=10, **kws):
@@ -160,3 +158,33 @@ def test_lazy_reifer_factor_check():
         a.factor(a.factor(10))
         return a + b
     LazyFunctionReifier(f2, check_factor_statements=True)
+
+def test_recursive_error_handling():
+    @reify
+    def f(n, p=.5):
+        if n == 0:
+            return 0
+        if ~flip(p):
+            return 0
+        return n + f(n - 1)
+
+    try:
+        f(3)
+        assert False
+    except ReifiedFunctionRunningError:
+        pass
+
+
+    # This is an example of how it can be written to not
+    # throw the error
+    def f(n, p=.5):
+        @reify
+        def _f(n):
+            if n == 0:
+                return 0
+            if ~flip(p):
+                return 0
+            return 1 + ~f(n - 1)
+        return _f(n)
+
+    f(3)

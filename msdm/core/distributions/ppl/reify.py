@@ -14,6 +14,9 @@ from msdm.core.distributions.ppl.interpreter import Interpreter, ASTRestorer, Co
 from msdm.core.distributions.ppl.utils import strip_comments
 from msdm.core.distributions.dictdistribution import DictDistribution
 
+def reify(function):
+    return FunctionReifier(function).reified_function
+
 class FunctionReifier:
     ARG_VARS_NAME = "__arg_vars"
     def __init__(self, function):

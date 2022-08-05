@@ -8,14 +8,12 @@ from msdm.core.distributions.ppl.interpreter import Interpreter, \
     Context, factor
 from msdm.core.distributions.ppl.utils import strip_comments
 from msdm.core.distributions import DictDistribution
+from msdm.core.distributions.ppl.utils import flip
 
 def uniform_w_repeat(elements):
     return DictDistribution({
         e: c/len(elements) for e, c in Counter(elements).items()
     })
-
-def flip(p):
-    return DictDistribution({True: p, False: 1 - p})
 
 def clean_code(code):
     return textwrap.dedent(strip_comments(code))
