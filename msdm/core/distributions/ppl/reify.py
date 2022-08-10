@@ -1,4 +1,5 @@
 import inspect
+import copy
 import textwrap
 import functools
 from collections import defaultdict
@@ -21,17 +22,12 @@ class FunctionReifier:
     ARG_VARS_NAME = "__arg_vars"
     def __init__(self, function):
         self.function = function
-        self.func_ast = self.get_function_ast(function)
-        self.func_ast_body = ast.Module(body=self.func_ast.body)
-        self.ast_restorer = ASTRestorer()
-        self.running = False
-
-        # this way we don't have to re-register body nodes on every call
-        self.ast_restorer.register_children(self.func_ast)
+        self.reused_ast_handler_stack = []
+        func_ast = self.get_function_ast()
 
         # Get arguments to func as a dictionary
         # HACK - this will miss non-literal default values not in global scope
-        arg_string = unparse(self.func_ast.args).strip()
+        arg_string = unparse(func_ast.args).strip()
         self.compiled_arg_extractor_script = compile(
             source=textwrap.dedent(f"""
                 def dummy_func({arg_string}):
@@ -57,22 +53,26 @@ class FunctionReifier:
         else:
             return {}
 
-    @classmethod
-    def get_function_ast(cls, func):
-        root = ast.parse(textwrap.dedent(strip_comments(inspect.getsource(func)))).body[0]
+    def get_function_ast(self):
+        root = ast.parse(textwrap.dedent(strip_comments(inspect.getsource(self.function)))).body[0]
         return root
 
     def _create_reified_function(self):
         # @functools.wraps(self.function)
         def wrapper(*args, **kws):
-            if self.running:
-                raise ReifiedFunctionRunningError(
-                    f"This reified stochastic function (originally named `{self.function.__name__}`)"+\
-                    " is already being interpreted, so its AST has been modified. "+\
-                    "This may be because it is being called recursively, which is not supported "+\
-                    "by the current `FunctionReifier` implementation."
-                )
-            self.running = True
+
+            if len(self.reused_ast_handler_stack) == 0:
+                func_ast = self.get_function_ast()
+                func_ast_body = ast.Module(body=func_ast.body)
+                ast_restorer = ASTRestorer()
+                # this way we don't have to re-register body nodes on every call
+                ast_restorer.register_children(func_ast)
+                self.reused_ast_handler_stack.append((
+                    func_ast,
+                    func_ast_body,
+                    ast_restorer
+                ))
+            func_ast, func_ast_body, ast_restorer = self.reused_ast_handler_stack.pop()
             init_context = Context(
                 context={
                     **self.closure(),
@@ -83,9 +83,9 @@ class FunctionReifier:
                 status=None
             )
             return_contexts = Interpreter().run(
-                node=self.func_ast_body,
+                node=func_ast_body,
                 context=init_context,
-                ast_restorer=self.ast_restorer
+                ast_restorer=ast_restorer
             )
             dist = defaultdict(lambda : 0)
             norm = 0
@@ -95,10 +95,12 @@ class FunctionReifier:
                 dist[returnval] += prob
                 norm += prob
             dist = {e: p/norm for e, p in dist.items()}
-            self.running = False
+            self.reused_ast_handler_stack.append((
+                func_ast,
+                func_ast_body,
+                ast_restorer
+            ))
             return DictDistribution(dist)
         wrapper._original_function = self.function
         wrapper._function_reifier = self
         return wrapper
-
-class ReifiedFunctionRunningError(RuntimeError): pass

@@ -5,5 +5,5 @@ def strip_comments(code):
     code = str(code)
     return re.sub(r'(?m)^ *#.*\n?', '', code)
 
-def flip(p):
+def flip(p=.5):
     return DictDistribution({True: p, False: 1 - p})

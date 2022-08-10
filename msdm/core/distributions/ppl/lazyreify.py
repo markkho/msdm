@@ -47,7 +47,7 @@ class LazyFunctionReifier(FunctionReifier):
     def __init__(self, function, check_factor_statements=True):
         FunctionReifier.__init__(self, function)
         if check_factor_statements:
-            FactorCheck().visit(self.func_ast)
+            FactorCheck().visit(self.get_function_ast())
         self._normal_reified_func = self.reified_function
         @functools.wraps(self._normal_reified_func)
         def wrapped(*args, **kwargs):

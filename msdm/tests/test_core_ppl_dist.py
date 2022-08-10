@@ -3,7 +3,7 @@ import random
 import timeit
 from collections import Counter
 from msdm.core.distributions import  DictDistribution
-from msdm.core.distributions.ppl.reify import FunctionReifier, ReifiedFunctionRunningError, reify
+from msdm.core.distributions.ppl.reify import FunctionReifier, reify
 from msdm.core.distributions.ppl.interpreter import factor
 from msdm.core.distributions.ppl.lazyreify import LazyFunctionReifier
 from msdm.core.distributions.ppl.utils import flip
@@ -159,32 +159,32 @@ def test_lazy_reifer_factor_check():
         return a + b
     LazyFunctionReifier(f2, check_factor_statements=True)
 
-def test_recursive_error_handling():
+def test_recursive_function():
     @reify
-    def f(n, p=.5):
-        if n == 0:
+    def binomial(n):
+        if n < 0:
             return 0
-        if ~flip(p):
-            return 0
-        return n + f(n - 1)
+        return ~binomial(n - 1) + ~flip(.5)
 
-    try:
-        f(3)
-        assert False
-    except ReifiedFunctionRunningError:
-        pass
+    res = binomial(5)
 
-
-    # This is an example of how it can be written to not
-    # throw the error
-    def f(n, p=.5):
-        @reify
-        def _f(n):
-            if n == 0:
-                return 0
-            if ~flip(p):
-                return 0
-            return 1 + ~f(n - 1)
-        return _f(n)
-
-    f(3)
+    # This is the equivalent recursive function in webppl v0.9.15-430b433d
+    # ```
+    # var binomial = function(n) {
+    #   if (n < 0) {
+    #     return 0
+    #   }
+    #   return binomial(n - 1) + flip(.5)
+    # }
+    # display(Infer(function () {binomial(5)}))
+    # ```
+    webppl_res = DictDistribution({
+        3 : 0.3125,
+        2 : 0.23437500000000008,
+        4 : 0.23437500000000008,
+        1 : 0.09374999999999999,
+        5 : 0.09374999999999999,
+        0 : 0.015625000000000007,
+        6 : 0.015625000000000007,
+    })
+    assert res.isclose(webppl_res)
