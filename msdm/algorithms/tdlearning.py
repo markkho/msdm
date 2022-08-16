@@ -107,8 +107,12 @@ class TemporalDifferenceLearning(Learns):
         self.rand_choose = rand_choose
         self.softmax_temp = softmax_temp
         self.seed = seed
-        if isinstance(initial_q, float):
+        if isinstance(initial_q, (float, int)):
             self.initial_q = lambda s, a: initial_q
+        elif callable(initial_q):
+            self.initial_q = initial_q
+        else:
+            raise ValueError("`inital_q` needs to be a float, int, or real-valued state-action function")
         self.event_listener_class = event_listener_class
 
     @abstractmethod
@@ -226,7 +230,7 @@ class DoubleQLearning(TemporalDifferenceLearning):
         for s in set(q1.keys()) | set(q2.keys()):
             q[s] = {}
             for a in mdp.actions(s):
-                q[s][a] = q1[s][a]*.5 +q2[s][a]+.5
+                q[s][a] = q1[s][a]*.5 +q2[s][a]*.5
         return q
 
 class SARSA(TemporalDifferenceLearning):

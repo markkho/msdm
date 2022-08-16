@@ -55,3 +55,21 @@ def test_td_algs():
     assert qr < qqr
     assert qqr < sr
     assert qqr < esr
+
+def _test_tdlearner_initialization(Learner):
+    g = make_russell_norvig_grid(discount_rate=.95, slip_prob=0.8)
+    l_opt = Learner(rand_choose=.1, episodes=1, seed=1239123, initial_q=10)
+    res_opt = l_opt.train_on(g)
+    for s, av in res_opt.q_values.items():
+        for a, v in av.items():
+            assert v >= 0
+
+    l_pess = Learner(rand_choose=.1, episodes=1, seed=123923, initial_q=lambda s, a : -1)
+    res_pess = l_pess.train_on(g)
+    for s, av in res_pess.q_values.items():
+        for a, v in av.items():
+            assert v <= 0, (s, a, v, res_pess.q_values, Learner)
+
+def test_tdlearning_initialization():
+    for Learner in [QLearning, DoubleQLearning, SARSA, ExpectedSARSA]:
+        _test_tdlearner_initialization(Learner)
