@@ -43,7 +43,7 @@ def argmax(d, rng):
     rng.shuffle(aa)
     return aa
 
-class TDLearningEventListener(ABC):
+class LearningEventListener(ABC):
     @abstractmethod
     def __init__(self):
         pass
@@ -57,7 +57,7 @@ class TDLearningEventListener(ABC):
     def results(self):
         pass
 
-class EpisodeRewardEventListener(TDLearningEventListener):
+class EpisodeRewardEventListener(LearningEventListener):
     def __init__(self):
         self.episode_rewards = []
         self.curr_ep_rewards = 0
@@ -80,7 +80,7 @@ class TemporalDifferenceLearning(Learns):
         softmax_temp : float = 0.0,
         initial_q : float = 0.0,
         seed : int = None,
-        event_listener_class : TDLearningEventListener = EpisodeRewardEventListener
+        event_listener_class : LearningEventListener = EpisodeRewardEventListener
     ):
         """
         Generic temporal difference learning interface based on Sutton & Barto, Ch 6.
@@ -99,7 +99,7 @@ class TemporalDifferenceLearning(Learns):
             Initial q value or a function that returns values for a state and action. Equivalent to a heuristic.
         seed : int
             Random seed
-        event_listener_class : TDLearningEventListener
+        event_listener_class : LearningEventListener
             Event listener class
         """
         self.episodes = episodes
