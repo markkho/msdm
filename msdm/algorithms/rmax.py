@@ -25,7 +25,7 @@ class RMAX(Learns):
         """
         RMAX learning algorithm based on the pseudocode in [Strehl, Li and Littman 2009]
         https://jmlr.org/papers/volume10/strehl09a/strehl09a.pdf
-        Although the algorithm is first proposed in [Braqfman and Tennenholtz 2002]
+        Although the algorithm is first proposed in [Brafman and Tennenholtz 2002]
         https://www.jmlr.org/papers/volume3/brafman02a/brafman02a.pdf
 
         Parameters
