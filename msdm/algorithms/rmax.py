@@ -1,15 +1,13 @@
 """RMAX learning algorithm for MDPs"""
-
 import random
-from functools import cached_property
 
 import numpy as np
 
 from msdm.core.distributions import DictDistribution
 from msdm.core.algorithmclasses import Learns, Result
-from msdm.algorithms.valueiteration import ValueIteration
 from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess, TabularPolicy
 from msdm.algorithms.tdlearning import EpisodeRewardEventListener, LearningEventListener
+from msdm.core.utils.funcutils import cached_property
 
 
 class RMAX(Learns):
