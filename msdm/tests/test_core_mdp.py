@@ -126,5 +126,25 @@ def test_tabularpolicy_softmax():
     softhard_v0 = softhard_pi.evaluate_on(mdp).initial_value
     assert np.isclose(hard_v0, softhard_v0)
 
+def test_tabularmdp_reachable_states():
+    line_world = QuickTabularMDP(
+        next_state_dist=lambda s, a: {
+            (0, 1): DictDistribution({1: 1, 10: 0}),
+            (0, -1): DictDistribution({-1: 1}),
+            (1, -1): DictDistribution({0: 1}),
+            (1, 1): DictDistribution({1: 1}),
+            (10, 1): DictDistribution({10: 1}),
+            (10, -1): DictDistribution({10: 1}),
+            (-1, 1): DictDistribution({0: 1}),
+            (-1, -1): DictDistribution({-1: 1}),
+        }[(s, a)],
+        reward=lambda s, a, ns: -1,
+        actions=(-1, 1),
+        initial_state_dist=DictDistribution({0: 1, 10: 0}),
+        is_terminal=lambda s: s == -1
+    )
+    assert 10 not in line_world.reachable_states()
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -228,13 +228,15 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
 
     @method_cache
     def reachable_states(self) -> Set[HashableState]:
-        S0 = self.initial_state_dist().support
+        S0 = {e for e, p in self.initial_state_dist().items() if p > 0}
         frontier = set(S0)
         visited = set(S0)
         while len(frontier) > 0:
             s = frontier.pop()
             for a in self._cached_actions(s):
-                for ns in self._cached_next_state_dist(s, a).support:
+                for ns, prob in self._cached_next_state_dist(s, a).items():
+                    if prob == 0:
+                        continue
                     if ns not in visited:
                         frontier.add(ns)
                     visited.add(ns)
