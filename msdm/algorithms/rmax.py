@@ -157,7 +157,7 @@ class RMAX(Learns):
         empirical_transition_mat = self.transitions / pseudo_count[:, :, None]
         # only masked positions should be trusted, otherwise self transition
         empirical_transition_mat[~mask] = self._self_transition_mat[~mask]
-        assert np.all(empirical_transition_mat.sum(axis=-1) == 1)
+        assert np.all(np.isclose(empirical_transition_mat.sum(axis=-1), 1)), empirical_transition_mat.sum(axis=-1)
 
         # compute the update for every (s, a), but only apply the ones that needed with a mask
         while True:
