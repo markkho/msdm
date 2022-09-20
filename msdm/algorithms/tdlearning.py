@@ -43,7 +43,7 @@ def argmax(d, rng):
     rng.shuffle(aa)
     return aa
 
-class LearningEventListener(ABC):
+class TDLearningEventListener(ABC):
     @abstractmethod
     def __init__(self):
         pass
@@ -57,7 +57,7 @@ class LearningEventListener(ABC):
     def results(self):
         pass
 
-class EpisodeRewardEventListener(LearningEventListener):
+class EpisodeRewardEventListener(TDLearningEventListener):
     def __init__(self):
         self.episode_rewards = []
         self.curr_ep_rewards = 0
@@ -80,7 +80,7 @@ class TemporalDifferenceLearning(Learns):
         softmax_temp : float = 0.0,
         initial_q : float = 0.0,
         seed : int = None,
-        event_listener_class : LearningEventListener = EpisodeRewardEventListener
+        event_listener_class : TDLearningEventListener = EpisodeRewardEventListener
     ):
         """
         Generic temporal difference learning interface based on Sutton & Barto, Ch 6.

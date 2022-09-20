@@ -1,14 +1,42 @@
 """RMAX learning algorithm for MDPs"""
 import random
+from types import SimpleNamespace
 
 import numpy as np
 
 from msdm.core.distributions import DictDistribution
 from msdm.core.algorithmclasses import Learns, Result
 from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess, TabularPolicy
-from msdm.algorithms.tdlearning import EpisodeRewardEventListener, LearningEventListener
 from msdm.core.utils.funcutils import cached_property
+from abc import abstractmethod, ABC
 
+class RMAXEventListener(ABC):
+    @abstractmethod
+    def __init__(self):
+        pass
+    @abstractmethod
+    def end_of_timestep(self, local_vars):
+        pass
+    @abstractmethod
+    def end_of_episode(self, local_vars):
+        pass
+    @abstractmethod
+    def results(self):
+        pass
+
+class EpisodeRewardEventListener(RMAXEventListener):
+    def __init__(self):
+        self.episode_rewards = []
+        self.curr_ep_rewards = 0
+    def end_of_timestep(self, local_vars):
+        self.curr_ep_rewards += local_vars['r']
+    def end_of_episode(self, local_vars):
+        self.episode_rewards.append(self.curr_ep_rewards)
+        self.curr_ep_rewards = 0
+    def results(self):
+        return SimpleNamespace(
+            episode_rewards=self.episode_rewards
+        )
 
 class RMAX(Learns):
     def __init__(
@@ -18,7 +46,7 @@ class RMAX(Learns):
         num_transition_samples : int = 3,
         bellman_convergence_diff : float = 1e-5,
         seed : int = None,
-        event_listener_class : LearningEventListener = EpisodeRewardEventListener,
+        event_listener_class : RMAXEventListener = EpisodeRewardEventListener,
     ):
         """
         RMAX learning algorithm based on the pseudocode in [Strehl, Li and Littman 2009]
