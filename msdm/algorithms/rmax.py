@@ -106,10 +106,11 @@ class RMAX(Learns):
         q = {}
 
         for si in range(q_matrix.shape[0]):
+            s = index_to_state[si]
+            q[s] = {}
             for ai in range(q_matrix.shape[1]):
-                s = index_to_state[si]
                 a = index_to_action[ai]
-                q[s, a] = q_matrix[si, ai]
+                q[s][a] = q_matrix[si, ai]
         return q
     
     def _init_training(self, mdp):
