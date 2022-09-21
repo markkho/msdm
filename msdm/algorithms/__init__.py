@@ -8,3 +8,4 @@ from msdm.algorithms.pointbasedvalueiteration import PointBasedValueIteration
 from msdm.algorithms.qmdp import QMDP
 from msdm.algorithms.fscgradientascent import FSCGradientAscent
 from msdm.algorithms.tdlearning import QLearning, SARSA, ExpectedSARSA, DoubleQLearning
+from msdm.algorithms.rmax import RMAX

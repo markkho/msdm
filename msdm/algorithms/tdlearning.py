@@ -99,7 +99,7 @@ class TemporalDifferenceLearning(Learns):
             Initial q value or a function that returns values for a state and action. Equivalent to a heuristic.
         seed : int
             Random seed
-        event_listener_class : TDLearningEventListener
+        event_listener_class : LearningEventListener
             Event listener class
         """
         self.episodes = episodes
