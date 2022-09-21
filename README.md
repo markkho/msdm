@@ -69,6 +69,7 @@ tested:
     - Double Q-Learning ([van Hasselt, 2010](https://proceedings.neurips.cc/paper/2010/hash/091d584fced301b442654dd8c23b3fc9-Abstract.html))
     - SARSA ([Rummery & Niranjan, 1994](https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.17.2539&rep=rep1&type=pdf))
     - Expected SARSA ([van Seijen, van Hasselt, Whiteson & Wiering, 2009](https://ieeexplore.ieee.org/abstract/document/4927542))
+    - R-MAX ([Brafman & Tennenholtz, 2002](https://www.jmlr.org/papers/volume3/brafman02a/brafman02a.pdf))
 - Multi-agent Reinforcement Learning (in progress)
     - Correlated Q Learning ([Greenwald & Hall, 2002](https://dl.acm.org/doi/abs/10.5555/3041838.3041869))
     - Nash Q Learning ([Hu & Wellman, 2003](https://dl.acm.org/doi/abs/10.5555/945365.964288))
