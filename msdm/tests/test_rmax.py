@@ -1,5 +1,5 @@
 import numpy as np
-from msdm.algorithms import RMAX, PolicyIteration
+from msdm.algorithms import RMAX
 from msdm.tests.domains import make_russell_norvig_grid
 
 
@@ -7,15 +7,12 @@ def test_rmax():
     gw = make_russell_norvig_grid(discount_rate=.95, slip_prob=0.8)
 
     rmax = RMAX(
-        episodes=100,
+        episodes=200,
         rmax=1,
-        num_transition_samples=3,
-        seed=0,
+        num_transition_samples=10,
+        seed=None,
     )
     res = rmax.train_on(gw)
-    pi_res = PolicyIteration().plan_on(gw)
 
-    for s, a_qval in res.q_values.items():
-        for a, qval in a_qval.items():
-            exp_qval = pi_res.actionvaluefunc[s][a]
-            assert np.isclose(exp_qval, qval), f"{s}, {a}, actual: {qval}, expected: {exp_qval}"
+    ep_rewards = res.event_listener_results.episode_rewards
+    assert np.mean(ep_rewards[:100]) < np.mean(ep_rewards[100:])
