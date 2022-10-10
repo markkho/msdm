@@ -1,6 +1,6 @@
 import numpy as np 
 
-from msdm.algorithms.valueiteration import ValueIteration
+from msdm.algorithms.valueiteration_new import ValueIteration
 from msdm.tests.domains import DeterministicCounter, DeterministicUnreachableCounter, GNTFig6_6, \
     GeometricCounter, VaryingActionNumber, DeadEndBandit, TiedPaths, \
     RussellNorvigGrid_Fig17_3, PositiveRewardCycle
