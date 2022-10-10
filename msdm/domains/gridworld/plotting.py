@@ -1,3 +1,4 @@
+from multiprocessing.sharedctypes import Value
 import numpy as np
 from frozendict import frozendict
 from typing import Mapping, Union, Callable, Hashable
@@ -43,17 +44,26 @@ class GridWorldPlotter:
         self.ax.set_ylim(-0.1, self.gw.height + .1)
         # self.ax.axis('equal')
         ax.set_aspect('equal')
+    
+    def _get_state_xy(self, s):
+        if isinstance(s, (dict, frozendict)):
+            xy = (s['x'], s['y'])
+        elif isinstance(s, (tuple, list)):
+            xy = s
+        else:
+            raise ValueError("Unrecognized grid state representation")
+        return xy
 
     def plot_features(self, featurecolors, edgecolor='darkgrey') -> "GridWorldPlotter":
         """Plot gridworld features"""
         ss = self.gw.state_list
         for s in ss:
-            if self.gw.is_terminal(s):
+            x, y = self._get_state_xy(s)
+            if x < 0 or y < 0:
                 continue
-            xy = (s['x'], s['y'])
             f = self.gw._locFeatures.get(s, '.')[0]
             color = featurecolors.get(f, 'w')
-            square = Rectangle(xy, 1, 1,
+            square = Rectangle((x, y), 1, 1,
                                facecolor=color,
                                edgecolor=edgecolor,
                                linewidth=2)
@@ -69,7 +79,7 @@ class GridWorldPlotter:
 
     def plot_walls(self, facecolor='k', edgecolor='darkgrey'):
         for ws in self.gw.walls:
-            xy = (ws['x'], ws['y'])
+            xy = self._get_state_xy(ws)
             square = Rectangle(xy, 1, 1,
                                facecolor=facecolor,
                                edgecolor=edgecolor,
@@ -79,7 +89,8 @@ class GridWorldPlotter:
 
     def plot_initial_states(self, markersize=15):
         for s in self.gw.initial_states:
-            x, y = s['x'], s['y']
+            xy = self._get_state_xy(s)
+            x, y = xy 
             self.ax.plot(x + .5, y + .5,
                          markeredgecolor='cornflowerblue',
                          marker='o',
@@ -90,7 +101,8 @@ class GridWorldPlotter:
 
     def plot_absorbing_states(self, markersize=15):
         for s in self.gw.absorbing_states:
-            x, y = s['x'], s['y']
+            xy = self._get_state_xy(s)
+            x, y = xy 
             self.ax.plot(x + .5, y + .5,
                          markeredgecolor='cornflowerblue',
                          marker='x',
