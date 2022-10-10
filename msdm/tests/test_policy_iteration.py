@@ -3,13 +3,13 @@ import numpy as np
 from frozendict import frozendict
 from msdm.core.distributions import DictDistribution
 from msdm.algorithms import ValueIteration, PolicyIteration, LRTDP
-from msdm.tests.domains import Counter, GNTFig6_6, Geometric, VaryingActionNumber, make_russell_norvig_grid
+from msdm.tests.domains import DeterministicCounter, GNTFig6_6, GeometricCounter, VaryingActionNumber, make_russell_norvig_grid
 from msdm.domains import GridWorld
 
 
 class MyTestCase(unittest.TestCase):
     def test_policy_iteration(self):
-        mdp = Counter(3)
+        mdp = DeterministicCounter(3)
         res = PolicyIteration().plan_on(mdp)
         out = res.policy.run_on(mdp)
         assert out.state_traj == (0, 1, 2)
@@ -19,7 +19,7 @@ class MyTestCase(unittest.TestCase):
         assert res.policy.action(2) == 1
 
     def test_policy_iteration_geometric(self):
-        mdp = Geometric(p=1/13)
+        mdp = GeometricCounter(p=1/13)
         res = PolicyIteration(iterations=500).plan_on(mdp)
         assert np.isclose(res.V[0], -13), res.V
 

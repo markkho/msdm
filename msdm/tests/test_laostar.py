@@ -6,7 +6,7 @@ from msdm.algorithms import PolicyIteration
 from msdm.core.problemclasses.mdp import QuickTabularMDP
 from msdm.core.distributions import DictDistribution
 from msdm.algorithms import PolicyIteration, ValueIteration
-from msdm.tests.domains import Counter, make_russell_norvig_grid
+from msdm.tests.domains import DeterministicCounter, make_russell_norvig_grid
 from msdm.domains import GridWorld
 from msdm.core.exceptions import SpecificationException, AlgorithmException
 
@@ -296,13 +296,13 @@ def test_trivial_solution():
         seed=42
     )
     # Normal
-    mdp = Counter(3, initial_state=0)
+    mdp = DeterministicCounter(3, initial_state=0)
     res = lao.plan_on(mdp)
     assert res.solution_graph.states_to_nodes[mdp.initial_state()]['value'] == -3
     assert res.policy.run_on(mdp).action_traj == (+1, +1, +1)
 
     # No-op task. Now we start at 3, so value should be 0 there
-    mdp = Counter(3, initial_state=3)
+    mdp = DeterministicCounter(3, initial_state=3)
     res = lao.plan_on(mdp)
     print(res.solution_graph.states_to_nodes)
     assert res.solution_graph.states_to_nodes[mdp.initial_state()]['value'] == 0

@@ -4,12 +4,12 @@ import numpy as np
 from frozendict import frozendict
 from msdm.core.distributions import DictDistribution
 from msdm.algorithms import ValueIteration
-from msdm.tests.domains import Counter, GNTFig6_6, Geometric, VaryingActionNumber
+from msdm.tests.domains import DeterministicCounter, GNTFig6_6, GeometricCounter, VaryingActionNumber
 from msdm.domains import GridWorld
 
 class VITestCase(unittest.TestCase):
     def test_value_iteration(self):
-        mdp = Counter(3)
+        mdp = DeterministicCounter(3)
         res = ValueIteration().plan_on(mdp)
         out = res.policy.run_on(mdp)
         assert out.state_traj == (0, 1, 2)
@@ -19,7 +19,7 @@ class VITestCase(unittest.TestCase):
         assert res.policy.action(2) == 1
 
     def test_value_iteration_geometric(self):
-        mdp = Geometric(p=1/13)
+        mdp = GeometricCounter(p=1/13)
         res = ValueIteration(iterations=500).plan_on(mdp)
         assert np.isclose(res.V[0], -13), res.V
 
