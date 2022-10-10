@@ -7,7 +7,8 @@ from msdm.tests.domains import DeterministicCounter, DeterministicUnreachableCou
 
 def test_tabular_planner_correctness():
     planners = [
-        ValueIteration(max_iterations=1000, max_residual=1e-5, _version="dict")
+        ValueIteration(max_iterations=1000, max_residual=1e-5, _version="dict"),
+        ValueIteration(max_iterations=1000, max_residual=1e-5, _version="vectorized")
     ]
     test_mdps = [
         DeterministicCounter(3, discount_rate=1.0),
