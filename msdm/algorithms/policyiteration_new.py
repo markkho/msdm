@@ -102,8 +102,9 @@ def policy_iteration_vectorized(
         action_penalty = np.log(action_matrix)
     rf_sa = np.einsum("san,san->sa", reward_matrix, transition_matrix)
     rf_sa[terminal_state_vector] = 0
-    policy = action_matrix/action_matrix.sum(-1, keepdims=True)
-    policy[np.isnan(policy)] = 0
+    policy_norm = action_matrix.sum(-1, keepdims=True)
+    policy_norm[policy_norm == 0] = 1
+    policy = action_matrix/policy_norm
 
     for i in range(max_iterations):
         mp = np.einsum("san,sa->sn", transition_matrix, policy)
