@@ -19,9 +19,9 @@ def test_entreg_policy_iteration():
         discount_rate=.99
     )
     hard_res = PolicyIteration().plan_on(gw)
-    tf = torch.from_numpy(gw.transition_matrix)
+    tf = torch.from_numpy(gw.transition_matrix.copy())
     tf.requires_grad = True
-    rf = torch.from_numpy(gw.reward_matrix)
+    rf = torch.from_numpy(gw.reward_matrix.copy())
     ent_reg_params = dict(
         transition_matrix=tf,
         reward_matrix=rf,
@@ -49,7 +49,7 @@ def test_entreg_policy_iteration():
         entropy_weight=1e-20
     )
     hard_q = torch.from_numpy(hard_res._qvaluemat)
-    re_s = torch.from_numpy(gw.reachable_state_vec)
+    re_s = torch.from_numpy(gw.reachable_state_vec.copy())
 
     high_ent_diff = ((high_ent_res.action_values - hard_q)*re_s[:,None]).abs().sum().item()
     med_ent_diff = ((med_ent_res.action_values - hard_q)*re_s[:,None]).abs().sum().item()

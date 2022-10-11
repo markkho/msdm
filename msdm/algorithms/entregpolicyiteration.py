@@ -103,9 +103,9 @@ class EntropyRegularizedPolicyIteration(Plans):
 
     def plan_on(self, mdp: TabularMarkovDecisionProcess):
         ss = mdp.state_list
-        tf = torch.from_numpy(mdp.transition_matrix)
-        rf = torch.from_numpy(mdp.reward_matrix)
-        am = torch.from_numpy(mdp.action_matrix)
+        tf = torch.from_numpy(mdp.transition_matrix.copy())
+        rf = torch.from_numpy(mdp.reward_matrix.copy())
+        am = torch.from_numpy(mdp.action_matrix.copy())
 
         iterations = self.iterations
         if iterations is None:

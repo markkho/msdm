@@ -161,6 +161,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
             for a in self._cached_actions(s):
                 for ns, nsp in self._cached_next_state_dist(s, a).items():
                     tf[si, aai[a], ssi[ns]] = nsp
+        tf.setflags(write=False)
         return tf
 
     @cached_property
@@ -173,6 +174,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         for s, si in ssi.items():
             for a in self._cached_actions(s):
                 am[si, aai[a]] = 1
+        am.setflags(write=False)
         return am
 
     @cached_property
@@ -191,6 +193,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
                     if p == 0.:
                         continue
                     rf[si, aai[a], ssi[ns]] = self.reward(s, a, ns)
+        rf.setflags(write=False)
         return rf
 
     @cached_property
@@ -202,17 +205,22 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
     @cached_property
     def initial_state_vec(self):
         s0 = self.initial_state_dist()
-        return np.array([s0.prob(s) for s in self.state_list])
-
+        s0 = np.array([s0.prob(s) for s in self.state_list])
+        s0.setflags(write=False)
+        return s0
     @cached_property
     def nonterminal_state_vec(self):
         ss = self.state_list
-        return np.array([0 if self.is_terminal(s) else 1 for s in ss])
+        nt = np.array([0 if self.is_terminal(s) else 1 for s in ss])
+        nt.setflags(write=False)
+        return nt
 
     @cached_property
     def reachable_state_vec(self):
         reachable = self.reachable_states()
-        return np.array([1 if s in reachable else 0 for s in self.state_list])
+        reachable = np.array([1 if s in reachable else 0 for s in self.state_list])
+        reachable.setflags(write=False)
+        return reachable
 
     @cached_property
     def absorbing_state_vec(self):
@@ -224,7 +232,9 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
                     if not self.is_terminal(ns):
                         return False
             return True
-        return np.array([is_absorbing(s) for s in self.state_list])
+        absorbing = np.array([is_absorbing(s) for s in self.state_list])
+        absorbing.setflags(write=False)
+        return absorbing
 
     @method_cache
     def reachable_states(self) -> Set[HashableState]:
