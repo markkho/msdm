@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import numpy as np
 
 from msdm.core.distributions import DictDistribution
@@ -52,7 +53,7 @@ class ValueIteration(Plans):
             maxq = max([round_val(v) for v in action_value[s].values()])
             max_actions = [a for a in mdp.actions(s) if round_val(action_value[s][a]) == maxq]
             policy[s] = DictDistribution({a: 1/len(max_actions) for a in max_actions})
-        return PlanningResult(
+        return ValueIterationResult(
             iterations=iterations,
             converged=iterations < (self.max_iterations - 1),
             state_value=state_value,
@@ -60,6 +61,15 @@ class ValueIteration(Plans):
             action_value=action_value,
             policy=TabularPolicy(policy)
         )
+
+@dataclass
+class ValueIterationResult(PlanningResult):
+    iterations : int
+    converged : bool
+    state_value : dict
+    initial_value : float
+    action_value: dict
+    policy : TabularPolicy
 
 def value_iteration_vectorized(
     transition_matrix,
