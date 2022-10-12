@@ -68,7 +68,7 @@ class Policy(ABC):
         return SimulationResult(traj)
 
 class FunctionalPolicy(Policy):
-    def __init__(self, function: Callable[[State], Mapping[Action]]):
+    def __init__(self, function: Callable[[State], Mapping[Action, float]]):
         self._function = function
     
     def action_dist(self, s: State):
@@ -122,8 +122,8 @@ class SimulationResult:
 
 @dataclass
 class PolicyEvaluationResult:
-    state_value : Mapping[State]
-    action_value : Mapping[State, Mapping[Action]]
+    state_value : Mapping[State, float]
+    action_value : Mapping[State, Mapping[Action, float]]
     initial_value : float
-    state_occupancy : Mapping[State]
+    state_occupancy : Mapping[State, float]
     n_simulations : float
