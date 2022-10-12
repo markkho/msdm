@@ -8,28 +8,37 @@ from msdm.core.table import Table
 class TabularPolicy(Table,Policy):
     def __init__(
         self,
-        states : Sequence[State],
-        actions : Sequence[Action],
+        state_list : Sequence[State],
+        action_list : Sequence[Action],
         policy_matrix: np.array
     ):
-        assert policy_matrix.shape == (len(states), len(actions))
-        super().__init__(policy_matrix, (states, actions), probabilities=True)
-        self._states = tuple(states)
-        self._actions = tuple(actions)
+        super().__init__(policy_matrix, (state_list, action_list), _probabilities=True)
+        self._states = tuple(state_list)
+        self._actions = tuple(action_list)
         
     def action_dist(self, s):
         return self[s]
     
-    def __repr__(self):
-        return f"{self.__class__.__name__}(\n\tstates={self._states}, \n\tactions={self._actions}, \n\tpolicy_matrix={repr(self._values)}\n)"
+    @property
+    def state_list(self):
+        return self._states
+    @property
+    def action_list(self):
+        return self._actions
     
-    def as_matrix(self, states, actions):
-        if tuple(states) == self._states and tuple(actions) == self._actions:
+    def __repr__(self):
+        return f"{self.__class__.__name__}(" +\
+            f"states={self._states},\n"+\
+            f"\tactions={self._actions},\n"+\
+            f"\tpolicy_matrix={repr(self._values)}\n)"
+    
+    def as_matrix(self, state_list, action_list):
+        if tuple(state_list) == self._states and tuple(action_list) == self._actions:
             return self._values
-        policy_matrix = np.zeros((len(states), len(actions)))
-        for si, s in enumerate(states):
+        policy_matrix = np.zeros((len(state_list), len(action_list)))
+        for si, s in enumerate(state_list):
             self_si = self._state_index[s]
-            for ai, a in enumerate(actions):
+            for ai, a in enumerate(action_list):
                 self_ai = self._action_index[a]
                 policy_matrix[si, ai] = self._values[self_si, self_ai]
         policy_matrix.setflags(write=False)
