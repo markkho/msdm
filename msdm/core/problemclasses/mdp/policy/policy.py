@@ -93,8 +93,8 @@ class SimulationResult:
 
 @dataclass
 class PolicyEvaluationResult:
-    state_value : Mapping
-    action_value : Mapping
+    state_value : Mapping[State]
+    action_value : Mapping[State, Mapping[Action]]
     initial_value : float
-    state_occupancy : Mapping
+    state_occupancy : Mapping[State]
     n_simulations : float
