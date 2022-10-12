@@ -9,18 +9,18 @@ class Table(np.lib.mixins.NDArrayOperatorsMixin):
         self,
         values : np.array,
         dimensions : tuple[Sequence[Hashable]],
-        probabilities=False,
-        dimension_indices=None
+        _probabilities=False,
+        _dimension_indices=None
     ):
-        assert values.shape == tuple([len(dim) for dim in dimensions])
         assert all([isinstance(dim, (tuple, list)) for dim in dimensions])
         self._values = values
         self._values.setflags(write=False)
         self._dimensions = tuple(dimensions)
-        if dimension_indices is None:
-            dimension_indices = [{i: ii for ii, i in enumerate(dim)} for dim in dimensions]
-        self._dimension_indices = dimension_indices
-        self._probabilities = probabilities
+        if _dimension_indices is None:
+            _dimension_indices = [{i: ii for ii, i in enumerate(dim)} for dim in dimensions]
+        assert values.shape == tuple([len(dim) for dim in _dimension_indices])
+        self._dimension_indices = _dimension_indices
+        self._probabilities = _probabilities
         
     # dict-like interface
     def __getitem__(self, key):
@@ -31,7 +31,7 @@ class Table(np.lib.mixins.NDArrayOperatorsMixin):
         else:
             keys = key
         idx = tuple([dim[k] for dim, k in zip(self._dimension_indices, keys)])
-        if len(idx) == len(self._values.shape): #singleton
+        if len(idx) == len(self._values.shape): #array element
             return self._values[idx]
         return self._get_subspace(idx)
     
@@ -44,11 +44,11 @@ class Table(np.lib.mixins.NDArrayOperatorsMixin):
             probs = self._values[idx]
             return DictDistribution(zip(self._dimensions[len(idx)], probs))
         # otherwise, return a TabularMap of that subspace
-        return self.__class__(
+        return Table(
             self._values[idx],
             self._dimensions[len(idx):],
-            probabilities=self._probabilities,
-            dimension_indices=self._dimension_indices[len(idx):]
+            _probabilities=self._probabilities,
+            _dimension_indices=self._dimension_indices[len(idx):]
         )
     def items(self):
         yield from ((k, self[k]) for k in self.keys())
