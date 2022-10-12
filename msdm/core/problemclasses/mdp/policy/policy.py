@@ -1,11 +1,14 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Mapping
+import random
+import warnings
+from typing import Callable, Collection, Mapping, Sequence
+
+import numpy as np
+
 from msdm.core.problemclasses.mdp.mdp import MarkovDecisionProcess, State, Action
 from msdm.core.distributions import Distribution
 from msdm.core.algorithmclasses import Result
-import random
-import warnings
 
 class Policy(ABC):
     @abstractmethod
@@ -14,6 +17,25 @@ class Policy(ABC):
 
     def action(self, s: State) -> Action:
         return self.action_dist(s).sample()
+    
+    def to_tabular(
+        self,
+        state_list : Sequence[State],
+        action_list : Sequence[Action]
+    ):
+        # import here to avoid circular dependency
+        from msdm.core.problemclasses.mdp.policy.tabularpolicy_new import TabularPolicy
+        policy_matrix = np.zeros((len(state_list), len(action_list)))
+        action_index = {a: ai for ai, a in enumerate(action_list)}
+        for si, s in enumerate(state_list):
+            for a, prob in self.action_dist(s).items():
+                ai = action_index[a]
+                policy_matrix[si, ai] = prob
+        return TabularPolicy(
+            state_list=state_list,
+            action_list=action_list,
+            policy_matrix=policy_matrix
+        ) 
 
     def run_on(
         self,
@@ -44,6 +66,13 @@ class Policy(ABC):
             state=s,
         ))
         return SimulationResult(traj)
+
+class FunctionalPolicy(Policy):
+    def __init__(self, function: Callable[[State], Mapping[Action]]):
+        self._function = function
+    
+    def action_dist(self, s: State):
+        return self._function(s)
 
 class Step(dict):
     timestep : int
