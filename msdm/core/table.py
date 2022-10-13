@@ -8,29 +8,29 @@ class Table(np.lib.mixins.NDArrayOperatorsMixin):
     def __init__(
         self,
         values : np.array,
-        dimensions : tuple[Sequence[Hashable]],
+        # dims : Sequence[str],
+        coords : tuple[Sequence[Hashable]],
         _probabilities=False,
-        _dimension_indices=None
+        _coords_indices=None
     ):
-        assert all([isinstance(dim, (tuple, list)) for dim in dimensions])
         self._values = values
         self._values.setflags(write=False)
-        self._dimensions = tuple(dimensions)
-        if _dimension_indices is None:
-            _dimension_indices = [{i: ii for ii, i in enumerate(dim)} for dim in dimensions]
-        assert values.shape == tuple([len(dim) for dim in _dimension_indices])
-        self._dimension_indices = _dimension_indices
+        self._coords = tuple(coords)
+        if _coords_indices is None:
+            _coords_indices = [{i: ii for ii, i in enumerate(dim)} for dim in coords]
+        assert values.shape == tuple([len(dim) for dim in _coords_indices])
+        self._coords_indices = _coords_indices
         self._probabilities = _probabilities
         
     # dict-like interface
     def __getitem__(self, key):
         if not isinstance(key, (tuple, list)):
             keys = (key,)
-        elif key in self._dimension_indices[0]:
+        elif key in self._coords_indices[0]:
             keys = (key,)
         else:
             keys = key
-        idx = tuple([dim[k] for dim, k in zip(self._dimension_indices, keys)])
+        idx = tuple([dim[k] for dim, k in zip(self._coords_indices, keys)])
         if len(idx) == len(self._values.shape): #array element
             return self._values[idx]
         return self._get_subspace(idx)
@@ -42,24 +42,24 @@ class Table(np.lib.mixins.NDArrayOperatorsMixin):
             # by convention, probabilities are over the last dimension
             # if its probabilities, return a Distribution so we can sample, etc.
             probs = self._values[idx]
-            return DictDistribution(zip(self._dimensions[len(idx)], probs))
+            return DictDistribution(zip(self._coords[len(idx)], probs))
         # otherwise, return a TabularMap of that subspace
         return Table(
-            self._values[idx],
-            self._dimensions[len(idx):],
+            values=self._values[idx],
+            coords=self._coords[len(idx):],
             _probabilities=self._probabilities,
-            _dimension_indices=self._dimension_indices[len(idx):]
+            _coords_indices=self._coords_indices[len(idx):]
         )
     def items(self):
         yield from ((k, self[k]) for k in self.keys())
-    def keys(self):
-        yield from self._dimension_indices[0]
-    def values(self):
-        yield from (self[k] for k in self.keys())
+    # def keys(self):
+    #     yield from self._dimension_indices[0]
+    # def values(self):
+    #     yield from (self[k] for k in self.keys())
     def __len__(self):
-        return len(self._dimensions[0])
-    def __iter__(self):
-        yield from self.keys()
+        return len(self._coords[0])
+    # def __iter__(self):
+    #     yield from self.keys()
     
     # np.array-like interface
     def __getattr__(self, attr):
@@ -73,15 +73,15 @@ class Table(np.lib.mixins.NDArrayOperatorsMixin):
     def __repr__(self):
         return f"{self.__class__.__name__}(" +\
             f"values={repr(self._values)},\n" + \
-            f"dimensions={repr(self._dimensions)},\n" + \
+            f"dimensions={repr(self._coords)},\n" + \
             f"probabilities={self._probabilities},\n" + \
-            f"dimension_indices={self._dimension_indices})"
+            f"dimension_indices={self._coords_indices})"
     
     def _repr_html_(self):
-        rowdims = len(self._dimensions) - 1
+        rowdims = len(self._coords) - 1
         colnames = \
             ['<th></th>']*rowdims + \
-            [f'<th>{k}</th>' for k in self._dimensions[-1]]
+            [f'<th>{k}</th>' for k in self._coords[-1]]
         if rowdims == 0:
             # its a single vector
             colnames = []
@@ -91,7 +91,7 @@ class Table(np.lib.mixins.NDArrayOperatorsMixin):
         elif rowdims == 1:
             # its 2d
             rows = []
-            rownames = self._dimensions[0]
+            rownames = self._coords[0]
             for rowname in rownames:
                 rowdata = self[rowname]
                 rows.extend([
@@ -103,7 +103,7 @@ class Table(np.lib.mixins.NDArrayOperatorsMixin):
         else:
             # its (n > 2)d
             rows = []
-            rownames = list(product(*self._dimensions[:-1]))
+            rownames = list(product(*self._coords[:-1]))
             for rowname in rownames:
                 rowdata = self[rowname]
                 rows.extend([
