@@ -2,7 +2,7 @@ from xml.dom.minidom import Attr
 import random
 import numpy as np
 from itertools import product
-from typing import Hashable, Mapping, Sequence, Union
+from typing import Hashable, Mapping, Sequence, Union, Tuple
 from msdm.core.utils.funcutils import method_cache
 from msdm.core.distributions.dictdistribution import DictDistribution
 from msdm.core.distributions.distributions import FiniteDistribution, Event
@@ -12,7 +12,7 @@ class Table(np.lib.mixins.NDArrayOperatorsMixin):
         self,
         data : np.array,
         dims : Sequence[str],
-        coords : Union[tuple[Sequence[Hashable]], Mapping[str, Sequence[Hashable]]],
+        coords : Union[Tuple[Sequence[Hashable]], Mapping[str, Sequence[Hashable]]],
         _coords_indices=None
     ):
         self._data = data
