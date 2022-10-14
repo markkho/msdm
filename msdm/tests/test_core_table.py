@@ -1,6 +1,6 @@
 import numpy as np
 from msdm.core.table import Table, ProbabilityTable
-from msdm.core.distributions import Distribution
+from msdm.core.distributions import DictDistribution
 
 def test_Table_construction_and_writing():
     # Can we construct a Table and catch bad constructions?
@@ -204,4 +204,19 @@ def test_Table_dict_like_interface():
     for key, value in tb.items():
         assert tb[key].isclose(value)
 
-# def test_ProbabilityTable_and_TableDistribution():
+def test_ProbabilityTable_and_TableDistribution():
+    # Can we access innermost dimension as a Distribution 
+    # when representing probabilities?
+    tb_probs = ProbabilityTable(
+        data=np.array([
+            [.5, .25, .25],
+            [1/3, 1/3, 1/3],
+        ]),
+        dims=("dim1", "dim2"),
+        coords=(
+            ['a', 'b'],
+            ['x', 'y', 'z'],
+        ),
+    )
+    assert isinstance(tb_probs['a'], DictDistribution)
+    assert isinstance(tb_probs['a'], Table)

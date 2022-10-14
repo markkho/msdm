@@ -5,7 +5,7 @@ from itertools import product
 from typing import Hashable, Mapping, Sequence, Union, Tuple
 from msdm.core.utils.funcutils import method_cache
 from msdm.core.distributions.dictdistribution import DictDistribution
-from msdm.core.distributions.distributions import FiniteDistribution, Event
+from msdm.core.distributions.distributions import Event
 
 class Table(np.lib.mixins.NDArrayOperatorsMixin):
     def __init__(
@@ -60,10 +60,15 @@ class Table(np.lib.mixins.NDArrayOperatorsMixin):
         yield from self._coords_indices[0]
     def values(self):
         yield from (self[k] for k in self.keys())
+    def get(self, key, default=None):
+        try:
+            return self[key]
+        except KeyError:
+            return default
     def __len__(self):
         return len(self._coords[0])
-    # def __iter__(self):
-    #     yield from self.keys()
+    def __iter__(self):
+        yield from self.keys()
     def isclose(
         self, other: "Table", *,
         # These tolerances are copied from `np.isclose()`
@@ -76,7 +81,7 @@ class Table(np.lib.mixins.NDArrayOperatorsMixin):
             np.isclose(self._data, other._data, atol=atol, rtol=rtol).all()
         )
     
-    # limited support for np.array-like interface
+    # indirect support for np.array-like interface
     def __getattr__(self, attr):
         if attr in ("shape", "ndim"):
             return getattr(self._data, attr)
@@ -109,8 +114,6 @@ class Table(np.lib.mixins.NDArrayOperatorsMixin):
                 val = self[row_idx + col_idx]
                 row.append(val)
             df_data.append(row)
-        print(df_cols, df_index)
-        print(col_dims, row_dims)
         if len(sum(df_cols, ())) > 0:
             df_cols = pd.MultiIndex.from_tuples(df_cols, names=col_dims)
         else:
@@ -136,32 +139,14 @@ class ProbabilityTable(Table):
             f" but column dimensions start at {self._column_dims_idx}"
         result_dimensionality = len(self._data.shape) - len(coords_idx)
         if result_dimensionality == 1:
-            probs = self._data[coords_idx]
-            return DictDistribution(zip(self._coords[len(coords_idx)], probs))
+            return TableDistribution(
+                data=self._data[coords_idx],
+                dims=self._dims[len(coords_idx):],
+                coords=self._coords[len(coords_idx):],
+                _coords_indices=self._coords_indices[len(coords_idx):]
+            )
         return Table._get_subspace(self, coords_idx)
 
-class TableDistribution(Table,FiniteDistribution):
-    """
-    Distribution class backed by a numpy array and has 
-    full functionality of DictDistribution.
-    """
-    def __init__(
-        self, 
-        data : np.array,
-        dims : Sequence[str],
-        coords : Union[tuple[Sequence[Hashable]], Mapping[str, Sequence[Hashable]]],
-        _coords_indices=None
-    ):
-        assert len(dims) == len(coords) == data.ndim == 1, \
-            "Table distributions are currently only defined over 1D"
-
-    def sample(self, *, rng=random) -> Event:
-        # use np randomness to sample more efficiently
-        raise NotImplementedError
-
-    def prob(self, e: Event) -> float:
-        raise NotImplementedError
-
-    @property
-    def support(self) -> Sequence[Event]:
-        raise NotImplementedError
+class TableDistribution(Table,DictDistribution):
+    """DictDistribution backed by a numpy array."""
+    pass
