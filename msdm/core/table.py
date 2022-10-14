@@ -1,63 +1,64 @@
-from xml.dom.minidom import Attr
-import random
 import numpy as np
 from itertools import product
 from typing import Hashable, Mapping, Sequence, Union, Tuple
-from msdm.core.utils.funcutils import method_cache
 from msdm.core.distributions.dictdistribution import DictDistribution
-from msdm.core.distributions.distributions import Event
 
 class Table(np.lib.mixins.NDArrayOperatorsMixin):
+    """
+    A table maps an unordered set of multi-dimensional 
+    keys to real values. It can be thought of as a
+    np.array with labeled dimensions and indices.
+    """
     def __init__(
         self,
         data : np.array,
         dims : Sequence[str],
         coords : Union[Tuple[Sequence[Hashable]], Mapping[str, Sequence[Hashable]]],
-        _coords_indices=None
     ):
         self._data = data
         self._data.setflags(write=False)
-        assert isinstance(dims, (tuple, list))
-        self._dims = tuple(dims)
-        if isinstance(coords, dict):
-            coords = [coords[d] for d in dims]
-        self._coords = tuple(coords)
-        if _coords_indices is None:
-            _coords_indices = [{i: ii for ii, i in enumerate(c)} for c in coords]
-        unique_shape = tuple([len(c) for c in _coords_indices])
-        coords_shape = tuple([len(c) for c in coords])
-        if not (data.shape == coords_shape == unique_shape):
-            raise ValueError(
-                f"Unique coordinates ({unique_shape}) or total " + \
-                f"coordinates ({coords_shape}) do not match dimension lengths ({data.shape})"
-            )
-        self._coords_indices = _coords_indices
+        self._dims = dims
+        self._coords = coords
         self._column_dims_idx = -1
+    
+    def _validate_table(self):
+        assert isinstance(self._coords, (tuple, list))
+        assert isinstance(self._dims, (tuple, list))
+        assert len(self._coords) == len(self._dims), "Number of coordinates and dimensions don't match"
+        coords_shape = tuple([len(c) for c in self._coords])
+        unique_shape = tuple([len(set(c)) for c in self._coords])
+        data_shape = self._data.shape
+        if not (data_shape == coords_shape == unique_shape):
+            raise ValueError(
+                f"Total coordinates ({coords_shape}) or unique coordinats ({unique_shape})" + \
+                f" do not match dimension lengths ({data_shape})."
+            )
         
     # dict-like interface
     def __getitem__(self, key):
         if not isinstance(key, (tuple, list)):
             keys = (key,)
-        elif key in self._coords_indices[0]:
+        elif key in self._coords[0]:
             keys = (key,)
         else:
             keys = key
-        idx = tuple([dim[k] for dim, k in zip(self._coords_indices, keys)])
+        idx = self._key_indices(keys)
         if len(idx) == len(self._data.shape): #array element
             return self._data[idx]
-        return self._get_subspace(idx)
-    @method_cache
-    def _get_subspace(self, coords_idx):
+        return self._get_subtable(idx)
+    def _key_indices(self, keys):
+        idx = tuple([coords.index(k) for coords, k in zip(self._coords, keys)])
+        return idx
+    def _get_subtable(self, coords_idx):
         return Table(
             data=self._data[coords_idx],
             dims=self._dims[len(coords_idx):],
             coords=self._coords[len(coords_idx):],
-            _coords_indices=self._coords_indices[len(coords_idx):]
         )
     def items(self):
         yield from ((k, self[k]) for k in self.keys())
     def keys(self):
-        yield from self._coords_indices[0]
+        yield from self._coords[0]
     def values(self):
         yield from (self[k] for k in self.keys())
     def get(self, key, default=None):
@@ -94,8 +95,7 @@ class Table(np.lib.mixins.NDArrayOperatorsMixin):
         return f"{self.__class__.__name__}(" +\
             f"data={repr(self._data)},\n" + \
             f"coords={repr(self._coords)},\n" + \
-            f"dims={repr(self._dims)},\n" + \
-            f"_coords_indices={self._coords_indices})"
+            f"dims={repr(self._dims)})"
     
     def _repr_html_(self):
         import pandas as pd
@@ -132,8 +132,7 @@ class Table(np.lib.mixins.NDArrayOperatorsMixin):
 class ProbabilityTable(Table):
     # Probability tables represent and return distributions 
     # if indexed into a column dimension but otherwise behave like tables
-    @method_cache
-    def _get_subspace(self, coords_idx):
+    def _get_subtable(self, coords_idx):
         assert self._column_dims_idx in (-1, self.ndim - 1), \
             f"Currently, for {self.__class__.__name__}, only the last dimension can be a column dimension " +\
             f" but column dimensions start at {self._column_dims_idx}"
@@ -142,10 +141,9 @@ class ProbabilityTable(Table):
             return TableDistribution(
                 data=self._data[coords_idx],
                 dims=self._dims[len(coords_idx):],
-                coords=self._coords[len(coords_idx):],
-                _coords_indices=self._coords_indices[len(coords_idx):]
+                coords=self._coords[len(coords_idx):]
             )
-        return Table._get_subspace(self, coords_idx)
+        return Table._get_subtable(self, coords_idx)
 
 class TableDistribution(Table,DictDistribution):
     """DictDistribution backed by a numpy array."""

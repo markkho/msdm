@@ -3,7 +3,7 @@ from msdm.core.table import Table, ProbabilityTable
 from msdm.core.distributions import DictDistribution
 
 def test_Table_construction_and_writing():
-    # Can we construct a Table and catch bad constructions?
+    # Can we construct a Table
     np.random.seed(1201)
     tb_vals = np.random.random((5, 3))
     tb = Table(
@@ -15,17 +15,7 @@ def test_Table_construction_and_writing():
         )
     )
     
-    # dictionary coords constructor
-    tb_w_dict = Table(
-        data=tb_vals.copy(),
-        dims=("dim1", "dim2"),
-        coords={
-            'dim1': ['a', 'b', 'c', 'd', 'e'],
-            'dim2': ['x', 'y', 'z']
-        }
-    )
-    assert tb.isclose(tb_w_dict)
-
+    # Catch bad constructions?
     # too few coordinates
     try:
         Table(
@@ -35,7 +25,7 @@ def test_Table_construction_and_writing():
                 ['a', 'b', 'd', 'e'],
                 ['x', 'y', 'z']
             )
-        )
+        )._validate_table()
         assert False
     except ValueError:
         pass
@@ -49,7 +39,7 @@ def test_Table_construction_and_writing():
                 ['a', 'b', 'c', 'd', 'e', 'f'],
                 ['x', 'y', 'z']
             )
-        )
+        )._validate_table()
         assert False
     except ValueError:
         pass
@@ -63,7 +53,7 @@ def test_Table_construction_and_writing():
                 ['a', 'b', 'b', 'd', 'e'],
                 ['x', 'y', 'z']
             )
-        )
+        )._validate_table()
         assert False
     except ValueError:
         pass
