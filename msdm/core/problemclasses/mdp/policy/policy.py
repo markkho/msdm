@@ -8,7 +8,6 @@ import numpy as np
 
 from msdm.core.problemclasses.mdp.mdp import MarkovDecisionProcess, State, Action
 from msdm.core.distributions import Distribution
-from msdm.core.algorithmclasses import Result
 
 class Policy(ABC):
     @abstractmethod

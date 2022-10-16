@@ -3,46 +3,37 @@ import numpy as np
 
 from msdm.core.problemclasses.mdp.policy.policy import Policy, PolicyEvaluationResult
 from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess, State, Action
-from msdm.core.table import Table
+from msdm.core.table import Table, ProbabilityTable, TableIndex
 
-class TabularPolicy(Table,Policy):
+class TabularPolicy(ProbabilityTable,Policy):
     def __init__(
         self,
         state_list : Sequence[State],
         action_list : Sequence[Action],
         policy_matrix: np.array
     ):
-        super().__init__(policy_matrix, (state_list, action_list), _probabilities=True)
-        self._states = tuple(state_list)
-        self._actions = tuple(action_list)
+        ProbabilityTable.__init__(
+            self,
+            data=policy_matrix,
+            table_index=TableIndex(
+                field_names=("state", "action"),
+                field_domains=(tuple(state_list), tuple(action_list))
+            )
+        )
         
     def action_dist(self, s):
         return self[s]
-    
     @property
     def state_list(self):
-        return self._states
+        return self.table_index.field_domains[0]
     @property
     def action_list(self):
-        return self._actions
-    
+        return self.table_index.field_domains[1]
     def __repr__(self):
         return f"{self.__class__.__name__}(" +\
-            f"states={self._states},\n"+\
-            f"\tactions={self._actions},\n"+\
-            f"\tpolicy_matrix={repr(self._values)}\n)"
-    
-    def as_matrix(self, state_list, action_list):
-        if tuple(state_list) == self._states and tuple(action_list) == self._actions:
-            return self._values
-        policy_matrix = np.zeros((len(state_list), len(action_list)))
-        for si, s in enumerate(state_list):
-            self_si = self._state_index[s]
-            for ai, a in enumerate(action_list):
-                self_ai = self._action_index[a]
-                policy_matrix[si, ai] = self._values[self_si, self_ai]
-        policy_matrix.setflags(write=False)
-        return policy_matrix
+            f"states={self.state_list},\n"+\
+            f"\tactions={self.action_list},\n"+\
+            f"\tpolicy_matrix={repr(np.array(self))}\n)"
 
     def evaluate_on(
         self,
@@ -82,10 +73,18 @@ class TabularPolicy(Table,Policy):
             mdp.initial_state_vec
         )
         initial_value = state_value.dot(mdp.initial_state_vec)
+        state_index = TableIndex(
+            field_names=("state", ),
+            field_domains=(mdp.state_list, )
+        )
+        state_action_index = TableIndex(
+            field_names=("state", "action", ),
+            field_domains=(mdp.state_list, mdp.action_list, )
+        )
         return PolicyEvaluationResult(
-            state_value=Table(state_value, (mdp.state_list,)),
-            action_value=Table(action_value, (mdp.state_list, mdp.action_list)),
+            state_value=Table(state_value, state_index),
+            action_value=Table(action_value, state_action_index),
             initial_value=initial_value,
-            state_occupancy=Table(state_occupancy, (mdp.state_list,)),
+            state_occupancy=Table(state_occupancy, state_index),
             n_simulations=float('inf')
         )
