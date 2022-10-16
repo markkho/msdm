@@ -1,18 +1,18 @@
 import numpy as np
-from msdm.core.table import Table, ProbabilityTable, IndexVariable, TableIndex
+from msdm.core.table import Table, ProbabilityTable, IndexField, TableIndex
 from msdm.core.distributions import Distribution 
 
 def test_TableIndex():
     variables = [
-        IndexVariable('a', (0, 1)), 
-        IndexVariable('b', ("x", "y", "z"))
+        IndexField('a', (0, 1)), 
+        IndexField('b', ("x", "y", "z"))
     ]
     idx = TableIndex(variables)
-    assert idx.variable_names == ('a', 'b')
-    for vi, v in enumerate(idx.variables):
+    assert idx.field_names == ('a', 'b')
+    for vi, v in enumerate(idx.fields):
         assert v.name == variables[vi].name
-        assert v.values == variables[vi].values
-    assert idx.variable_values == ((0, 1), ("x", "y", "z"))
+        assert v.domain == variables[vi].domain
+    assert idx.field_domains == ((0, 1), ("x", "y", "z"))
     assert set(idx.product()) == set([
         (0, 'x'),
         (0, 'y'),
@@ -40,8 +40,8 @@ def test_Table_construction_and_writing():
     tb_vals = np.random.random((5, 3))
     tb = Table(
         data=tb_vals.copy(),
-        variable_names=("dim1", "dim2"),
-        variable_values=(
+        field_names=("dim1", "dim2"),
+        field_domains=(
             ('a', 'b', 'c', 'd', 'e'),
             ('x', 'y', 'z')
         )
@@ -52,8 +52,8 @@ def test_Table_construction_and_writing():
     try:
         Table(
             data=np.random.random((5, 3)),
-            variable_names=("dim1", "dim2"),
-            variable_values=(
+            field_names=("dim1", "dim2"),
+            field_domains=(
                 ('a', 'b', 'd', 'e'),
                 ('x', 'y', 'z')
             )
@@ -66,8 +66,8 @@ def test_Table_construction_and_writing():
     try:
         Table(
             data=np.random.random((5, 3)),
-            variable_names=("dim1", "dim2"),
-            variable_values=(
+            field_names=("dim1", "dim2"),
+            field_domains=(
                 ('a', 'b', 'c', 'd', 'e', 'f'),
                 ('x', 'y', 'z')
             )
@@ -80,8 +80,8 @@ def test_Table_construction_and_writing():
     try:
         Table(
             data=np.random.random((5, 3)),
-            variable_names=("dim1", "dim2"),
-            variable_values=(
+            field_names=("dim1", "dim2"),
+            field_domains=(
                 ('a', 'b', 'b', 'd', 'e'),
                 ('x', 'y', 'z')
             )
@@ -96,8 +96,8 @@ def test_Table_construction_and_writing():
             [1, 2, 3],
             [4, 5, 6],
         ]),
-        variable_names=("dim1", "dim2"),
-        variable_values=(
+        field_names=("dim1", "dim2"),
+        field_domains=(
             ('a', 'b'),
             ('x', 'y', 'z')
         )
@@ -107,8 +107,8 @@ def test_Table_construction_and_writing():
             [0, 1, 2],
             [3, 4, 5],
         ]) + 1,
-        variable_names=("dim1", "dim2"),
-        variable_values=(
+        field_names=("dim1", "dim2"),
+        field_domains=(
             ('a', 'b'),
             ('x', 'y', 'z')
         )
@@ -118,8 +118,8 @@ def test_Table_construction_and_writing():
             [0, 1, 2],
             [3, 4, 5],
         ]),
-        variable_names=("dim1", "dim2"),
-        variable_values=(
+        field_names=("dim1", "dim2"),
+        field_domains=(
             ('a', 'b'),
             ('x', 'y', 'z')
         )
@@ -129,8 +129,8 @@ def test_Table_construction_and_writing():
             [1, 2, 3],
             [4, 5, 6],
         ]),
-        variable_names=("dim1", "dim2"),
-        variable_values=(
+        field_names=("dim1", "dim2"),
+        field_domains=(
             ('j', 'k'),
             ('x', 'y', 'z')
         )
@@ -156,8 +156,8 @@ def test_Table_array_like_interface():
     data = np.random.random((5, 3))
     tb = Table(
         data=data,
-        variable_names=("dim1", "dim2"),
-        variable_values=(
+        field_names=("dim1", "dim2"),
+        field_domains=(
             ('a', 'b', 'c', 'd', 'e'),
             ('x', 'y', 'z')
         )
@@ -189,8 +189,8 @@ def test_Table_dict_like_interface():
             [4, 5, 6],
 
         ]),
-        variable_names=("dim1", "dim2"),
-        variable_values=(
+        field_names=("dim1", "dim2"),
+        field_domains=(
             ('a', 'b'),
             ('x', 'y', 'z'),
         ),
@@ -213,8 +213,8 @@ def test_Table_dict_like_interface():
                 [0, 1, 8],
             ],
         ]),
-        variable_names=("dim1", "dim2", "dim3"),
-        variable_values=(
+        field_names=("dim1", "dim2", "dim3"),
+        field_domains=(
             ('a', 'b'),
             ((6,), (9,)),
             ('x', 'y', 'z'),
@@ -225,8 +225,8 @@ def test_Table_dict_like_interface():
             [1, 2, 3],
             [4, 5, 6],
         ]),
-        variable_names=("dim2", "dim3"),
-        variable_values=(
+        field_names=("dim2", "dim3"),
+        field_domains=(
             ((6,), (9,)),
             ('x', 'y', 'z'),
         ),
@@ -245,8 +245,8 @@ def test_ProbabilityTable_and_TableDistribution():
             [.5, .25, .25],
             [1/3, 1/3, 1/3],
         ]),
-        variable_names=("dim1", "dim2"),
-        variable_values=(
+        field_names=("dim1", "dim2"),
+        field_domains=(
             ('a', 'b'),
             ('x', 'y', 'z'),
         ),
@@ -258,8 +258,8 @@ def test_ProbabilityTable_and_TableDistribution():
     probs = probs/probs.sum(axis=(-1, -2), keepdims=True)
     tb_4d = ProbabilityTable(
         data=probs,
-        variable_names=("dim1", "dim2", "dim3", "dim4"),
-        variable_values=(
+        field_names=("dim1", "dim2", "dim3", "dim4"),
+        field_domains=(
             tuple("abcde"),
             tuple("fghij"),
             tuple("klmn"),
