@@ -3,15 +3,15 @@ from msdm.core.table import Table, ProbabilityTable, IndexField, TableIndex
 from msdm.core.distributions import Distribution 
 
 def test_TableIndex():
-    variables = [
+    fields = [
         IndexField('a', (0, 1)), 
         IndexField('b', ("x", "y", "z"))
     ]
-    idx = TableIndex(variables)
+    idx = TableIndex(fields=fields)
     assert idx.field_names == ('a', 'b')
-    for vi, v in enumerate(idx.fields):
-        assert v.name == variables[vi].name
-        assert v.domain == variables[vi].domain
+    for fi, f in enumerate(idx.fields):
+        assert f.name == fields[fi].name
+        assert f.domain == fields[fi].domain
     assert idx.field_domains == ((0, 1), ("x", "y", "z"))
     assert set(idx.product()) == set([
         (0, 'x'),
@@ -40,10 +40,12 @@ def test_Table_construction_and_writing():
     tb_vals = np.random.random((5, 3))
     tb = Table(
         data=tb_vals.copy(),
-        field_names=("dim1", "dim2"),
-        field_domains=(
-            ('a', 'b', 'c', 'd', 'e'),
-            ('x', 'y', 'z')
+        table_index=TableIndex(
+            field_names=("dim1", "dim2"),
+            field_domains=(
+                ('a', 'b', 'c', 'd', 'e'),
+                ('x', 'y', 'z')
+            )
         )
     )
     
@@ -52,10 +54,12 @@ def test_Table_construction_and_writing():
     try:
         Table(
             data=np.random.random((5, 3)),
-            field_names=("dim1", "dim2"),
-            field_domains=(
-                ('a', 'b', 'd', 'e'),
-                ('x', 'y', 'z')
+            table_index=TableIndex(
+                field_names=("dim1", "dim2"),
+                field_domains=(
+                    ('a', 'b', 'd', 'e'),
+                    ('x', 'y', 'z')
+                )
             )
         )
         assert False
@@ -66,10 +70,12 @@ def test_Table_construction_and_writing():
     try:
         Table(
             data=np.random.random((5, 3)),
-            field_names=("dim1", "dim2"),
-            field_domains=(
-                ('a', 'b', 'c', 'd', 'e', 'f'),
-                ('x', 'y', 'z')
+            table_index=TableIndex(
+                field_names=("dim1", "dim2"),
+                field_domains=(
+                    ('a', 'b', 'c', 'd', 'e', 'f'),
+                    ('x', 'y', 'z')
+                )
             )
         )
         assert False
@@ -80,10 +86,12 @@ def test_Table_construction_and_writing():
     try:
         Table(
             data=np.random.random((5, 3)),
-            field_names=("dim1", "dim2"),
-            field_domains=(
-                ('a', 'b', 'b', 'd', 'e'),
-                ('x', 'y', 'z')
+            table_index=TableIndex(
+                field_names=("dim1", "dim2"),
+                field_domains=(
+                    ('a', 'b', 'b', 'd', 'e'),
+                    ('x', 'y', 'z')
+                )
             )
         )
         assert False
@@ -96,10 +104,12 @@ def test_Table_construction_and_writing():
             [1, 2, 3],
             [4, 5, 6],
         ]),
-        field_names=("dim1", "dim2"),
-        field_domains=(
-            ('a', 'b'),
-            ('x', 'y', 'z')
+        table_index=TableIndex(
+            field_names=("dim1", "dim2"),
+            field_domains=(
+                ('a', 'b'),
+                ('x', 'y', 'z')
+            )
         )
     )
     tb2 = Table(
@@ -107,10 +117,12 @@ def test_Table_construction_and_writing():
             [0, 1, 2],
             [3, 4, 5],
         ]) + 1,
-        field_names=("dim1", "dim2"),
-        field_domains=(
-            ('a', 'b'),
-            ('x', 'y', 'z')
+        table_index=TableIndex(
+            field_names=("dim1", "dim2"),
+            field_domains=(
+                ('a', 'b'),
+                ('x', 'y', 'z')
+            )
         )
     )
     tb3 = Table(
@@ -118,10 +130,12 @@ def test_Table_construction_and_writing():
             [0, 1, 2],
             [3, 4, 5],
         ]),
-        field_names=("dim1", "dim2"),
-        field_domains=(
-            ('a', 'b'),
-            ('x', 'y', 'z')
+        table_index=TableIndex(
+            field_names=("dim1", "dim2"),
+            field_domains=(
+                ('a', 'b'),
+                ('x', 'y', 'z')
+            )
         )
     )
     tb4 = Table(
@@ -129,10 +143,12 @@ def test_Table_construction_and_writing():
             [1, 2, 3],
             [4, 5, 6],
         ]),
-        field_names=("dim1", "dim2"),
-        field_domains=(
-            ('j', 'k'),
-            ('x', 'y', 'z')
+        table_index=TableIndex(
+            field_names=("dim1", "dim2"),
+            field_domains=(
+                ('j', 'k'),
+                ('x', 'y', 'z')
+            )
         )
     )
     assert tb1.equivalent_to(tb2)
@@ -156,10 +172,12 @@ def test_Table_array_like_interface():
     data = np.random.random((5, 3))
     tb = Table(
         data=data,
-        field_names=("dim1", "dim2"),
-        field_domains=(
-            ('a', 'b', 'c', 'd', 'e'),
-            ('x', 'y', 'z')
+        table_index=TableIndex(
+            field_names=("dim1", "dim2"),
+            field_domains=(
+                ('a', 'b', 'c', 'd', 'e'),
+                ('x', 'y', 'z')
+            )
         )
     )
     # Accessing elements in an array-like way
@@ -189,11 +207,13 @@ def test_Table_dict_like_interface():
             [4, 5, 6],
 
         ]),
-        field_names=("dim1", "dim2"),
-        field_domains=(
-            ('a', 'b'),
-            ('x', 'y', 'z'),
-        ),
+        table_index=TableIndex(
+            field_names=("dim1", "dim2"),
+            field_domains=(
+                ('a', 'b'),
+                ('x', 'y', 'z'),
+            ),
+        )
     )
 
     # Can we access outmost dimension as dict keys?
@@ -213,23 +233,27 @@ def test_Table_dict_like_interface():
                 [0, 1, 8],
             ],
         ]),
-        field_names=("dim1", "dim2", "dim3"),
-        field_domains=(
-            ('a', 'b'),
-            ((6,), (9,)),
-            ('x', 'y', 'z'),
-        ),
+        table_index=TableIndex(
+            field_names=("dim1", "dim2", "dim3"),
+            field_domains=(
+                ('a', 'b'),
+                ((6,), (9,)),
+                ('x', 'y', 'z'),
+            ),
+        )
     )
     tb_2d = Table(
         data=np.array([
             [1, 2, 3],
             [4, 5, 6],
         ]),
-        field_names=("dim2", "dim3"),
-        field_domains=(
-            ((6,), (9,)),
-            ('x', 'y', 'z'),
-        ),
+        table_index=TableIndex(
+            field_names=("dim2", "dim3"),
+            field_domains=(
+                ((6,), (9,)),
+                ('x', 'y', 'z'),
+            ),
+        )
     )
     assert tb_3d['a'].equivalent_to(tb_2d)
 
@@ -245,11 +269,13 @@ def test_ProbabilityTable_and_TableDistribution():
             [.5, .25, .25],
             [1/3, 1/3, 1/3],
         ]),
-        field_names=("dim1", "dim2"),
-        field_domains=(
-            ('a', 'b'),
-            ('x', 'y', 'z'),
-        ),
+        table_index=TableIndex(
+            field_names=("dim1", "dim2"),
+            field_domains=(
+                ('a', 'b'),
+                ('x', 'y', 'z'),
+            ),
+        )
     )
     assert isinstance(tb_probs['a'], Distribution)
     assert isinstance(tb_probs['a'], Table)
@@ -258,13 +284,15 @@ def test_ProbabilityTable_and_TableDistribution():
     probs = probs/probs.sum(axis=(-1, -2), keepdims=True)
     tb_4d = ProbabilityTable(
         data=probs,
-        field_names=("dim1", "dim2", "dim3", "dim4"),
-        field_domains=(
-            tuple("abcde"),
-            tuple("fghij"),
-            tuple("klmn"),
-            tuple("xyz"),
-        ),
+        table_index=TableIndex(
+            field_names=("dim1", "dim2", "dim3", "dim4"),
+            field_domains=(
+                tuple("abcde"),
+                tuple("fghij"),
+                tuple("klmn"),
+                tuple("xyz"),
+            ),
+        )
     )
     tb_4d.probs_start_index = -2
     assert not isinstance(tb_4d, Distribution)

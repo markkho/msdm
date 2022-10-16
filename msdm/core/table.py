@@ -97,16 +97,30 @@ class AbstractTable(ABC):
 class IndexField(NamedTuple):
     name : Hashable
     domain : Sequence[FieldValue]
+    def __repr__(self):
+        return f"{self.__class__.__name__}(name={repr(self.name)}, domain={repr(self.domain)})"
 
 class TableIndex:
     """
     An ordered collection of named fields representing
     the indexing scheme of a table.
     """
-    def __init__(self, fields : Sequence[IndexField]):
+    def __init__(
+        self,
+        *,
+        field_names : Sequence[Hashable] = None,
+        field_domains : Sequence[Tuple[Hashable,...]] = None,
+        fields : Sequence[IndexField] = None,
+    ):
+        if fields is None:
+            if len(field_names) != len(field_domains):
+                raise ValueError("Different numbers of fields names and domains")
+            fields = [IndexField(n, v) for n, v in zip(field_names, field_domains)]
         self._fields = fields
-    def __getitem__(self, field_number):
-        return self._fields[field_number]
+    def __getitem__(self, field_selection):
+        if isinstance(field_selection, slice):
+            return self.__class__(fields=self._fields[field_selection])
+        return self._fields[field_selection]
     @cached_property
     def field_names(self):
         return tuple([v.name for v in self._fields])
@@ -126,6 +140,9 @@ class TableIndex:
             self.field_names == other.field_names and \
             all([c1 == c2 for c1, c2 in zip(self.field_domains, other.field_domains)])
         )
+    def __repr__(self):
+        return f"{self.__class__.__name__}(fields={repr(self._fields)})"
+
 
 class Table_repr_html_MixIn(AbstractTable):
     _column_dims_idx = -1 #this is for interpreting a table as a matrix
@@ -171,16 +188,11 @@ class Table(Table_repr_html_MixIn,AbstractTable):
     def __init__(
         self,
         data : np.ndarray,
-        field_names : Sequence[Hashable],
-        field_domains : Sequence[Tuple[Hashable]],
+        table_index : TableIndex,
     ):
         self._data = data
         self._data.setflags(write=False)
-        if len(field_names) != len(field_domains):
-            raise ValueError("Different numbers of fields names and domains")
-        self._index = TableIndex(
-            [IndexField(n, v) for n, v in zip(field_names, field_domains)]
-        )
+        self._index = table_index
         if self._perform_table_validation:
             self._validate_table()
 
@@ -216,8 +228,7 @@ class Table(Table_repr_html_MixIn,AbstractTable):
     def _get_subtable(self, array_idx):
         return Table(
             data=self._data[array_idx],
-            field_names=self.table_index.field_names[len(array_idx):],
-            field_domains=self.table_index.field_domains[len(array_idx):],
+            table_index=self.table_index[len(array_idx):]
         )
 
     def keys(self):
@@ -247,8 +258,7 @@ class Table(Table_repr_html_MixIn,AbstractTable):
     def __repr__(self):
         return f"{self.__class__.__name__}(" +\
             f"data={repr(self._data)},\n" + \
-            f"field_names={repr(self.table_index.field_names)},\n" + \
-            f"field_domains={repr(self.table_index.field_domains)})"
+            f"table_index={repr(self.table_index)})"
 
 class ProbabilityTable(Table):
     """
@@ -265,8 +275,7 @@ class ProbabilityTable(Table):
         if len(array_idx) >= probs_start_index:
             return TableDistribution(
                 data=self._data[array_idx],
-                field_names=self.table_index.field_names[len(array_idx):],
-                field_domains=self.table_index.field_domains[len(array_idx):],
+                table_index=self.table_index[len(array_idx):]
             )
         return Table._get_subtable(self, array_idx)
 
