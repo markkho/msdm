@@ -10,7 +10,7 @@ def test_rmax():
         episodes=200,
         rmax=1,
         num_transition_samples=10,
-        seed=None,
+        seed=123907,
     )
     res = rmax.train_on(gw)
 

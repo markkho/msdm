@@ -125,11 +125,13 @@ class GridWorldPlotter:
 
         xys = []
         for s in state_traj:
-            if self.gw.is_terminal(s):
-                break
             if isinstance(s, (tuple, list)):
+                if s[0] < 0 or s[1] < 0:
+                    continue
                 xys.append(s)
             elif isinstance(s, (dict, frozendict)):
+                if s['x'] < 0 or s['y'] < 0:
+                    continue
                 xys.append((s['x'], s['y']))
 
         if len(xys) == 2:
