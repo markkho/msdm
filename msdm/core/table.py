@@ -1,16 +1,11 @@
 from abc import ABC, abstractmethod, abstractproperty
-from typing import NamedTuple
 import numpy as np
-from itertools import product
-from typing import Hashable, Sequence, Union, Tuple, TypeVar, Any
+from typing import Sequence, Union, Tuple, TypeVar, Any
 from msdm.core.distributions.dictdistribution import DictDistribution
+from msdm.core.tableindex import FieldValue, TableIndex
 
-from msdm.core.utils.funcutils import cached_property
-
-TableEntry = TypeVar("TableEntry")
-FieldValue = TypeVar("FieldValue")
-FieldName = TypeVar("FieldName", bound=Hashable)
 TableKey = Union[FieldValue,Tuple[FieldValue,...]]
+TableEntry = TypeVar("TableEntry")
 TableValue = Union[TableEntry,"AbstractTable"]
 
 class AbstractTable(ABC):
@@ -97,123 +92,7 @@ class AbstractTable(ABC):
     @abstractmethod
     def reindex(self, new_index : "TableIndex") -> "AbstractTable": pass
 
-class IndexField(NamedTuple):
-    name : FieldName
-    domain : Sequence[FieldValue]
-    def __repr__(self):
-        return f"{self.__class__.__name__}(name={repr(self.name)}, domain={repr(self.domain)})"
-
-class TableIndex:
-    """
-    An ordered collection of named fields representing
-    the indexing scheme of a table.
-    """
-    def __init__(
-        self,
-        *,
-        field_names : Sequence[Hashable] = None,
-        field_domains : Sequence[Tuple[Hashable,...]] = None,
-        fields : Sequence[IndexField] = None,
-    ):
-        if fields is None:
-            if len(field_names) != len(field_domains):
-                raise ValueError("Different numbers of fields names and domains")
-            fields = [IndexField(n, v) for n, v in zip(field_names, field_domains)]
-        self._fields = fields
-    def __getitem__(self, field_selection):
-        if isinstance(field_selection, slice):
-            return self.__class__(fields=self._fields[field_selection])
-        return self._fields[field_selection]
-    def __len__(self):
-        return len(self._fields)
-    @cached_property
-    def field_names(self):
-        return tuple([v.name for v in self._fields])
-    @cached_property
-    def fields(self):
-        return tuple(self._fields)
-    @cached_property
-    def field_domains(self):
-        return tuple([v.domain for v in self._fields])
-    @cached_property
-    def shape(self):
-        return tuple([len(v) for v in self.field_domains])
-    def domain_of(self, name: FieldName):
-        return self[self.field_names.index(name)].domain
-    def compatible_with(self, other: "TableIndex") -> bool:
-        """
-        Two TableIndex's are compatible if their field names and domains are
-        equivalent up to permutation.
-        """
-        if set(self.field_names) != set(other.field_names):
-            return False
-        self_fields = set([(f.name, frozenset(f.domain)) for f in self.fields])
-        other_fields = set([(f.name, frozenset(f.domain)) for f in other.fields])
-        return self_fields == other_fields
-    def reindexing_permutations(self, other : "TableIndex") -> Tuple[Tuple[int],Tuple[int]]:
-        """
-        If two TableIndex's are compatible, this returns how the field ordering
-        and domain orderings of `self` can be permuted to match `other`.
-        """
-        assert self.compatible_with(other), \
-            f"Index not compatible\nOld: {repr(self)}\nNew: {repr(other)}"
-        field_permutation = [self.field_names.index(name) for name in other.field_names]
-        domain_permutations = []
-        for name, self_domain in self.fields:
-            self_domain_idx = {e: ei for ei, e in enumerate(self_domain)}
-            domain_permutation = tuple([self_domain_idx[e] for e in other.domain_of(name)])
-            domain_permutations.append(domain_permutation)
-        return tuple(field_permutation), tuple(domain_permutations)
-    def product(self):
-        yield from product(*self.field_domains)
-    def product_dicts(self):
-        for assignments in self.product():
-            yield dict(zip(self.field_names, assignments))
-    def equivalent_to(self, other : "TableIndex"):
-        return (
-            self.field_names == other.field_names and \
-            all([c1 == c2 for c1, c2 in zip(self.field_domains, other.field_domains)])
-        )
-    def __repr__(self):
-        return f"{self.__class__.__name__}(fields={repr(self._fields)})"
-
-
-class Table_repr_html_MixIn(AbstractTable):
-    _column_dims_idx = -1 #this is for interpreting a table as a matrix
-    def _repr_html_(self):
-        import pandas as pd
-        pivot = self._column_dims_idx
-        field_names = self.table_index.field_names
-        field_domains = self.table_index.field_domains
-        df_data = []
-        row_dims = field_names[:pivot]
-        col_dims = field_names[pivot:]
-        row_coords = field_domains[:pivot]
-        col_coords = field_domains[pivot:]
-        df_index = []
-        df_cols = list(product(*col_coords))
-        df_index = list(product(*row_coords))
-        for row_idx in product(*row_coords):
-            row = []
-            for col_idx in product(*col_coords):
-                val = self[row_idx + col_idx]
-                row.append(val)
-            df_data.append(row)
-        if len(sum(df_cols, ())) > 0:
-            df_cols = pd.MultiIndex.from_tuples(df_cols, names=col_dims)
-        else:
-            df_cols = ("values",)
-        if len(sum(df_index, ())) > 0:
-            df_index = pd.MultiIndex.from_tuples(df_index, names=row_dims)
-        else:
-            df_index = ("values",)
-        html_table = pd.DataFrame(
-            df_data,
-            columns=df_cols,
-            index=df_index
-        ).to_html()
-        return html_table
-
+from msdm.core.tablemisc import Table_repr_html_MixIn
 class Table(Table_repr_html_MixIn,AbstractTable):
     """
     A Table backed by a numpy array.

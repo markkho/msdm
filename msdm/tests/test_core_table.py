@@ -1,13 +1,14 @@
 import numpy as np
 import string
 from itertools import product
-from msdm.core.table import Table, ProbabilityTable, IndexField, TableIndex
+from msdm.core.table import Table, ProbabilityTable
+from msdm.core.tableindex import TableIndex, Field
 from msdm.core.distributions import Distribution 
 
 def test_TableIndex():
     fields = [
-        IndexField('a', (0, 1)), 
-        IndexField('b', ("x", "y", "z"))
+        Field('a', (0, 1)), 
+        Field('b', ("x", "y", "z"))
     ]
     idx = TableIndex(fields=fields)
     assert idx.shape == (2, 3)
@@ -39,32 +40,32 @@ def test_TableIndex():
 
 def test_TableIndex_compatibility():
     fields = [
-        IndexField('a', (0, 1)), 
-        IndexField('b', ("x", "y", "z"))
+        Field('a', (0, 1)), 
+        Field('b', ("x", "y", "z"))
     ]
     idx = TableIndex(fields=fields)
 
     comp_fields = [
-        IndexField('b', ("x", "z", "y")),
-        IndexField('a', (1, 0)), 
+        Field('b', ("x", "z", "y")),
+        Field('a', (1, 0)), 
     ]
     comp_idx = TableIndex(fields=comp_fields)
 
     incomp_fields1 = [
-        IndexField('c', (0, 1)), 
-        IndexField('b', ("x", "y", "z"))
+        Field('c', (0, 1)), 
+        Field('b', ("x", "y", "z"))
     ]
     incomp_idx1 = TableIndex(fields=incomp_fields1)
 
     incomp_fields2 = [
-        IndexField('a', (0, 1)), 
-        IndexField('b', ("w", "y", "z"))
+        Field('a', (0, 1)), 
+        Field('b', ("w", "y", "z"))
     ]
     incomp_idx2 = TableIndex(fields=incomp_fields2)
 
     incomp_fields3 = [
-        IndexField('a', (0, 1, 2)), 
-        IndexField('b', ("x", "y", "z"))
+        Field('a', (0, 1, 2)), 
+        Field('b', ("x", "y", "z"))
     ]
     incomp_idx3 = TableIndex(fields=incomp_fields3)
 
@@ -75,14 +76,14 @@ def test_TableIndex_compatibility():
 
 def test_TableIndex_reindexing_small():
     fields = [
-        IndexField('a', (0, 1)), 
-        IndexField('b', ("x", "y", "z"))
+        Field('a', (0, 1)), 
+        Field('b', ("x", "y", "z"))
     ]
     idx = TableIndex(fields=fields)
     
     new_fields = [
-        IndexField('b', ("y", "z", "x")),
-        IndexField('a', (0, 1)), 
+        Field('b', ("y", "z", "x")),
+        Field('a', (0, 1)), 
     ]
     new_idx = TableIndex(fields=new_fields)
     
@@ -447,7 +448,7 @@ def generate_random_TableIndex(names, values, max_ndim=1000, max_domain_size=100
         np.random.shuffle(values)
         domain_size = np.random.randint(1, min(len(values), max_domain_size))
         fields.append(
-            IndexField(
+            Field(
                 name=names.pop(),
                 domain=tuple(values[:domain_size])
             )
@@ -464,7 +465,7 @@ def random_TableIndex_permutation(table_index : TableIndex, seed=None):
     new_fields = []
     for field, domain_permutation in zip(table_index.fields, domain_permutations):
         new_fields.append(
-            IndexField(
+            Field(
                 name=field.name,
                 domain=tuple([field.domain[i] for i in domain_permutation])
             )
