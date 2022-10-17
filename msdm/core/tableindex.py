@@ -12,6 +12,39 @@ class Field(NamedTuple):
     domain : Sequence[FieldValue]
     def __repr__(self):
         return f"{self.__class__.__name__}(name={repr(self.name)}, domain={repr(self.domain)})"
+    def domain_set(self):
+        return frozenset(self.domain)
+    def compatible_with(self, other : "Field") -> bool:
+        """
+        Two Field's with the same name are compatible 
+        if their domains are the same up to permutation.
+        """
+        return (
+            self.name == other.name and \
+            self.domain_set() == other.domain_set()
+        )
+    def subsumes(self, other : "Field") -> bool:
+        """
+        `self` subsumes `other` if they have the same name
+        and all of the elements of `other` are contained in
+        `self`
+        """
+        return (
+            self.name == other.name and \
+            self.domain_set() >= other.domain_set()
+        )
+    def subsumed_by(self, other : "Field") -> bool:
+        return other.subsumes(self)
+    def permutation_of(self, other: "Field") -> Tuple[int]:
+        """
+        Returns indexes that would reorder the domain of
+        `self` to be like that of `other`
+        """
+        self_domain_idx = {e: ei for ei, e in enumerate(self.domain)}
+        domain_permutation = []
+        for e in other.domain:
+            domain_permutation.append(self_domain_idx[e])
+        return tuple(domain_permutation)
 
 class TableIndex:
     """
@@ -28,7 +61,7 @@ class TableIndex:
         if fields is None:
             if len(field_names) != len(field_domains):
                 raise ValueError("Different numbers of fields names and domains")
-            fields = [Field(n, v) for n, v in zip(field_names, field_domains)]
+            fields = tuple([Field(n, v) for n, v in zip(field_names, field_domains)])
         self._fields = fields
     def __getitem__(self, field_selection):
         if isinstance(field_selection, slice):
@@ -48,8 +81,6 @@ class TableIndex:
     @cached_property
     def shape(self):
         return tuple([len(v) for v in self.field_domains])
-    def domain_of(self, name: FieldName):
-        return self[self.field_names.index(name)].domain
     def compatible_with(self, other: "TableIndex") -> bool:
         """
         Two TableIndex's are compatible if their field names and domains are
@@ -57,8 +88,8 @@ class TableIndex:
         """
         if set(self.field_names) != set(other.field_names):
             return False
-        self_fields = set([(f.name, frozenset(f.domain)) for f in self.fields])
-        other_fields = set([(f.name, frozenset(f.domain)) for f in other.fields])
+        self_fields = set([(f.name, f.domain_set()) for f in self.fields])
+        other_fields = set([(f.name, f.domain_set()) for f in other.fields])
         return self_fields == other_fields
     def reindexing_permutations(self, other : "TableIndex") -> Tuple[Tuple[int],Tuple[int]]:
         """
@@ -68,10 +99,11 @@ class TableIndex:
         assert self.compatible_with(other), \
             f"Index not compatible\nOld: {repr(self)}\nNew: {repr(other)}"
         field_permutation = [self.field_names.index(name) for name in other.field_names]
+        other_name_fields = {f.name : f for f in other.fields}
         domain_permutations = []
-        for name, self_domain in self.fields:
-            self_domain_idx = {e: ei for ei, e in enumerate(self_domain)}
-            domain_permutation = tuple([self_domain_idx[e] for e in other.domain_of(name)])
+        for self_field in self.fields:
+            other_field = other_name_fields[self_field.name]
+            domain_permutation = self_field.permutation_of(other_field)
             domain_permutations.append(domain_permutation)
         return tuple(field_permutation), tuple(domain_permutations)
     def product(self):
