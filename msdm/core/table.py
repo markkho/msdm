@@ -145,6 +145,22 @@ class TableIndex:
         self_fields = set([(f.name, frozenset(f.domain)) for f in self.fields])
         other_fields = set([(f.name, frozenset(f.domain)) for f in other.fields])
         return self_fields == other_fields
+    def reindexing_permutations(self, other : "TableIndex") -> Tuple[Tuple[int],Tuple[int]]:
+        """
+        If two TableIndex's are compatible, this returns how the field ordering
+        and domain orderings of `self` can be permuted to match `other`.
+        """
+        assert self.compatible_with(other)
+        field_permutation = []
+        domain_permutations = []
+        for name, self_domain in self.fields:
+            other_field_idx = other.field_names.index(name)
+            field_permutation.append(other_field_idx)
+            other_field = other[other_field_idx]
+            other_domain_idx = {e: ei for ei, e in enumerate(other_field.domain)}
+            domain_permutation = tuple([other_domain_idx[e] for e in self_domain])
+            domain_permutations.append(domain_permutation)
+        return tuple(field_permutation), tuple(domain_permutations)
     def product(self):
         yield from product(*self.field_domains)
     def product_dicts(self):

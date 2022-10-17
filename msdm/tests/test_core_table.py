@@ -70,6 +70,23 @@ def test_TableIndex_compatibility():
     assert not idx.compatible_with(incomp_idx2)
     assert not idx.compatible_with(incomp_idx3)
 
+def test_TableIndex_reindexing():
+    fields = [
+        IndexField('a', (0, 1)), 
+        IndexField('b', ("x", "y", "z"))
+    ]
+    idx = TableIndex(fields=fields)
+    
+    new_fields = [
+        IndexField('b', ("y", "z", "x")),
+        IndexField('a', (0, 1)), 
+    ]
+    new_idx = TableIndex(fields=new_fields)
+    
+    field_permutations, domain_permutations = idx.reindexing_permutations(new_idx)
+    assert field_permutations == (1, 0)
+    assert domain_permutations == ((0, 1), (2, 0, 1))
+
 def test_Table_construction_and_writing():
     # Can we construct a Table
     np.random.seed(1201)
