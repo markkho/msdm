@@ -9,6 +9,7 @@ from msdm.core.utils.funcutils import cached_property
 
 TableEntry = TypeVar("TableEntry")
 FieldValue = TypeVar("FieldValue")
+FieldName = TypeVar("FieldName", bound=Hashable)
 TableKey = Union[FieldValue,Tuple[FieldValue,...]]
 TableValue = Union[TableEntry,"AbstractTable"]
 
@@ -97,7 +98,7 @@ class AbstractTable(ABC):
     def reindex(self, new_index : "TableIndex") -> "AbstractTable": pass
 
 class IndexField(NamedTuple):
-    name : Hashable
+    name : FieldName
     domain : Sequence[FieldValue]
     def __repr__(self):
         return f"{self.__class__.__name__}(name={repr(self.name)}, domain={repr(self.domain)})"
@@ -123,6 +124,8 @@ class TableIndex:
         if isinstance(field_selection, slice):
             return self.__class__(fields=self._fields[field_selection])
         return self._fields[field_selection]
+    def __len__(self):
+        return len(self._fields)
     @cached_property
     def field_names(self):
         return tuple([v.name for v in self._fields])
@@ -134,7 +137,9 @@ class TableIndex:
         return tuple([v.domain for v in self._fields])
     @cached_property
     def shape(self):
-        return tuple([len(v) for v in self._fields])
+        return tuple([len(v) for v in self.field_domains])
+    def domain_of(self, name: FieldName):
+        return self[self.field_names.index(name)].domain
     def compatible_with(self, other: "TableIndex") -> bool:
         """
         Two TableIndex's are compatible if their field names and domains are
@@ -150,15 +155,13 @@ class TableIndex:
         If two TableIndex's are compatible, this returns how the field ordering
         and domain orderings of `self` can be permuted to match `other`.
         """
-        assert self.compatible_with(other)
-        field_permutation = []
+        assert self.compatible_with(other), \
+            f"Index not compatible\nOld: {repr(self)}\nNew: {repr(other)}"
+        field_permutation = [self.field_names.index(name) for name in other.field_names]
         domain_permutations = []
         for name, self_domain in self.fields:
-            other_field_idx = other.field_names.index(name)
-            field_permutation.append(other_field_idx)
-            other_field = other[other_field_idx]
-            other_domain_idx = {e: ei for ei, e in enumerate(other_field.domain)}
-            domain_permutation = tuple([other_domain_idx[e] for e in self_domain])
+            self_domain_idx = {e: ei for ei, e in enumerate(self_domain)}
+            domain_permutation = tuple([self_domain_idx[e] for e in other.domain_of(name)])
             domain_permutations.append(domain_permutation)
         return tuple(field_permutation), tuple(domain_permutations)
     def product(self):
@@ -257,7 +260,7 @@ class Table(Table_repr_html_MixIn,AbstractTable):
         return tuple(idx)
 
     def _get_subtable(self, array_idx):
-        return Table(
+        return self.__class__(
             data=self._data[array_idx],
             table_index=self.table_index[len(array_idx):]
         )
@@ -278,11 +281,17 @@ class Table(Table_repr_html_MixIn,AbstractTable):
     def reindex(self, new_index: "TableIndex") -> "AbstractTable":
         if self.table_index.equivalent_to(new_index):
             return self
-        assert self.table_index.compatible_with(new_index), \
-            f"Index not compatible\nOld: {repr(self.table_index)}\nNew: {repr(new_index)}"
-        
-        
-        return super().reindex(new_index)
+        # reindexing amounts to permuting indices along each dimension and
+        # transposing the resulting array appropriately
+        field_permutation, domain_permutations = \
+            self.table_index.reindexing_permutations(new_index)
+        new_array = self._data.copy()
+        ndim = self._data.ndim
+        for dim, permutation in enumerate(domain_permutations):
+            dim_permute = (slice(None),)*dim + (permutation,) + (slice(None), )*(ndim - dim - 1)
+            new_array = new_array[dim_permute]
+        new_array = new_array.transpose(*field_permutation)
+        return self.__class__(data=new_array, table_index=new_index)
     
     def equivalent_to(
         self, other: "Table", *,
