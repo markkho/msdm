@@ -93,6 +93,8 @@ class AbstractTable(ABC):
     # AbstractTable interface
     @abstractproperty
     def table_index(self) -> "TableIndex": pass
+    @abstractmethod
+    def reindex(self, new_index : "TableIndex") -> "AbstractTable": pass
 
 class IndexField(NamedTuple):
     name : Hashable
@@ -130,6 +132,19 @@ class TableIndex:
     @cached_property
     def field_domains(self):
         return tuple([v.domain for v in self._fields])
+    @cached_property
+    def shape(self):
+        return tuple([len(v) for v in self._fields])
+    def compatible_with(self, other: "TableIndex") -> bool:
+        """
+        Two TableIndex's are compatible if their field names and domains are
+        equivalent up to permutation.
+        """
+        if set(self.field_names) != set(other.field_names):
+            return False
+        self_fields = set([(f.name, frozenset(f.domain)) for f in self.fields])
+        other_fields = set([(f.name, frozenset(f.domain)) for f in other.fields])
+        return self_fields == other_fields
     def product(self):
         yield from product(*self.field_domains)
     def product_dicts(self):
@@ -243,6 +258,15 @@ class Table(Table_repr_html_MixIn,AbstractTable):
     @property
     def table_index(self):
         return self._index
+    
+    def reindex(self, new_index: "TableIndex") -> "AbstractTable":
+        if self.table_index.equivalent_to(new_index):
+            return self
+        assert self.table_index.compatible_with(new_index), \
+            f"Index not compatible\nOld: {repr(self.table_index)}\nNew: {repr(new_index)}"
+        
+        
+        return super().reindex(new_index)
     
     def equivalent_to(
         self, other: "Table", *,

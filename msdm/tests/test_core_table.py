@@ -34,6 +34,42 @@ def test_TableIndex():
         exp_dicts.pop(exp_dicts.index(d))
     assert len(exp_dicts) == 0
 
+def test_TableIndex_compatibility():
+    fields = [
+        IndexField('a', (0, 1)), 
+        IndexField('b', ("x", "y", "z"))
+    ]
+    idx = TableIndex(fields=fields)
+
+    comp_fields = [
+        IndexField('b', ("x", "z", "y")),
+        IndexField('a', (1, 0)), 
+    ]
+    comp_idx = TableIndex(fields=comp_fields)
+
+    incomp_fields1 = [
+        IndexField('c', (0, 1)), 
+        IndexField('b', ("x", "y", "z"))
+    ]
+    incomp_idx1 = TableIndex(fields=incomp_fields1)
+
+    incomp_fields2 = [
+        IndexField('a', (0, 1)), 
+        IndexField('b', ("w", "y", "z"))
+    ]
+    incomp_idx2 = TableIndex(fields=incomp_fields2)
+
+    incomp_fields3 = [
+        IndexField('a', (0, 1, 2)), 
+        IndexField('b', ("x", "y", "z"))
+    ]
+    incomp_idx3 = TableIndex(fields=incomp_fields3)
+
+    assert idx.compatible_with(comp_idx)
+    assert not idx.compatible_with(incomp_idx1)
+    assert not idx.compatible_with(incomp_idx2)
+    assert not idx.compatible_with(incomp_idx3)
+
 def test_Table_construction_and_writing():
     # Can we construct a Table
     np.random.seed(1201)
