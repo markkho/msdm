@@ -5,6 +5,23 @@ from msdm.core.table import Table, ProbabilityTable
 from msdm.core.tableindex import TableIndex, Field
 from msdm.core.distributions import Distribution 
 
+def test_Field_compatibility_and_subsumption():
+    f1 = Field("a", (0, 1, 2))
+    f1b = Field("a", (0, 1, 2))
+    f2 = Field("a", (2, 1, 0))
+    f3 = Field("b", (0, 1, 2))
+    f4 = Field("a", (2, 1))
+
+    assert id(f1) != id(f1b)
+    assert f1 == f1b
+    assert f1.compatible_with(f2)
+    assert f2.compatible_with(f1)
+    assert not f1.compatible_with(f3)
+    assert not f1.compatible_with(f4)
+    assert f1.subsumes(f4)
+    assert not f4.subsumes(f1)
+    assert f4.subsumed_by(f1)
+
 def test_TableIndex():
     fields = [
         Field('a', (0, 1)), 
@@ -74,6 +91,44 @@ def test_TableIndex_compatibility():
     assert not idx.compatible_with(incomp_idx2)
     assert not idx.compatible_with(incomp_idx3)
 
+def test_TableIndex_equality_subsumption():
+    idx1 = TableIndex(
+        field_names=("dim1", "dim2"),
+        field_domains=(
+            ('a', 'b', 'c', 'd', 'e'),
+            ('x', 'y', 'z')
+        )
+    )
+    idx1b = TableIndex(
+        field_names=("dim1", "dim2"),
+        field_domains=(
+            ('a', 'b', 'c', 'd', 'e'),
+            ('x', 'y', 'z')
+        )
+    )
+    idx2 = TableIndex(
+        field_names=("dim2", "dim1"),
+        field_domains=(
+            ('x', 'y', 'z'),
+            ('a', 'b', 'c', 'd', 'e'),
+        )
+    )
+    idx4 = TableIndex(
+        field_names=("dim2", "dim1"),
+        field_domains=(
+            ('x', 'z'),
+            ('a', 'b', 'c', 'd', 'e'),
+        )
+    )
+    assert id(idx1) != id(idx1b)
+    assert idx1 == idx1b
+    assert idx1 != idx2
+    assert idx1.subsumes(idx2)
+    assert idx2.subsumes(idx1)
+    assert idx1.subsumes(idx4)
+    assert not idx4.subsumes(idx1)
+    assert idx4.subsumed_by(idx1)
+
 def test_TableIndex_reindexing_small():
     fields = [
         Field('a', (0, 1)), 
@@ -91,10 +146,34 @@ def test_TableIndex_reindexing_small():
     assert field_permutations == (1, 0)
     assert domain_permutations == ((0, 1), (1, 2, 0))
 
+def test_TableIndex_reindexing_subsumed_small():
+    fields = [
+        Field('a', (0, 1)), 
+        Field('b', ("x", "y", "z"))
+    ]
+    idx = TableIndex(fields=fields)
+    
+    new_fields = [
+        Field('b', ("y", "x")),
+        Field('a', (0, 1)), 
+    ]
+    new_idx = TableIndex(fields=new_fields)
+    
+    field_permutations, domain_permutations = idx.reindexing_permutations(new_idx)
+    assert field_permutations == (1, 0)
+    assert domain_permutations == ((0, 1), (1, 0))
+
 def test_random_TableIndex_reindexing():
     # Generate a bunch of random table indexes and random permutations
-    for _ in range(100):
-        random_TableIndex_reindexing_test(np.random.randint(1, int(1e9)))
+    for _ in range(50):
+        random_TableIndex_reindexing_test(
+            seed=np.random.randint(1, int(1e9)),
+            drop_domain_elements=False
+        )
+        random_TableIndex_reindexing_test(
+            seed=np.random.randint(1, int(1e9)),
+            drop_domain_elements=True
+        )
 
 def test_Table_construction_and_writing():
     # Can we construct a Table
@@ -231,8 +310,15 @@ def test_Table_construction_and_writing():
     
 def test_random_Table_reindexing():
     # Generate a bunch of random tables and random reindexings of them
-    for _ in range(100):
-        random_Table_reindexing_test(np.random.randint(1, int(1e9)))
+    for _ in range(50):
+        random_Table_reindexing_test(
+            seed=np.random.randint(1, int(1e9)),
+            drop_domain_elements=False
+        )
+        random_Table_reindexing_test(
+            seed=np.random.randint(1, int(1e9)),
+            drop_domain_elements=True
+        )
 
 def test_Table_array_like_interface():
     np.random.seed(1201)
@@ -371,7 +457,7 @@ def test_ProbabilityTable_and_TableDistribution():
 ################################
 #        Helper Functions      #
 ################################
-def random_TableIndex_reindexing_test(seed):
+def random_TableIndex_reindexing_test(seed, drop_domain_elements=False):
     """
     Generate a random TableIndex and random permutation of it to make sure
     that the automatic reindexing is correct.
@@ -387,7 +473,8 @@ def random_TableIndex_reindexing_test(seed):
     new_table_index, field_permutation, domain_permutations = \
         random_TableIndex_permutation(
             table_index=table_index,
-            seed=np.random.randint(1, int(1e9))
+            seed=np.random.randint(1, int(1e9)),
+            drop_domain_elements=drop_domain_elements
     )
     comp_field_perm, comp_domain_perms = table_index.reindexing_permutations(new_table_index)
     try:
@@ -397,7 +484,7 @@ def random_TableIndex_reindexing_test(seed):
     except AssertionError:
         raise AssertionError(f"Reindexing failed for seed {seed}")
         
-def random_Table_reindexing_test(seed):
+def random_Table_reindexing_test(seed, drop_domain_elements=False):
     # Randomly construct a table index and table values
     # randomly permute the index and reindex the table
     # test that the data in the new table is reindexed properly
@@ -416,7 +503,8 @@ def random_Table_reindexing_test(seed):
     new_table_index, field_permutation, domain_permutations = \
         random_TableIndex_permutation(
             table_index=table_index,
-            seed=np.random.randint(1, int(1e9))
+            seed=np.random.randint(1, int(1e9)),
+            drop_domain_elements=drop_domain_elements
     )
     new_tb = tb.reindex(new_index=new_table_index)
 
@@ -424,10 +512,10 @@ def random_Table_reindexing_test(seed):
     # to build up the new table.
     # Careful - this is a bit tricky!
     src_data = np.array(tb)
-    dest_data = np.zeros_like(src_data)
-    dest_arr_idx = [range(len(f.domain)) for f in tb.table_index.fields]
-    dest_arr_idx = list(product(*dest_arr_idx))
     src_arr_idx = list(product(*domain_permutations))
+    dest_data = np.zeros([len(p) for p in domain_permutations])
+    dest_arr_idx = [range(len(p)) for p in domain_permutations]
+    dest_arr_idx = list(product(*dest_arr_idx))
     assert len(dest_arr_idx) == len(src_arr_idx)
     for src_i, dest_i in zip(src_arr_idx, dest_arr_idx):
         dest_data[dest_i] = src_data[src_i]
@@ -455,11 +543,20 @@ def generate_random_TableIndex(names, values, max_ndim=1000, max_domain_size=100
         )
     return TableIndex(fields=fields)
 
-def random_TableIndex_permutation(table_index : TableIndex, seed=None):
+def random_TableIndex_permutation(table_index : TableIndex, drop_domain_elements=False, seed=None):
     np.random.seed(seed)
     domain_permutations = [list(range(len(domain))) for domain in table_index.field_domains]
     for order in domain_permutations:
         np.random.shuffle(order)
+    if drop_domain_elements:
+        dropped_domain_permutations = []
+        for order in domain_permutations:
+            if len(order) == 1:
+                n_elements = 1
+            else:
+                n_elements = np.random.randint(1,len(order))
+            dropped_domain_permutations.append(order[:n_elements])
+        domain_permutations = dropped_domain_permutations
     field_permutation = list(range(len(table_index)))
     np.random.shuffle(field_permutation)
     new_fields = []

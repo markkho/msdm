@@ -70,20 +70,26 @@ class TableIndex:
     def __len__(self):
         return len(self._fields)
     @cached_property
-    def field_names(self):
+    def field_names(self) -> Sequence[FieldName]:
         return tuple([v.name for v in self._fields])
     @cached_property
-    def fields(self):
+    def fields(self) -> Sequence[Field]:
         return tuple(self._fields)
     @cached_property
-    def field_domains(self):
+    def field_domains(self) -> Sequence[FieldDomain]:
         return tuple([v.domain for v in self._fields])
     @cached_property
-    def shape(self):
+    def shape(self) -> Tuple[int,...]:
         return tuple([len(v) for v in self.field_domains])
+    def __eq__(self, other: "TableIndex") -> bool:
+        """
+        Two TableIndex's are *equal* if their fields and domains
+        are ordered exactly the same.
+        """
+        return self._fields == other._fields
     def compatible_with(self, other: "TableIndex") -> bool:
         """
-        Two TableIndex's are compatible if their field names and domains are
+        Two TableIndex's are *compatible* if their field names and domains are
         equivalent up to permutation.
         """
         if set(self.field_names) != set(other.field_names):
@@ -91,13 +97,30 @@ class TableIndex:
         self_fields = set([(f.name, f.domain_set()) for f in self.fields])
         other_fields = set([(f.name, f.domain_set()) for f in other.fields])
         return self_fields == other_fields
+    def subsumes(self, other: "TableIndex") -> bool:
+        """
+        A TableIndex A *subsumes* a TableIndex B if A and B have the same field
+        names and the domain of every field in A is a superset of the corresponding
+        domain in B.
+        """
+        if self == other or self.compatible_with(other):
+            return True
+        if set(self.field_names) != set(other.field_names):
+            return False
+        other_fields = {f.name: f for f in other.fields}
+        for f in self.fields:
+            if not f.subsumes(other_fields[f.name]):
+                return False
+        return True
+    def subsumed_by(self, other: "TableIndex") -> bool:
+        return other.subsumes(self)
     def reindexing_permutations(self, other : "TableIndex") -> Tuple[Tuple[int],Tuple[int]]:
         """
         If two TableIndex's are compatible, this returns how the field ordering
         and domain orderings of `self` can be permuted to match `other`.
         """
-        assert self.compatible_with(other), \
-            f"Index not compatible\nOld: {repr(self)}\nNew: {repr(other)}"
+        assert self.subsumes(other), \
+            f"Old index does not subsume the new one\nOld: {repr(self)}\nNew: {repr(other)}"
         field_permutation = [self.field_names.index(name) for name in other.field_names]
         other_name_fields = {f.name : f for f in other.fields}
         domain_permutations = []
@@ -111,7 +134,5 @@ class TableIndex:
     def product_dicts(self):
         for assignments in self.product():
             yield dict(zip(self.field_names, assignments))
-    def equivalent_to(self, other : "TableIndex"):
-        return self._fields == other._fields
     def __repr__(self):
         return f"{self.__class__.__name__}(fields={repr(self._fields)})"

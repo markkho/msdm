@@ -158,13 +158,13 @@ class Table(Table_repr_html_MixIn,AbstractTable):
         return self._index
     
     def reindex(self, new_index: "TableIndex") -> "AbstractTable":
-        if self.table_index.equivalent_to(new_index):
+        if self.table_index == new_index:
             return self
         # reindexing amounts to permuting indices along each dimension and
         # transposing the resulting array appropriately
         field_permutation, domain_permutations = \
             self.table_index.reindexing_permutations(new_index)
-        new_array = self._data.copy()
+        new_array = self._data.view()
         ndim = self._data.ndim
         for dim, permutation in enumerate(domain_permutations):
             dim_permute = (slice(None),)*dim + (permutation,) + (slice(None), )*(ndim - dim - 1)
@@ -179,7 +179,7 @@ class Table(Table_repr_html_MixIn,AbstractTable):
     ) -> bool:
         return (
             self.shape == other.shape and \
-            self.table_index.equivalent_to(other.table_index) and \
+            self.table_index == other.table_index and \
             np.isclose(self._data, other._data, atol=atol, rtol=rtol).all()
         )
     
