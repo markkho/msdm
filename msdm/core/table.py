@@ -89,8 +89,6 @@ class AbstractTable(ABC):
     # AbstractTable interface
     @abstractproperty
     def table_index(self) -> "TableIndex": pass
-    @abstractmethod
-    def reindex(self, new_index : "TableIndex") -> "AbstractTable": pass
 
 from msdm.core.tablemisc import Table_repr_html_MixIn
 class Table(Table_repr_html_MixIn,AbstractTable):
@@ -119,31 +117,19 @@ class Table(Table_repr_html_MixIn,AbstractTable):
                 f" do not match dimension lengths ({data_shape})."
             )
 
-    def __getitem__(self, table_key):
-        if not isinstance(table_key, (tuple, list)):
-            table_keys = (table_key,)
-        elif table_key in self.table_index.field_domains[0]:
-            table_keys = (table_key,)
-        else:
-            table_keys = table_key
-        array_idx = self._array_index(table_keys)
-        if len(array_idx) == len(self._data.shape): #array element
-            return self._data[array_idx]
-        return self._get_subtable(array_idx)
-
-    def _array_index(self, keys):
-        try:
-            idx = [vals.index(assn) for vals, assn in zip(self.table_index.field_domains, keys)]
-        except ValueError:
-            raise ValueError(f"{keys} is not in Table")
-        return tuple(idx)
-
-    def _get_subtable(self, array_idx):
-        return self.__class__(
-            data=self._data[array_idx],
-            table_index=self.table_index[len(array_idx):]
-        )
-
+    def __getitem__(self, selector):
+        array_index = self.table_index._array_index(selector)
+        new_table_index = self.table_index._updated_index(array_index)
+        if new_table_index == self.table_index:
+            return self
+        new_data = self._data[array_index]
+        if isinstance(new_data, np.ndarray):
+            return self.__class__(
+                data=new_data,
+                table_index=new_table_index
+            )
+        return new_data
+        
     def keys(self):
         yield from self.table_index.field_domains[0]
 
@@ -156,21 +142,6 @@ class Table(Table_repr_html_MixIn,AbstractTable):
     @property
     def table_index(self):
         return self._index
-    
-    def reindex(self, new_index: "TableIndex") -> "AbstractTable":
-        if self.table_index == new_index:
-            return self
-        # reindexing amounts to permuting indices along each dimension and
-        # transposing the resulting array appropriately
-        field_permutation, domain_permutations = \
-            self.table_index.reindexing_permutations(new_index)
-        new_array = self._data.view()
-        ndim = self._data.ndim
-        for dim, permutation in enumerate(domain_permutations):
-            dim_permute = (slice(None),)*dim + (permutation,) + (slice(None), )*(ndim - dim - 1)
-            new_array = new_array[dim_permute]
-        new_array = new_array.transpose(*field_permutation)
-        return self.__class__(data=new_array, table_index=new_index)
     
     def equivalent_to(
         self, other: "Table", *,
@@ -195,17 +166,24 @@ class ProbabilityTable(Table):
 
     #the starting dimension over which entries are a single probability distribution
     probs_start_index = -1 
-    def _get_subtable(self, array_idx):
-        if self.probs_start_index < 0:
-            probs_start_index = len(self._data.shape) + self.probs_start_index
-        else:
-            probs_start_index = self.probs_start_index
-        if len(array_idx) >= probs_start_index:
-            return TableDistribution(
-                data=self._data[array_idx],
-                table_index=self.table_index[len(array_idx):]
-            )
-        return Table._get_subtable(self, array_idx)
+    def __getitem__(self, selector):
+        array_index = self.table_index._array_index(selector)
+        new_table_index = self.table_index._updated_index(array_index)
+        if new_table_index == self.table_index:
+            return self
+        new_data = self._data[array_index]
+        if isinstance(new_data, np.ndarray):
+            if new_data.ndim <= (-self.probs_start_index): 
+                return TableDistribution(
+                    data=new_data,
+                    table_index=new_table_index
+                )
+            else:
+                return self.__class__(
+                    data=new_data,
+                    table_index=new_table_index
+                )
+        return new_data
 
 class TableDistribution(Table,DictDistribution):
     """DictDistribution backed by a numpy array."""

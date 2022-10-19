@@ -75,6 +75,18 @@ def test_TableIndex_to_numpy_array_index_conversion():
     assert idx._array_index((...,)) == (...,), idx._array_index((...,))
     assert idx._array_index((slice(None),)) == (slice(None),)
 
+def test_tuple_domaintuple_equality():
+    a = TableIndex(
+        fields=[
+            Field('x', tuple((1,2,3)))
+        ]
+    )
+    b = TableIndex(
+        fields=[
+            Field('x', domaintuple((1,2,3)))
+        ]
+    )
+    assert a == b
 def test_TableIndex_numpy_array_TableIndex_conversion():
     idx = TableIndex(
         field_names=("dim1", "dim2", "dim3"),
@@ -133,11 +145,29 @@ def test_TableIndex_numpy_array_TableIndex_conversion():
         ),
         dict(
             sel=[
-                ...,
-                (...,),
-                slice(None)
+                ['a', 'b'],
             ],
-            exp_idx=idx
+            exp_idx=TableIndex(
+                field_names=("dim1", "dim2", "dim3"),
+                field_domains=(
+                    domaintuple(('a', 'b')),
+                    domaintuple(('a', 'b', 'c', 'd')),
+                    domaintuple((1, 2, 34, 100)),
+                )
+            )
+        ),
+        dict(
+            sel=[
+                [('a', 'b'),],
+            ],
+            exp_idx=TableIndex(
+                field_names=("dim1", "dim2", "dim3"),
+                field_domains=(
+                    domaintuple((('a', 'b'),)),
+                    domaintuple(('a', 'b', 'c', 'd')),
+                    domaintuple((1, 2, 34, 100)),
+                )
+            )
         ),
         dict(
             sel=[
@@ -456,7 +486,7 @@ def test_Table_array_like_interface():
     try:
         tb["d", "w"]
         assert False
-    except ValueError:
+    except KeyError:
         pass
 
     # Support for some numpy attributes on object
@@ -547,6 +577,7 @@ def test_ProbabilityTable_and_TableDistribution():
     )
     assert isinstance(tb_probs['a'], Distribution)
     assert isinstance(tb_probs['a'], Table)
+    assert isinstance(tb_probs['a', 'y'], float)
 
     probs = np.random.random((5, 5, 4, 3))
     probs = probs/probs.sum(axis=(-1, -2), keepdims=True)
@@ -567,4 +598,4 @@ def test_ProbabilityTable_and_TableDistribution():
     assert not isinstance(tb_4d['c'], Distribution)
     assert isinstance(tb_4d['c', 'g'], Distribution)
     assert isinstance(tb_4d['c', 'g', 'n'], Distribution)
-    assert not isinstance(tb_4d['c', 'g', 'n', 'z'], Distribution)
+    assert isinstance(tb_4d['c', 'g', 'n', 'z'], float)

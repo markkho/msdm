@@ -1,3 +1,4 @@
+from array import array
 from typing import NamedTuple
 import warnings
 from itertools import product
@@ -13,7 +14,10 @@ class domaintuple(tuple):
         return f"{self.__class__.__name__}({super().__repr__()})"
     def __eq__(self, other):
         return (
-            self.__class__ == other.__class__ and \
+            (
+                self.__class__ == other.__class__ or \
+                type(other) == tuple
+            ) and \
             super().__eq__(other)
         )
     @cached_property
@@ -110,39 +114,17 @@ class TableIndex:
         are ordered exactly the same.
         """
         return self._fields == other._fields
-    def _index_into_fields(self, selector):
-        selector = self._pad_out_ellipses(selector)
-        if len(selector) > len(self):
-            raise IndexSizeError(f"too many indices for index: index is {len(self)}-dimensional, but {len(selector)} were indexed")
-        field_indices = []
-        contains_sequence = False
-        for field_selector, field in zip(selector, self.fields):
-            # field_selectors are either singletons, subsets of a domain (lists or tuples), or slices
-            if field_selector in field.domain:
-                field_indices.append(field.domain.index(field_selector))
-            elif field_selector == field.domain:
-                if contains_sequence:
-                    raise MultipleIndexError(f"TableIndex does not support domain-value indexing on multiple fields like {selector}")
-                contains_sequence = True
-                field_indices.append(self._FIELD_SLICE)
-            elif isinstance(field_selector, (list, tuple)):
-                if contains_sequence:
-                    raise MultipleIndexError(f"TableIndex does not support domain-value indexing on multiple fields like {selector}")
-                contains_sequence = True
-                domain_indices = self._index_into_domain(field_selector, field.domain)
-                field_indices.append(domain_indices)
-            elif isinstance(field_selector, slice):
-                if field_selector != self._FIELD_SLICE:
-                    raise SliceError("Only full field slices are allowed")
-                field_indices.append(field_selector)
-            else:
-                raise IndexError(f"Unrecognized field selector {field_selector}")
-        return field_indices
-    def _index_into_domain(self, field_selector, domain):
-        try:
-            return type(field_selector)([domain.index(e) for e in field_selector])
-        except (ValueError, KeyError):
-            raise DomainError(f"Elements of {field_selector} not in {domain}")
+    def product(self):
+        yield from product(*self.field_domains)
+    def product_dicts(self):
+        for assignments in self.product():
+            yield dict(zip(self.field_names, assignments))
+    def __repr__(self):
+        return f"{self.__class__.__name__}(fields={repr(self._fields)})"
+
+    ########################################################
+    #    Logic for indexing with arbitrary hashable keys   #
+    ########################################################
     def _array_index(self, selector):
         # We first try to directly index into the outermost field
         try:
@@ -178,6 +160,7 @@ class TableIndex:
         if isinstance(selector, list):
             try:
                 field_indices = self._index_into_domain(selector, self.fields[0].domain)
+                field_indices = list(field_indices)
             except DomainError:
                 warnings.warn(
                     f"List selector, {selector}, produces a DomainError. Testing" +\
@@ -186,9 +169,10 @@ class TableIndex:
                 )
                 try:
                     field_indices = self._index_into_fields(selector)
+                    field_indices = tuple(field_indices)
                 except IndexError:
                     raise KeyError(f"Unable to resolve selector {selector} in {repr(self)}")
-            field_indices = list(field_indices)
+                
         
         # If it is a tuple, we first try to index across fields 
         # unless there's an IndexError, then we fall back to indexing into
@@ -196,6 +180,7 @@ class TableIndex:
         if isinstance(selector, tuple):
             try:
                 field_indices = self._index_into_fields(selector)
+                field_indices = tuple(field_indices)
             except IndexError:
                 warnings.warn(
                     f"Tuple selector, {selector}, produces an IndexError. Testing" +\
@@ -206,27 +191,10 @@ class TableIndex:
                     if any(isinstance(s, slice) or s == ... for s in selector):
                         raise DomainError
                     field_indices = self._index_into_domain(selector, self.fields[0].domain)
+                    field_indices = list(field_indices)
                 except DomainError:
                     raise KeyError(f"Unable to resolve selector {selector} in {repr(self)}")
-            field_indices = tuple(field_indices)
         return field_indices
-    def product(self):
-        yield from product(*self.field_domains)
-    def product_dicts(self):
-        for assignments in self.product():
-            yield dict(zip(self.field_names, assignments))
-    def __repr__(self):
-        return f"{self.__class__.__name__}(fields={repr(self._fields)})"
-    def _pad_out_ellipses(self, index):
-        if ... in index:
-            assert index.count(...) == 1
-            ellipsis_idx = index.index(...)
-            fields_left = len(self) - len(index) + 1
-            index = \
-                list(index[:ellipsis_idx]) + \
-                [self._FIELD_SLICE]*fields_left + \
-                list(index[ellipsis_idx + 1:])
-        return index
     def _updated_index(self, array_index):
         # short-circuiting if array_index is ellipses or all slices
         if (
@@ -241,6 +209,18 @@ class TableIndex:
             all(isinstance(i, slice) or i == ... for i in array_index)
         ):
             return self
+        
+        # if its a list, then it refers to the outermost
+        # field only.
+        if isinstance(array_index, list):
+            new_fields = [
+                Field(
+                    name=self.fields[0].name,
+                    domain=domaintuple([self.fields[0].domain[i] for i in array_index])
+                ),
+                *self.fields[1:]
+            ]
+            return self.__class__(fields=new_fields)
         
         # otherwise, construct the new table index
         array_index = self._pad_out_ellipses(array_index)
@@ -264,3 +244,50 @@ class TableIndex:
             # at this point, it must be a singleton so we don't include it in
             # the index - it will be dropped from the new index
         return self.__class__(fields=new_fields)
+    def _index_into_fields(self, selector):
+        selector = self._pad_out_ellipses(selector)
+        if len(selector) > len(self):
+            raise IndexSizeError(f"too many indices for index: index is {len(self)}-dimensional, but {len(selector)} were indexed")
+        field_indices = []
+        contains_sequence = False
+        for field_selector, field in zip(selector, self.fields):
+            # field_selectors are either singletons, subsets of a domain (lists or tuples), or slices
+            if field_selector in field.domain:
+                field_indices.append(field.domain.index(field_selector))
+            elif field_selector == field.domain: # for short-circuiting
+                if contains_sequence:
+                    raise MultipleIndexError(
+                        f"TableIndex does not support domain-value indexing on multiple fields like {selector}"
+                    )
+                contains_sequence = True
+                field_indices.append(self._FIELD_SLICE)
+            elif isinstance(field_selector, (list, tuple)):
+                if contains_sequence:
+                    raise MultipleIndexError(
+                        f"TableIndex does not support domain-value indexing on multiple fields like {selector}"
+                    )
+                contains_sequence = True
+                domain_indices = self._index_into_domain(field_selector, field.domain)
+                field_indices.append(domain_indices)
+            elif isinstance(field_selector, slice):
+                if field_selector != self._FIELD_SLICE:
+                    raise SliceError("Only full field slices are allowed")
+                field_indices.append(field_selector)
+            else:
+                raise IndexError(f"Unrecognized field selector {field_selector}")
+        return field_indices
+    def _index_into_domain(self, field_selector, domain):
+        try:
+            return type(field_selector)([domain.index(e) for e in field_selector])
+        except (ValueError, KeyError):
+            raise DomainError(f"Elements of {field_selector} not in {domain}")
+    def _pad_out_ellipses(self, index):
+        if ... in index:
+            assert index.count(...) == 1
+            ellipsis_idx = index.index(...)
+            fields_left = len(self) - len(index) + 1
+            index = \
+                list(index[:ellipsis_idx]) + \
+                [self._FIELD_SLICE]*fields_left + \
+                list(index[ellipsis_idx + 1:])
+        return index
