@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from collections import defaultdict
 from dataclasses import dataclass
 import random
 import warnings
@@ -7,6 +8,7 @@ from typing import Callable, Collection, Mapping, Sequence
 import numpy as np
 
 from msdm.core.problemclasses.mdp.mdp import MarkovDecisionProcess, State, Action
+from msdm.core.mdp_tables import StateTable, StateActionTable
 from msdm.core.distributions import Distribution
 
 class Policy(ABC):
@@ -30,10 +32,10 @@ class Policy(ABC):
             for a, prob in self.action_dist(s).items():
                 ai = action_index[a]
                 policy_matrix[si, ai] = prob
-        return TabularPolicy(
+        return TabularPolicy.from_state_action_lists(
             state_list=state_list,
             action_list=action_list,
-            policy_matrix=policy_matrix
+            data=policy_matrix
         ) 
 
     def run_on(
@@ -44,7 +46,7 @@ class Policy(ABC):
         rng=random
     ):
         if initial_state is None:
-            initial_state = mdp.initial_state_dist().sample()
+            initial_state = mdp.initial_state_dist().sample(rng=rng)
         traj = []
         s = initial_state
         for t in range(max_steps):
@@ -65,6 +67,50 @@ class Policy(ABC):
             state=s,
         ))
         return SimulationResult(traj)
+    
+    def evaluate_on(
+        self,
+        mdp: MarkovDecisionProcess,
+        n_simulations=100,
+        max_steps=int(2 **30),
+        rng=random
+    ):
+        state_value_samples = defaultdict(list)
+        state_samples = defaultdict(float)
+        action_value_samples = defaultdict(lambda : defaultdict(list))
+        initial_values = []
+        for _ in range(n_simulations):
+            res = self.run_on(mdp, rng=rng, max_steps=max_steps)
+            rets = Policy.calc_returns(res.reward, mdp.discount_rate)
+            initial_values.append(rets[0])
+            for ret, s, a in zip(rets, res.state, res.action):
+                state_value_samples[s].append(ret)
+                action_value_samples[s][a].append(ret)
+        state_value = {}
+        action_value = {}
+        for s, state_samps in state_value_samples.items():
+            state_samples[s] += len(state_samps)/n_simulations
+            state_value[s] = np.mean(state_samps)
+            action_value[s] = {}
+            for a, action_samps in action_value_samples[s].items():
+                action_value[s][a] = np.mean(action_samps)
+        return PolicyEvaluationResult(
+            state_value=StateTable.from_dict(state_value),
+            action_value=StateActionTable.from_dict(action_value, default_value=float('-inf')),
+            initial_value=np.mean(initial_values),
+            state_occupancy=StateTable.from_dict(state_samples),
+            n_simulations=n_simulations,
+        )
+
+    @staticmethod
+    def calc_returns(rewards, discount_rate):
+        rs = np.array(rewards)
+        times = np.arange(len(rs))
+        rel_times = times - times[:, np.newaxis]
+        rel_times = rel_times
+        discounts = np.triu(np.power(discount_rate, rel_times))
+        rets = discounts@rs
+        return list(rets)
 
 class FunctionalPolicy(Policy):
     def __init__(self, function: Callable[[State], Mapping[Action, float]]):
@@ -74,11 +120,6 @@ class FunctionalPolicy(Policy):
         return self._function(s)
 
 class Step(dict):
-    timestep : int
-    state : State
-    action : Action
-    next_state : State
-    reward : float
     def __getattr__(self, attr):
         return self.get(attr, None)
     def __repr__(self):
@@ -89,10 +130,22 @@ class SimulationResult:
         self.steps = steps
     def __len__(self):
         return len(self.steps)
-    def __getattr__(self, attr):
-        return [step.get(attr, None) for step in self.steps]
+    @property
+    def reward(self):
+        return [s.get('reward', 0) for s in self.steps]
+    @property
+    def action(self):
+        return [s.get('action', None) for s in self.steps]
+    @property
+    def state(self):
+        return [s.get('state', None) for s in self.steps]
+    @property
+    def next_state(self):
+        return [s.get('next_state', None) for s in self.steps]
+    def __eq__(self, other : "SimulationResult"):
+        return all(s == o for s, o in zip(self.steps, other.steps))
     def __iter__(self):
-        yield from self.rows
+        yield from self.steps
     def __getitem__(self, key):
         if isinstance(key, (tuple, list)):
             assert len(key) == 2, "Too many dimensions"
@@ -104,6 +157,10 @@ class SimulationResult:
             return self.steps[key]
         else:
             raise ValueError("Invalid key")
+
+    def _repr_html_(self):
+        import pandas as pd
+        return pd.DataFrame([dict(s) for s in self.steps]).to_html()
             
     # for backwards compatibility
     @property

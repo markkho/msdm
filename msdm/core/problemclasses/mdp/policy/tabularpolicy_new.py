@@ -1,45 +1,22 @@
-from typing import Sequence
 import numpy as np
 
 from msdm.core.problemclasses.mdp.policy.policy import Policy, PolicyEvaluationResult
+from msdm.core.distributions import DictDistribution
 from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess, State, Action
 from msdm.core.table import Table, ProbabilityTable, TableIndex
+from msdm.core.mdp_tables import StateActionTable, StateTable
 
-class TabularPolicy(ProbabilityTable,Policy):
-    def __init__(
-        self,
-        state_list : Sequence[State],
-        action_list : Sequence[Action],
-        policy_matrix: np.array
-    ):
-        ProbabilityTable.__init__(
-            self,
-            data=policy_matrix,
-            table_index=TableIndex(
-                field_names=("state", "action"),
-                field_domains=(tuple(state_list), tuple(action_list))
-            )
-        )
-        
-    def action_dist(self, s):
+class TabularPolicy(StateActionTable,ProbabilityTable,Policy):
+    def action_dist(self, s : State) -> DictDistribution[Action]:
         return self[s]
-    @property
-    def state_list(self):
-        return self.table_index.field_domains[0]
-    @property
-    def action_list(self):
-        return self.table_index.field_domains[1]
-    def __repr__(self):
-        return f"{self.__class__.__name__}(" +\
-            f"states={self.state_list},\n"+\
-            f"\tactions={self.action_list},\n"+\
-            f"\tpolicy_matrix={repr(np.array(self))}\n)"
 
     def evaluate_on(
         self,
         mdp: TabularMarkovDecisionProcess
     ):
-        policy_matrix = self.as_matrix(mdp.state_list, mdp.action_list)
+        assert set(self.action_list) <= set(mdp.action_list), \
+            "All policy actions must be in the mdp"
+        policy_matrix = np.array(self[mdp.state_list,][:,mdp.action_list])
         terminal_state_vec = ~mdp.nonterminal_state_vec.astype(bool)
         state_rewards = np.einsum(
             "sa,sa->s",
@@ -62,6 +39,7 @@ class TabularPolicy(ProbabilityTable,Policy):
         )
         action_value = \
             mdp.state_action_reward_matrix + \
+            np.log(mdp.action_matrix) + \
             np.einsum(
                 "san,n->sa",
                 mdp.discount_rate*mdp.transition_matrix,
@@ -73,18 +51,20 @@ class TabularPolicy(ProbabilityTable,Policy):
             mdp.initial_state_vec
         )
         initial_value = state_value.dot(mdp.initial_state_vec)
-        state_index = TableIndex(
-            field_names=("state", ),
-            field_domains=(mdp.state_list, )
-        )
-        state_action_index = TableIndex(
-            field_names=("state", "action", ),
-            field_domains=(mdp.state_list, mdp.action_list, )
-        )
         return PolicyEvaluationResult(
-            state_value=Table(state_value, state_index),
-            action_value=Table(action_value, state_action_index),
+            state_value=StateTable.from_state_list(
+                state_list=mdp.state_list,
+                data=state_value
+            ),
+            action_value=StateActionTable.from_state_action_lists(
+                state_list=mdp.state_list,
+                action_list=mdp.action_list,
+                data=action_value
+            ),
             initial_value=initial_value,
-            state_occupancy=Table(state_occupancy, state_index),
-            n_simulations=float('inf')
+            state_occupancy=StateTable.from_state_list(
+                state_list=mdp.state_list,
+                data=state_occupancy
+            ),
+            n_simulations=None
         )

@@ -2,6 +2,7 @@ import numpy as np
 from typing import Mapping, Sequence
 from msdm.core.problemclasses.mdp.mdp import Action, State
 from msdm.core.table import Table, TableIndex
+from msdm.core.tableindex import domaintuple
 
 Vector = Sequence[float]
 Matrix = Sequence[Vector]
@@ -35,6 +36,22 @@ class StateActionTable(StateTable):
                 field_names=("state", "action"),
                 field_domains=(state_list, action_list)
             )
+        )
+    @classmethod
+    def from_dict(cls, action_values : Mapping[State, Mapping[Action, float]], default_value):
+        state_list = domaintuple(action_values.keys())
+        action_list = sum([list(action_dict.keys()) for action_dict in action_values.values()], [])
+        action_list = domaintuple(set(action_list))
+        data = np.zeros((len(state_list), len(action_list)))
+        data[:] = default_value
+        for si, s in enumerate(state_list):
+            for a, v in action_values[s].items():
+                ai = action_list.index(a)
+                data[si,ai] = v
+        return cls.from_state_action_lists(
+            state_list=state_list,
+            action_list=action_list,
+            data=data,
         )
     @classmethod
     def from_state_list(cls, state_list : StateList, values : Vector):
