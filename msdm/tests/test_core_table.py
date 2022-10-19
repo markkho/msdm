@@ -1,26 +1,7 @@
 import numpy as np
-import string
-from itertools import product
 from msdm.core.table import Table, ProbabilityTable
-from msdm.core.tableindex import TableIndex, Field
+from msdm.core.tableindex import TableIndex, Field, domaintuple, DomainError, SliceError
 from msdm.core.distributions import Distribution 
-
-def test_Field_compatibility_and_subsumption():
-    f1 = Field("a", (0, 1, 2))
-    f1b = Field("a", (0, 1, 2))
-    f2 = Field("a", (2, 1, 0))
-    f3 = Field("b", (0, 1, 2))
-    f4 = Field("a", (2, 1))
-
-    assert id(f1) != id(f1b)
-    assert f1 == f1b
-    assert f1.compatible_with(f2)
-    assert f2.compatible_with(f1)
-    assert not f1.compatible_with(f3)
-    assert not f1.compatible_with(f4)
-    assert f1.subsumes(f4)
-    assert not f4.subsumes(f1)
-    assert f4.subsumed_by(f1)
 
 def test_TableIndex():
     fields = [
@@ -55,125 +36,214 @@ def test_TableIndex():
         exp_dicts.pop(exp_dicts.index(d))
     assert len(exp_dicts) == 0
 
-def test_TableIndex_compatibility():
-    fields = [
-        Field('a', (0, 1)), 
-        Field('b', ("x", "y", "z"))
-    ]
-    idx = TableIndex(fields=fields)
-
-    comp_fields = [
-        Field('b', ("x", "z", "y")),
-        Field('a', (1, 0)), 
-    ]
-    comp_idx = TableIndex(fields=comp_fields)
-
-    incomp_fields1 = [
-        Field('c', (0, 1)), 
-        Field('b', ("x", "y", "z"))
-    ]
-    incomp_idx1 = TableIndex(fields=incomp_fields1)
-
-    incomp_fields2 = [
-        Field('a', (0, 1)), 
-        Field('b', ("w", "y", "z"))
-    ]
-    incomp_idx2 = TableIndex(fields=incomp_fields2)
-
-    incomp_fields3 = [
-        Field('a', (0, 1, 2)), 
-        Field('b', ("x", "y", "z"))
-    ]
-    incomp_idx3 = TableIndex(fields=incomp_fields3)
-
-    assert idx.compatible_with(comp_idx)
-    assert not idx.compatible_with(incomp_idx1)
-    assert not idx.compatible_with(incomp_idx2)
-    assert not idx.compatible_with(incomp_idx3)
-
-def test_TableIndex_equality_subsumption():
-    idx1 = TableIndex(
+def test_TableIndex_to_numpy_array_index_conversion():
+    idx = TableIndex(
         field_names=("dim1", "dim2"),
         field_domains=(
-            ('a', 'b', 'c', 'd', 'e'),
-            ('x', 'y', 'z')
+            (('a', 'b',), 'a', 'b', 'c'),
+            ('a', 'b', 'c', 'd'),
         )
     )
-    idx1b = TableIndex(
-        field_names=("dim1", "dim2"),
-        field_domains=(
-            ('a', 'b', 'c', 'd', 'e'),
-            ('x', 'y', 'z')
-        )
-    )
-    idx2 = TableIndex(
-        field_names=("dim2", "dim1"),
-        field_domains=(
-            ('x', 'y', 'z'),
-            ('a', 'b', 'c', 'd', 'e'),
-        )
-    )
-    idx4 = TableIndex(
-        field_names=("dim2", "dim1"),
-        field_domains=(
-            ('x', 'z'),
-            ('a', 'b', 'c', 'd', 'e'),
-        )
-    )
-    assert id(idx1) != id(idx1b)
-    assert idx1 == idx1b
-    assert idx1 != idx2
-    assert idx1.subsumes(idx2)
-    assert idx2.subsumes(idx1)
-    assert idx1.subsumes(idx4)
-    assert not idx4.subsumes(idx1)
-    assert idx4.subsumed_by(idx1)
+    assert idx._array_index('a') == (1,)
+    assert idx._array_index(('a', 'b')) == (0,)
+    assert idx._array_index(('c', 'c')) == (3, 2)
+    assert idx._array_index(['c', 'c']) == [3, 3], idx._array_index(['c', 'c'])
+    assert idx._array_index((['c', 'c'],)) == ([3, 3],), idx._array_index(['c', 'c'])
+    try: # error if we use numpy-like "advanced indexing" on more than one field 
+        idx._array_index((['c'], ['c']))
+        assert False
+    except KeyError:
+        pass
+    try: # error if we try to select more than the num. of fields
+        idx._array_index(('a', 'b', 'c', 'd',))
+        assert False
+    except KeyError:
+        pass
+    try: # unrecognized field selector (dict, which is not hashable nor a list)
+        assert idx._array_index((slice(None),{})) == (slice(None),)
+        assert False
+    except KeyError:
+        pass
+    assert idx._array_index(['a', 'b']) == [1, 2]
+    assert idx._array_index(['a', 'b', ('a', 'b')]) == [1, 2, 0]
+    assert idx._array_index((['a', 'b'],)) == ([1, 2],)
+    assert idx._array_index((['a', 'b'], slice(None))) == ([1, 2], slice(None))
+    assert idx._array_index((['a', 'b'], 'a')) == ([1, 2], 0)
+    assert idx._array_index((('a', 'b'), 'a')) == (0, 0)
+    assert idx._array_index(...) == ..., idx._array_index(...)
+    assert idx._array_index(slice(None)) == slice(None)
+    assert idx._array_index((...,)) == (...,), idx._array_index((...,))
+    assert idx._array_index((slice(None),)) == (slice(None),)
 
-def test_TableIndex_reindexing_small():
-    fields = [
-        Field('a', (0, 1)), 
-        Field('b', ("x", "y", "z"))
-    ]
-    idx = TableIndex(fields=fields)
-    
-    new_fields = [
-        Field('b', ("y", "z", "x")),
-        Field('a', (0, 1)), 
-    ]
-    new_idx = TableIndex(fields=new_fields)
-    
-    field_permutations, domain_permutations = idx.reindexing_permutations(new_idx)
-    assert field_permutations == (1, 0)
-    assert domain_permutations == ((0, 1), (1, 2, 0))
-
-def test_TableIndex_reindexing_subsumed_small():
-    fields = [
-        Field('a', (0, 1)), 
-        Field('b', ("x", "y", "z"))
-    ]
-    idx = TableIndex(fields=fields)
-    
-    new_fields = [
-        Field('b', ("y", "x")),
-        Field('a', (0, 1)), 
-    ]
-    new_idx = TableIndex(fields=new_fields)
-    
-    field_permutations, domain_permutations = idx.reindexing_permutations(new_idx)
-    assert field_permutations == (1, 0)
-    assert domain_permutations == ((0, 1), (1, 0))
-
-def test_random_TableIndex_reindexing():
-    # Generate a bunch of random table indexes and random permutations
-    for _ in range(50):
-        random_TableIndex_reindexing_test(
-            seed=np.random.randint(1, int(1e9)),
-            drop_domain_elements=False
+def test_TableIndex_numpy_array_TableIndex_conversion():
+    idx = TableIndex(
+        field_names=("dim1", "dim2", "dim3"),
+        field_domains=(
+            domaintuple((('a', 'b',), 'a', 'b')),
+            domaintuple(('a', 'b', 'c', 'd')),
+            domaintuple((1, 2, 34, 100)),
         )
-        random_TableIndex_reindexing_test(
-            seed=np.random.randint(1, int(1e9)),
-            drop_domain_elements=True
-        )
+    )
+    arr = np.arange(np.product(idx.shape)).reshape(idx.shape)
+
+    tests = [
+        dict(
+            sel=[
+                ('a',),
+                ('a', slice(None)),
+                ('a', slice(None), slice(None)),
+                ('a', ...),
+                ('b',),
+                ('b', slice(None)),
+                ('b', slice(None), slice(None)),
+                ('b', ...),
+                (('a', 'b'),),
+                (('a', 'b'), slice(None)),
+                (('a', 'b'), slice(None), slice(None)),
+                (('a', 'b'), ...),
+            ],
+            exp_idx=TableIndex(
+                fields=[
+                    Field("dim2", domaintuple(['a', 'b', 'c', 'd'])),
+                    Field("dim3", domaintuple((1, 2, 34, 100)))
+                ]
+            )
+        ),
+        dict(
+            sel=[
+                (['a',], slice(None), 1),
+                (['a',], ..., 1),
+                (domaintuple(['a',]), slice(None), 1),
+                (domaintuple(['a',]), ..., 1),
+            ],
+            exp_idx=TableIndex(
+                fields=[
+                    Field("dim1", domaintuple(['a'])),
+                    Field("dim2", domaintuple(['a', 'b', 'c', 'd'])),
+                ]
+            )
+        ),
+        dict(
+            sel=[
+                (['a', 'b', ('a', 'b')], slice(None), 1),
+                (['a', 'b', ('a', 'b')], ..., 1),
+                (domaintuple(['a', 'b', ('a', 'b')]), slice(None), 1),
+                (domaintuple(['a', 'b', ('a', 'b')]), ..., 1),
+            ],
+            exp_idx=TableIndex(
+                fields=[
+                    Field("dim1", domaintuple(['a', 'b', ('a', 'b')])),
+                    Field("dim2", domaintuple(['a', 'b', 'c', 'd'])),
+                ]
+            )
+        ),
+        dict(
+            sel=[
+                (['a', ('a', 'b')], ...),
+                (domaintuple(['a', ('a', 'b')]), ...),
+                (['a', ('a', 'b')], slice(None), slice(None)),
+                (domaintuple(['a', ('a', 'b')]), slice(None), slice(None)),
+            ],
+            exp_idx=TableIndex(
+                fields=[
+                    Field("dim1", domaintuple(['a', ("a", "b")])),
+                    Field("dim2", domaintuple(['a', 'b', 'c', 'd'])),
+                    Field("dim3", domaintuple((1, 2, 34, 100)))
+                ]
+            )
+        ),
+        dict(
+            sel=[
+                (slice(None), "b"),
+                (slice(None), "b", slice(None)),
+                (..., "b", slice(None)),
+                (slice(None), "b", ...),
+            ],
+            exp_idx=TableIndex(
+                fields=[
+                    Field("dim1", domaintuple((('a', 'b',), 'a', 'b'))),
+                    Field("dim3", domaintuple((1, 2, 34, 100)))
+                ]
+            )
+        ),
+        dict(
+            sel=[
+                (slice(None), ["b",]),
+                (slice(None), ["b",], slice(None)),
+                (slice(None), ["b",], ...),
+                (..., ["b",], slice(None)),
+                (slice(None), domaintuple(["b",])),
+                (slice(None), domaintuple(["b",]), slice(None)),
+                (slice(None), domaintuple(["b",]), ...),
+                (..., domaintuple(["b",]), slice(None)),
+            ],
+            exp_idx=TableIndex(
+                fields=[
+                    Field("dim1", domaintuple((('a', 'b',), 'a', 'b'))),
+                    Field("dim2", domaintuple(['b',])),
+                    Field("dim3", domaintuple((1, 2, 34, 100)))
+                ]
+            )
+        ),
+        dict(
+            sel=[
+                (slice(None), slice(None), 34,),
+                (..., 34,),
+            ],
+            exp_idx=TableIndex(
+                fields=[
+                    Field("dim1", domaintuple((('a', 'b',), 'a', 'b'))),
+                    Field("dim2", domaintuple(('a', 'b', 'c', 'd'))),
+                ]
+            )
+        ),
+        dict(
+            sel=[
+                (slice(None), slice(None), [34,]),
+                (..., domaintuple((34,))),
+                (slice(None), slice(None), [34,]),
+                (..., domaintuple((34,))),
+            ],
+            exp_idx=TableIndex(
+                fields=[
+                    Field("dim1", domaintuple((('a', 'b',), 'a', 'b'))),
+                    Field("dim2", domaintuple(('a', 'b', 'c', 'd'))),
+                    Field("dim3", domaintuple((34,)))
+                ]
+            )
+        ),
+        # # Errors expected for weird inputs
+        dict(
+            sel=[
+                (slice(None), ["b"], [100]),
+            ],
+            error=KeyError
+        ),
+        dict(
+            sel=[
+                (slice(None), "b", slice(2)),
+            ],
+            error=SliceError
+        ),
+        dict(
+            sel=[
+                (..., ("b",)),
+            ],
+            error=DomainError
+        ),
+    ]
+
+    for test in tests:
+        try:
+            for sel in test['sel']:
+                array_idx = idx._array_index(sel)
+                updated_idx = idx._updated_index(array_idx)
+                assert updated_idx == test['exp_idx'], (updated_idx, test['exp_idx'])
+                assert updated_idx.shape == arr[array_idx].shape
+                if 'error' in test:
+                    assert False, f"Expected {test['error']}"
+        except test.get('error', ()):
+            pass
 
 def test_Table_construction_and_writing():
     # Can we construct a Table
@@ -308,18 +378,6 @@ def test_Table_construction_and_writing():
     tb1_repr = eval(repr(tb1), {**globals(), 'array': np.array})
     assert tb1_repr.equivalent_to(tb1)
     
-def test_random_Table_reindexing():
-    # Generate a bunch of random tables and random reindexings of them
-    for _ in range(50):
-        random_Table_reindexing_test(
-            seed=np.random.randint(1, int(1e9)),
-            drop_domain_elements=False
-        )
-        random_Table_reindexing_test(
-            seed=np.random.randint(1, int(1e9)),
-            drop_domain_elements=True
-        )
-
 def test_Table_array_like_interface():
     np.random.seed(1201)
     data = np.random.random((5, 3))
@@ -453,122 +511,3 @@ def test_ProbabilityTable_and_TableDistribution():
     assert isinstance(tb_4d['c', 'g'], Distribution)
     assert isinstance(tb_4d['c', 'g', 'n'], Distribution)
     assert not isinstance(tb_4d['c', 'g', 'n', 'z'], Distribution)
-
-################################
-#        Helper Functions      #
-################################
-def random_TableIndex_reindexing_test(seed, drop_domain_elements=False):
-    """
-    Generate a random TableIndex and random permutation of it to make sure
-    that the automatic reindexing is correct.
-    """
-    np.random.seed(seed)
-    table_index = generate_random_TableIndex(
-        names=tuple("abcxyz01234569") + ((), (1, ), (2, 3, 4), ("123",), frozenset([])),
-        values=list(range(100))+list(string.ascii_letters)+list(product("abcdefg", ((), (1,), (2, 3)))),
-        max_ndim=20,
-        max_domain_size=10,
-        seed=np.random.randint(1, int(1e9))
-    )
-    new_table_index, field_permutation, domain_permutations = \
-        random_TableIndex_permutation(
-            table_index=table_index,
-            seed=np.random.randint(1, int(1e9)),
-            drop_domain_elements=drop_domain_elements
-    )
-    comp_field_perm, comp_domain_perms = table_index.reindexing_permutations(new_table_index)
-    try:
-        assert comp_field_perm == field_permutation
-        for comp_domain_perm, domain_perm in zip(comp_domain_perms, domain_permutations):
-            assert comp_domain_perm == domain_perm, (comp_domain_perm, domain_perm)
-    except AssertionError:
-        raise AssertionError(f"Reindexing failed for seed {seed}")
-        
-def random_Table_reindexing_test(seed, drop_domain_elements=False):
-    # Randomly construct a table index and table values
-    # randomly permute the index and reindex the table
-    # test that the data in the new table is reindexed properly
-    np.random.seed(seed)
-    table_index = generate_random_TableIndex(
-        names=tuple("abcxyz01234569") + ((), (1, ), (2, 3, 4), ("123",), frozenset([])),
-        values=list(range(100))+list(string.ascii_letters)+list(product("abcdefg", ((), (1,), (2, 3)))),
-        max_ndim=10,
-        max_domain_size=6,
-        seed=np.random.randint(1, int(1e9))
-    )
-    tb = Table(
-        data=np.random.random(table_index.shape),
-        table_index=table_index
-    )
-    new_table_index, field_permutation, domain_permutations = \
-        random_TableIndex_permutation(
-            table_index=table_index,
-            seed=np.random.randint(1, int(1e9)),
-            drop_domain_elements=drop_domain_elements
-    )
-    new_tb = tb.reindex(new_index=new_table_index)
-
-    # Iterate through the source indexes and destination indexes explicitly
-    # to build up the new table.
-    # Careful - this is a bit tricky!
-    src_data = np.array(tb)
-    src_arr_idx = list(product(*domain_permutations))
-    dest_data = np.zeros([len(p) for p in domain_permutations])
-    dest_arr_idx = [range(len(p)) for p in domain_permutations]
-    dest_arr_idx = list(product(*dest_arr_idx))
-    assert len(dest_arr_idx) == len(src_arr_idx)
-    for src_i, dest_i in zip(src_arr_idx, dest_arr_idx):
-        dest_data[dest_i] = src_data[src_i]
-    dest_data = dest_data.transpose(*field_permutation)
-    
-    try:
-        assert (dest_data == np.array(new_tb)).all()
-    except AssertionError:
-        raise AssertionError(f"Reindexing failed for seed {seed}")
-    
-def generate_random_TableIndex(names, values, max_ndim=1000, max_domain_size=1000, seed=None):
-    np.random.seed(seed)
-    ndim = np.random.randint(1, min(len(names), max_ndim))
-    fields = []
-    names = [n for n in names]
-    np.random.shuffle(names)
-    for dim in range(ndim):
-        np.random.shuffle(values)
-        domain_size = np.random.randint(1, min(len(values), max_domain_size))
-        fields.append(
-            Field(
-                name=names.pop(),
-                domain=tuple(values[:domain_size])
-            )
-        )
-    return TableIndex(fields=fields)
-
-def random_TableIndex_permutation(table_index : TableIndex, drop_domain_elements=False, seed=None):
-    np.random.seed(seed)
-    domain_permutations = [list(range(len(domain))) for domain in table_index.field_domains]
-    for order in domain_permutations:
-        np.random.shuffle(order)
-    if drop_domain_elements:
-        dropped_domain_permutations = []
-        for order in domain_permutations:
-            if len(order) == 1:
-                n_elements = 1
-            else:
-                n_elements = np.random.randint(1,len(order))
-            dropped_domain_permutations.append(order[:n_elements])
-        domain_permutations = dropped_domain_permutations
-    field_permutation = list(range(len(table_index)))
-    np.random.shuffle(field_permutation)
-    new_fields = []
-    for field, domain_permutation in zip(table_index.fields, domain_permutations):
-        new_fields.append(
-            Field(
-                name=field.name,
-                domain=tuple([field.domain[i] for i in domain_permutation])
-            )
-        )
-    new_fields = [new_fields[i] for i in field_permutation]
-    new_table_index = TableIndex(fields=new_fields)
-    field_permutation = tuple(field_permutation)
-    domain_permutations = [tuple(p) for p in domain_permutations]
-    return new_table_index, field_permutation, domain_permutations
