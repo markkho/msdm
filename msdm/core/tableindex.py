@@ -21,6 +21,8 @@ class domaintuple(tuple):
         return {e: ei for ei, e in enumerate(self)}
     def index(self, element):
         return self._index[element]
+    def __hash__(self):
+        return tuple.__hash__(self)
 
 class Field(NamedTuple):
     name : FieldName
@@ -82,8 +84,8 @@ class TableIndex:
         if fields is None:
             if len(field_names) != len(field_domains):
                 raise ValueError("Different numbers of fields names and domains")
-            fields = tuple([Field(n, v) for n, v in zip(field_names, field_domains)])
-        self._fields = fields
+            fields = [Field(n, v) for n, v in zip(field_names, field_domains)]
+        self._fields = tuple(fields)
     def __getitem__(self, field_selection):
         if isinstance(field_selection, slice):
             return self.__class__(fields=self._fields[field_selection])
@@ -118,6 +120,11 @@ class TableIndex:
             # field_selectors are either singletons, subsets of a domain (lists or tuples), or slices
             if field_selector in field.domain:
                 field_indices.append(field.domain.index(field_selector))
+            elif field_selector == field.domain:
+                if contains_sequence:
+                    raise MultipleIndexError(f"TableIndex does not support domain-value indexing on multiple fields like {selector}")
+                contains_sequence = True
+                field_indices.append(self._FIELD_SLICE)
             elif isinstance(field_selector, (list, tuple)):
                 if contains_sequence:
                     raise MultipleIndexError(f"TableIndex does not support domain-value indexing on multiple fields like {selector}")
@@ -221,8 +228,21 @@ class TableIndex:
                 list(index[ellipsis_idx + 1:])
         return index
     def _updated_index(self, array_index):
-        if isinstance(array_index, slice) or array_index == ...:
+        # short-circuiting if array_index is ellipses or all slices
+        if (
+            isinstance(array_index, slice) or \
+            array_index == ... or \
+            (
+                len(array_index) == 1 and (
+                    isinstance(array_index[0], slice) or \
+                    array_index[0] == ...
+                )
+            ) or \
+            all(isinstance(i, slice) or i == ... for i in array_index)
+        ):
             return self
+        
+        # otherwise, construct the new table index
         array_index = self._pad_out_ellipses(array_index)
         new_fields = []
         for fi, field in enumerate(self.fields):

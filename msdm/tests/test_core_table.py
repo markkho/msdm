@@ -89,6 +89,58 @@ def test_TableIndex_numpy_array_TableIndex_conversion():
     tests = [
         dict(
             sel=[
+                ...,
+                (...,),
+                slice(None),
+                (slice(None),),
+                (slice(None), slice(None),),
+                (slice(None), slice(None), slice(None)),
+                (
+                    domaintuple([('a', 'b'), 'a', 'b']),
+                    slice(None),
+                    slice(None)
+                ),
+                (
+                    slice(None),
+                    domaintuple(('a', 'b', 'c', 'd')),
+                    slice(None)
+                ),
+                (
+                    slice(None),
+                    slice(None),
+                    domaintuple((1, 2, 34, 100)),
+                ),
+                (
+                    domaintuple([('a', 'b'), 'a', 'b']),
+                    ...
+                ),
+                (
+                    slice(None),
+                    domaintuple(('a', 'b', 'c', 'd')),
+                    ...
+                ),
+                (
+                    ...,
+                    domaintuple(('a', 'b', 'c', 'd')),
+                    slice(None),
+                ),
+                (
+                    ...,
+                    domaintuple((1, 2, 34, 100)),
+                ),
+            ],
+            exp_idx=idx,
+        ),
+        dict(
+            sel=[
+                ...,
+                (...,),
+                slice(None)
+            ],
+            exp_idx=idx
+        ),
+        dict(
+            sel=[
                 ('a',),
                 ('a', slice(None)),
                 ('a', slice(None), slice(None)),
@@ -233,13 +285,18 @@ def test_TableIndex_numpy_array_TableIndex_conversion():
         ),
     ]
 
+
     for test in tests:
         try:
             for sel in test['sel']:
                 array_idx = idx._array_index(sel)
                 updated_idx = idx._updated_index(array_idx)
+                
                 assert updated_idx == test['exp_idx'], (updated_idx, test['exp_idx'])
                 assert updated_idx.shape == arr[array_idx].shape
+                # test short-circuiting if index is unchanged
+                if idx == test['exp_idx']:
+                    assert id(idx) == id(updated_idx)
                 if 'error' in test:
                     assert False, f"Expected {test['error']}"
         except test.get('error', ()):
