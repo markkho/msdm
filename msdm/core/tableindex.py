@@ -11,7 +11,7 @@ FieldDomain = Sequence[FieldValue]
 class domaintuple(tuple):
     def __repr__(self):
         return f"{self.__class__.__name__}({super().__repr__()})"
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         return (
             (
                 self.__class__ == other.__class__ or \
@@ -20,9 +20,9 @@ class domaintuple(tuple):
             super().__eq__(other)
         )
     @cached_property
-    def _index(self):
+    def _index(self) -> dict[FieldValue,int]:
         return {e: ei for ei, e in enumerate(self)}
-    def index(self, element):
+    def index(self, element) -> int:
         return self._index[element]
     def __hash__(self):
         return tuple.__hash__(self)
@@ -54,7 +54,7 @@ class TableIndex:
         if fields is None:
             if len(field_names) != len(field_domains):
                 raise ValueError("Different numbers of fields names and domains")
-            fields = [Field(n, v) for n, v in zip(field_names, field_domains)]
+            fields = [Field(n, domaintuple(v)) for n, v in zip(field_names, field_domains)]
         self._fields = tuple(fields)
     def __getitem__(self, field_selection):
         if isinstance(field_selection, slice):
@@ -245,7 +245,7 @@ class TableIndex:
     def _index_into_domain(self, field_selector, domain):
         try:
             return type(field_selector)([domain.index(e) for e in field_selector])
-        except (ValueError, KeyError):
+        except (ValueError, KeyError, TypeError):
             raise DomainError(f"Elements of {field_selector} not in {domain}")
     def _pad_out_ellipses(self, index):
         if ... in index:

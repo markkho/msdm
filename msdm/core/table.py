@@ -134,7 +134,7 @@ class Table(Table_repr_html_MixIn,AbstractTable):
         yield from self.table_index.fields[0].domain
 
     def __len__(self):
-        return len(self.table_index.fields[0].domains)
+        return len(self.table_index.fields[0].domain)
 
     def __array__(self, dtype=None):
         return self._data

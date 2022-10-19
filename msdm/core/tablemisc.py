@@ -3,7 +3,9 @@ from msdm.core.table import AbstractTable
 
 class Table_repr_html_MixIn(AbstractTable):
     _column_dims_idx = -1 #this is for interpreting a table as a matrix
-    def _repr_html_(self):
+    def _repr_html_(self, df_kws=None):
+        if df_kws is None:
+            df_kws = dict(float_format=lambda f: f"{f:.2f}")
         import pandas as pd
         pivot = self._column_dims_idx
         field_names = self.table_index.field_names
@@ -33,6 +35,23 @@ class Table_repr_html_MixIn(AbstractTable):
         html_table = pd.DataFrame(
             df_data,
             columns=df_cols,
-            index=df_index
-        ).to_html()
+            index=df_index,
+        ).to_html(**df_kws)
         return html_table
+
+class dataclass_repr_html_MixIn:
+    def _repr_html_(self, float_format=lambda f: f"{f:.2f}"):
+        import dataclasses
+        html_res = [f"<h2>{self.__class__.__name__}</h2>"]
+        for field in dataclasses.fields(self):
+            value = getattr(self, field.name)
+            try:
+                html_res.append(f"<div><h3>{field.name}: </h3>{value._repr_html_()}</div>")
+            except AttributeError:
+                if isinstance(value,float):
+                    html_res.append(f"<div><h3>{field.name}: </h3>{float_format(value)}</div>")
+                else:
+                    html_res.append(f"<div><h3>{field.name}: </h3>{repr(value)}</div>")
+            html_res.append('<hr>')
+
+        return ''.join(html_res)
