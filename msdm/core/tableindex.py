@@ -1,4 +1,3 @@
-from array import array
 from typing import NamedTuple
 import warnings
 from itertools import product
@@ -33,39 +32,6 @@ class Field(NamedTuple):
     domain : Union[domaintuple,Sequence[FieldValue]]
     def __repr__(self):
         return f"{self.__class__.__name__}(name={repr(self.name)}, domain={repr(self.domain)})"
-    def domain_set(self):
-        return frozenset(self.domain)
-    def compatible_with(self, other : "Field") -> bool:
-        """
-        Two Field's with the same name are compatible 
-        if their domains are the same up to permutation.
-        """
-        return (
-            self.name == other.name and \
-            self.domain_set() == other.domain_set()
-        )
-    def subsumes(self, other : "Field") -> bool:
-        """
-        `self` subsumes `other` if they have the same name
-        and all of the elements of `other` are contained in
-        `self`
-        """
-        return (
-            self.name == other.name and \
-            self.domain_set() >= other.domain_set()
-        )
-    def subsumed_by(self, other : "Field") -> bool:
-        return other.subsumes(self)
-    def permutation_of(self, other: "Field") -> Tuple[int]:
-        """
-        Returns indexes that would reorder the domain of
-        `self` to be like that of `other`
-        """
-        self_domain_idx = {e: ei for ei, e in enumerate(self.domain)}
-        domain_permutation = []
-        for e in other.domain:
-            domain_permutation.append(self_domain_idx[e])
-        return tuple(domain_permutation)
 
 class DomainError(BaseException): pass
 class SliceError(ValueError): pass
@@ -154,13 +120,13 @@ class TableIndex:
             elif selector[0] == ...:
                 return selector
             
-        # If it is a list, we first try to index into the outermost field
+        # If it is a list or domaintuple, we first try to index into the outermost field
         # and then fall back to see if it indexes across fields. This 
         # fallback behavior should NOT be relied on.
-        if isinstance(selector, list):
+        if isinstance(selector, (list, domaintuple)):
             try:
                 field_indices = self._index_into_domain(selector, self.fields[0].domain)
-                field_indices = list(field_indices)
+                field_indices = type(selector)(field_indices)
             except DomainError:
                 warnings.warn(
                     f"List selector, {selector}, produces a DomainError. Testing" +\

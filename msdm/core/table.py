@@ -131,10 +131,10 @@ class Table(Table_repr_html_MixIn,AbstractTable):
         return new_data
         
     def keys(self):
-        yield from self.table_index.field_domains[0]
+        yield from self.table_index.fields[0].domain
 
     def __len__(self):
-        return len(self.table_index.field_domains[0])
+        return len(self.table_index.fields[0].domains)
 
     def __array__(self, dtype=None):
         return self._data
