@@ -1,4 +1,4 @@
-from typing import NamedTuple
+from typing import Mapping, NamedTuple
 import warnings
 from itertools import product
 from typing import Hashable, Sequence, Tuple, TypeVar, Union
@@ -20,7 +20,7 @@ class domaintuple(tuple):
             super().__eq__(other)
         )
     @cached_property
-    def _index(self) -> dict[FieldValue,int]:
+    def _index(self) -> Mapping[FieldValue,int]:
         return {e: ei for ei, e in enumerate(self)}
     def index(self, element) -> int:
         return self._index[element]
