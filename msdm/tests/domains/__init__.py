@@ -257,7 +257,9 @@ class DeadEndBandit(TabularMarkovDecisionProcess, TestDomain):
         for s in self.state_list:
             actions = self.actions(s)
             if len(actions) == 0:
-                continue
+                # dead ends are handled by turning them into a uniform distribution
+                # since they are all equally -inf
+                policy[s] = DictDistribution({a: 1/len(self.action_list) for a in self.action_list})
             elif len(actions) == 1:
                 policy[s] = DictDistribution({actions[0]: 1})
             elif s in ['bbb', 'ccc']:
