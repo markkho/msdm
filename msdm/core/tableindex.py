@@ -15,15 +15,6 @@ class domaintuple(tuple):
         return super().__new__(cls, elements)
     def __repr__(self):
         return f"{self.__class__.__name__}({super().__repr__()})"
-    def __eq__(self, other) -> bool:
-        return (
-            self is other or \
-            (
-                self.__class__ == other.__class__ or \
-                type(other) == tuple
-            ) and \
-            super().__eq__(other)
-        )
     @cached_property
     def _index(self) -> Mapping[FieldValue,int]:
         return {e: ei for ei, e in enumerate(self)}

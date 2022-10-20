@@ -75,7 +75,7 @@ def test_TableIndex_to_numpy_array_index_conversion():
     assert idx._array_index((...,)) == (...,), idx._array_index((...,))
     assert idx._array_index((slice(None),)) == (slice(None),)
 
-def test_tuple_domaintuple_equality():
+def test_TableIndex_equality():
     a = TableIndex(
         fields=[
             Field('x', tuple((1,2,3)))
@@ -87,6 +87,17 @@ def test_tuple_domaintuple_equality():
         ]
     )
     assert a == b
+
+def test_tuple_domaintuple_equality():
+    a = domaintuple(range(100))
+    a2 = domaintuple(a)
+    b = domaintuple(range(100))
+    c = tuple(range(100))
+    assert a is a2
+    assert a is not b
+    assert a == b
+    assert a == c
+
 def test_TableIndex_numpy_array_TableIndex_conversion():
     idx = TableIndex(
         field_names=("dim1", "dim2", "dim3"),
