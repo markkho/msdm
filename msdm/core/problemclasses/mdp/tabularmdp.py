@@ -17,6 +17,10 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
     Tabular MDPs can be fully enumerated (e.g., as matrices) and
     assume states/actions are hashable.
     """
+
+    ########################################
+    #              Constructors            #
+    ########################################
     @classmethod
     def from_matrices(
         cls,
@@ -29,9 +33,6 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         nonterminal_state_vec : np.array,
         discount_rate : float,
     ) -> "TabularMarkovDecisionProcess":
-        """
-        Constructs a Tabular MDP from matrices.
-        """
         assert len(state_list) \
             == transition_matrix.shape[0] \
             == transition_matrix.shape[2] \
@@ -78,12 +79,16 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         mdp._action_list = domaintuple(action_list)
         return mdp
 
+
+    ########################################
+    #         Functional interface         #
+    ########################################
     @abstractmethod
-    def next_state_dist(self, s : HashableState, a : HashableAction) -> FiniteDistribution:
+    def initial_state_dist(self) -> FiniteDistribution:
         pass
 
     @abstractmethod
-    def initial_state_dist(self) -> FiniteDistribution:
+    def next_state_dist(self, s : HashableState, a : HashableAction) -> FiniteDistribution:
         pass
 
     @method_cache
@@ -96,19 +101,6 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
     @method_cache
     def _cached_actions(self, s : HashableState) -> Sequence[HashableAction]:
         return self.actions(s)
-
-    def as_matrices(self):
-        return {
-            'ss': self.state_list,
-            'aa': self.action_list,
-            'tf': self.transition_matrix,
-            'rf': self.reward_matrix,
-            'sarf': self.state_action_reward_matrix,
-            's0': self.initial_state_vec,
-            'nt': self.nonterminal_state_vec,
-            'rs': self.reachable_state_vec,
-            'ast': self.absorbing_state_vec
-        }
 
     @cached_property
     def state_list(self) -> Sequence[HashableState]:
@@ -141,7 +133,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         logger.info("Action space unspecified; performing reachability analysis.")
         actions = set([])
         for s in self.state_list:
-            for a in self.actions(s):
+            for a in self._cached_actions(s):
                 actions.add(a)
         try:
             return domaintuple(sorted(actions))
@@ -149,6 +141,10 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
             pass
         return domaintuple(actions)
 
+
+    ########################################
+    #             Matrix interface         #
+    ########################################
     @cached_property
     def transition_matrix(self) -> np.array:
         tf = np.zeros((
@@ -237,3 +233,16 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         absorbing = np.array([is_absorbing(s) for s in self.state_list])
         absorbing.setflags(write=False)
         return absorbing
+
+    def as_matrices(self):
+        return {
+            'ss': self.state_list,
+            'aa': self.action_list,
+            'tf': self.transition_matrix,
+            'rf': self.reward_matrix,
+            'sarf': self.state_action_reward_matrix,
+            's0': self.initial_state_vec,
+            'nt': self.nonterminal_state_vec,
+            'rs': self.reachable_state_vec,
+            'ast': self.absorbing_state_vec
+        }
