@@ -217,7 +217,7 @@ class WindyGridWorldPlotter(GridMDPPlotter):
         )
 
 if __name__ == "__main__":
-    from msdm.algorithms import PolicyIteration
+    from msdm.algorithms.policyiteration import PolicyIteration
     wg = WindyGridWorld(
         grid="""
             ....$
@@ -240,7 +240,7 @@ if __name__ == "__main__":
     pi_res = PolicyIteration().plan_on(wg)
     plotter = wg.plot()
     for _ in range(20):
-        loc_traj = pi_res.policy.run_on(wg).state_traj
+        loc_traj = pi_res.policy.run_on(wg).state
         plotter.plot_location_trajectory(
             loc_traj,
             outline=True,

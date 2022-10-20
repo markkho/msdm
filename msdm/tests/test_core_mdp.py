@@ -1,6 +1,6 @@
 import numpy as np
 from msdm.core.problemclasses.mdp.quickmdp import QuickMDP
-from msdm.algorithms.policyiteration_new import PolicyIteration
+from msdm.algorithms.policyiteration import PolicyIteration
 from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess
 from msdm.core.distributions import DictDistribution
 

@@ -1,5 +1,6 @@
 import torch
-from msdm.algorithms import PolicyIteration
+import numpy as np
+from msdm.algorithms.policyiteration import PolicyIteration
 from msdm.domains import GridWorld
 from msdm.algorithms.entregpolicyiteration import \
     entropy_regularized_policy_iteration, \
@@ -48,7 +49,7 @@ def test_entreg_policy_iteration():
         **ent_reg_params,
         entropy_weight=1e-20
     )
-    hard_q = torch.from_numpy(hard_res._qvaluemat)
+    hard_q = torch.from_numpy(np.array(hard_res.action_value))
     re_s = torch.from_numpy(gw.reachable_state_vec.copy())
 
     high_ent_diff = ((high_ent_res.action_values - hard_q)*re_s[:,None]).abs().sum().item()

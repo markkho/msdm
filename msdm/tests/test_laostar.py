@@ -2,13 +2,14 @@ import numpy as np
 import random
 
 from msdm.algorithms.laostar import LAOStar, ExplicitStateGraph
-from msdm.algorithms import PolicyIteration
+from msdm.algorithms.policyiteration import PolicyIteration
 from msdm.core.problemclasses.mdp import QuickTabularMDP
 from msdm.core.distributions import DictDistribution
-from msdm.algorithms import PolicyIteration, ValueIteration
+from msdm.algorithms.policyiteration import PolicyIteration
+from msdm.algorithms.valueiteration import ValueIteration
 from msdm.tests.domains import DeterministicCounter, make_russell_norvig_grid
 from msdm.domains import GridWorld
-from msdm.core.exceptions import SpecificationException, AlgorithmException
+from msdm.core.exceptions import SpecificationException
 
 def test_laostar_random_action_ordering_flag():
     from frozendict import frozendict
@@ -38,7 +39,11 @@ def test_laostar_random_action_ordering_flag():
     gw = DefaultRightUpActionGridWorld(**gw_params)
     pi_res = PolicyIteration().plan_on(GridWorld(**gw_params, wall_features=""))
 
-    nonrandomized_action_order_lao = LAOStar(heuristic=lambda s: pi_res.V[s], randomize_action_order=False, seed=1239123)
+    nonrandomized_action_order_lao = LAOStar(
+        heuristic=lambda s: pi_res.state_value[s],
+        randomize_action_order=False,
+        seed=1239123
+    )
     nonrand_res = nonrandomized_action_order_lao.plan_on(gw)
     nonrand_action_traj = nonrand_res.policy.run_on(gw).action_traj
     nonrand_expected_traj = [RIGHT]*3 + [UP]*3
@@ -49,7 +54,11 @@ def test_laostar_random_action_ordering_flag():
         [tuple(n.action_order) for n in nonrand_res.explicit_graph.states_to_nodes.values()]
     assert len(set(nonrand_action_order)) == 1
 
-    randomized_action_order_lao = LAOStar(heuristic=lambda s: pi_res.V[s], randomize_action_order=True, seed=123123)
+    randomized_action_order_lao = LAOStar(
+        heuristic=lambda s: pi_res.state_value[s],
+        randomize_action_order=True,
+        seed=123123
+    )
     rand_res = randomized_action_order_lao.plan_on(gw)
     rand_action_traj = rand_res.policy.run_on(gw).action_traj
     rand_match = [taken == expected for taken, expected in zip(rand_action_traj, nonrand_expected_traj)]

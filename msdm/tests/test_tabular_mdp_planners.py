@@ -1,7 +1,7 @@
 import numpy as np 
 
-from msdm.algorithms.valueiteration_new import ValueIteration
-from msdm.algorithms.policyiteration_new import PolicyIteration 
+from msdm.algorithms.valueiteration import ValueIteration
+from msdm.algorithms.policyiteration import PolicyIteration 
 from msdm.core.algorithmclasses import Plans
 from msdm.tests.domains import DeterministicCounter, DeterministicUnreachableCounter, GNTFig6_6, \
     GeometricCounter, VaryingActionNumber, DeadEndBandit, TiedPaths, \
