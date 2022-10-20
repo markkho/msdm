@@ -220,20 +220,6 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         reachable.setflags(write=False)
         return reachable
 
-    @cached_property
-    def absorbing_state_vec(self):
-        def is_absorbing(s):
-            actions = self.actions(s)
-            for a in actions:
-                nextstates = self._cached_next_state_dist(s, a).support
-                for ns in nextstates:
-                    if not self.is_terminal(ns):
-                        return False
-            return True
-        absorbing = np.array([is_absorbing(s) for s in self.state_list])
-        absorbing.setflags(write=False)
-        return absorbing
-
     def as_matrices(self):
         return {
             'ss': self.state_list,
@@ -244,5 +230,4 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
             's0': self.initial_state_vec,
             'nt': self.nonterminal_state_vec,
             'rs': self.reachable_state_vec,
-            'ast': self.absorbing_state_vec
         }

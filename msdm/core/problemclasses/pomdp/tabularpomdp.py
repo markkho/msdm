@@ -25,7 +25,6 @@ class TabularPOMDP(TabularMarkovDecisionProcess, PartiallyObservableMDP):
             's0': self.initial_state_vec,
             'nt': self.nonterminal_state_vec,
             'rs': self.reachable_state_vec,
-            'ast': self.absorbing_state_vec,
             'obs': self.observation_matrix
         }
 
