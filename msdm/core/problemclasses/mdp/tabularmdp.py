@@ -24,10 +24,10 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         action_list : Sequence[HashableAction],
         initial_state_vec : np.array,
         transition_matrix : np.array,
+        action_matrix : np.array,
         reward_matrix : np.array,
         nonterminal_state_vec : np.array,
         discount_rate : float,
-        action_matrix=None
     ) -> "TabularMarkovDecisionProcess":
         """
         Constructs a Tabular MDP from matrices.
@@ -35,16 +35,15 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         assert len(state_list) \
             == transition_matrix.shape[0] \
             == transition_matrix.shape[2] \
+            == action_matrix.shape[0] \
             == nonterminal_state_vec.shape[0] \
             == initial_state_vec.shape[0] \
             == reward_matrix.shape[0] \
-            == reward_matrix.shape[2]
+            == reward_matrix.shape[2] 
         assert len(action_list) \
             == transition_matrix.shape[1] \
+            == action_matrix.shape[1] \
             == reward_matrix.shape[1]
-        if action_matrix is not None:
-            assert len(action_list) == action_matrix.shape[1]
-            assert len(state_list) == action_matrix.shape[0]
 
         #avoids circular dependency
         from msdm.core.problemclasses.mdp.quicktabularmdp import QuickTabularMDP
@@ -59,15 +58,15 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         def reward(s, a, ns):
             return reward_matrix[ss_i[s], aa_i[a], ss_i[ns]]
         def actions(s):
-            if action_matrix is None:
-                return action_list
-            return [a for a, ai in enumerate(action_matrix[ss_i[s]]) if ai > 0]
+            available_actions = action_matrix[state_list.index(s)]
+            available_actions = [a for a, aa in zip(action_list, available_actions) if aa]
+            return tuple(available_actions)
         initial_state_dist = DictDistribution({
             s: p for s, p in zip(state_list, initial_state_vec) if p > 0
         })
         def is_terminal(s):
             return not nonterminal_state_vec[ss_i[s]]
-        return QuickTabularMDP(
+        mdp = QuickTabularMDP(
             next_state_dist=next_state_dist,
             reward=reward,
             actions=actions,
@@ -75,6 +74,9 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
             is_terminal=is_terminal,
             discount_rate=discount_rate
         )
+        mdp._state_list = domaintuple(state_list)
+        mdp._action_list = domaintuple(action_list)
+        return mdp
 
     @abstractmethod
     def next_state_dist(self, s : HashableState, a : HashableAction) -> FiniteDistribution:
@@ -114,6 +116,10 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         List of states. Note that state ordering is only guaranteed to be
         consistent for a particular TabularMarkovDecisionProcess instance.
         """
+        try:
+            return domaintuple(self._state_list)
+        except AttributeError:
+            pass
         logger.info("State space unspecified; performing reachability analysis.")
         states = self.reachable_states()
         try:
@@ -128,6 +134,10 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         List of actions. Note that action ordering is only guaranteed to be
         consistent for a particular TabularMarkovDecisionProcess instance.
         """
+        try:
+            return domaintuple(self._action_list)
+        except AttributeError:
+            pass
         logger.info("Action space unspecified; performing reachability analysis.")
         actions = set([])
         for s in self.state_list:
@@ -200,6 +210,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         s0 = np.array([s0.prob(s) for s in self.state_list])
         s0.setflags(write=False)
         return s0
+
     @cached_property
     def nonterminal_state_vec(self):
         nt = np.array([0 if self.is_terminal(s) else 1 for s in self.state_list])
@@ -226,19 +237,3 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         absorbing = np.array([is_absorbing(s) for s in self.state_list])
         absorbing.setflags(write=False)
         return absorbing
-
-    @method_cache
-    def reachable_states(self, max_states=float('inf')) -> Set[HashableState]:
-        S0 = {e for e, p in self.initial_state_dist().items() if p > 0}
-        frontier = set(S0)
-        visited = set(S0)
-        while max_states > len(frontier) > 0:
-            s = frontier.pop()
-            for a in self._cached_actions(s):
-                for ns, prob in self._cached_next_state_dist(s, a).items():
-                    if prob == 0:
-                        continue
-                    if ns not in visited:
-                        frontier.add(ns)
-                    visited.add(ns)
-        return visited
