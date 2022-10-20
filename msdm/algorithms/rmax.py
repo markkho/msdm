@@ -83,7 +83,7 @@ class RMAX(Learns):
             rng = random
         return rng
 
-    def _create_policy(self, mdp, q):
+    def _create_policy(self, mdp : TabularMarkovDecisionProcess, q):
         policy = {}
         try:
             state_list = mdp.state_list
@@ -99,10 +99,10 @@ class RMAX(Learns):
         policy = TabularPolicy(policy)
         return policy
 
-    def _create_q(self, q_matrix, mdp):
+    def _create_q(self, q_matrix, mdp : TabularMarkovDecisionProcess):
         """create a dictionary q from a q matrix"""
-        index_to_state = {v: k for k, v in mdp.state_index.items()}
-        index_to_action = {v: k for k, v in mdp.action_index.items()}
+        index_to_state = dict(enumerate(mdp.state_list))
+        index_to_action = dict(enumerate(mdp.action_list))
         q = {}
 
         for si in range(q_matrix.shape[0]):
@@ -113,7 +113,7 @@ class RMAX(Learns):
                 q[s][a] = q_matrix[si, ai]
         return q
     
-    def _init_training(self, mdp):
+    def _init_training(self, mdp : TabularMarkovDecisionProcess):
         """initialize training process by creating the data structure to build an empirical model of the MDP"""
         assert self.rmax == np.max(mdp.reward_matrix)
 
@@ -174,22 +174,27 @@ class RMAX(Learns):
         self_transition_mat[np.arange(self.n_states), :, np.arange(self.n_states)] = 1
         return self_transition_mat
 
-    def _training(self, mdp, rng, event_listener):
+    def _training(
+        self,
+        mdp : TabularMarkovDecisionProcess,
+        rng : random.Random,
+        event_listener : RMAXEventListener
+    ):
         """This is the main training loop. It should return
         a nested dictionary. Specifically, a dictionary with
         states as keys and action-value dictionaries as values."""
-        index_to_action = {v: k for k, v in mdp.action_index.items()}
+        index_to_action = dict(enumerate(mdp.action_list))
         for ep in range(self.episodes):
             s = mdp.initial_state_dist().sample(rng=rng)
             while not mdp.is_terminal(s):
                 # select action
-                ai = self._act(mdp.state_index[s], rng)
+                ai = self._act(mdp.state_list.index(s), rng)
                 a = index_to_action[ai]
                 # transition to next state
                 ns = mdp.next_state_dist(s, a).sample(rng=rng)
                 r = mdp.reward(s, a, ns)
                 # update
-                self._observe(mdp.state_index[s], ai, r, mdp.state_index[ns], gamma=mdp.discount_rate)
+                self._observe(mdp.state_list.index(s), ai, r, mdp.state_list.index(ns), gamma=mdp.discount_rate)
                 # end of time step
                 event_listener.end_of_timestep(locals())
                 s = ns

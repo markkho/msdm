@@ -5,6 +5,7 @@ from typing import Set, Sequence, Hashable, Mapping, TypeVar
 from msdm.core.problemclasses.mdp import MarkovDecisionProcess
 from msdm.core.utils.funcutils import method_cache, cached_property
 from msdm.core.distributions import FiniteDistribution, DictDistribution
+from msdm.core.tableindex import domaintuple
 
 logger = logging.getLogger(__name__)
 
@@ -116,14 +117,10 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         logger.info("State space unspecified; performing reachability analysis.")
         states = self.reachable_states()
         try:
-            return sorted(states)
+            return domaintuple(sorted(states))
         except TypeError: #unsortable
             pass
-        return list(states)
-
-    @cached_property
-    def state_index(self) -> Mapping[HashableState, int]:
-        return {s: i for i, s in enumerate(self.state_list)}
+        return domaintuple(states)
 
     @cached_property
     def action_list(self) -> Sequence[HashableAction]:
@@ -137,58 +134,55 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
             for a in self.actions(s):
                 actions.add(a)
         try:
-            return sorted(actions)
+            return domaintuple(sorted(actions))
         except TypeError: #unsortable action representation
             pass
-        return list(actions)
-
-    @cached_property
-    def action_index(self) -> Mapping[HashableAction, int]:
-        return {a: i for i, a in enumerate(self.action_list)}
+        return domaintuple(actions)
 
     @cached_property
     def transition_matrix(self) -> np.array:
-        ss = self.state_list
-        ssi = self.state_index
-        aa = self.action_list
-        aai = self.action_index
-        tf = np.zeros((len(ss), len(aa), len(ss)))
-        for s, si in ssi.items():
+        tf = np.zeros((
+            len(self.state_list),
+            len(self.action_list), 
+            len(self.state_list)
+        ))
+        for si, s in enumerate(self.state_list):
             for a in self._cached_actions(s):
+                ai = self.action_list.index(a)
                 for ns, nsp in self._cached_next_state_dist(s, a).items():
-                    tf[si, aai[a], ssi[ns]] = nsp
+                    nsi = self.state_list.index(ns)
+                    tf[si, ai, nsi] = nsp
         tf.setflags(write=False)
         return tf
 
     @cached_property
     def action_matrix(self):
-        ss = self.state_list
-        ssi = self.state_index
-        aa = self.action_list
-        aai = self.action_index
-        am = np.zeros((len(ss), len(aa)))
-        for s, si in ssi.items():
+        am = np.zeros((
+            len(self.state_list),
+            len(self.action_list), 
+        ))
+        for si, s in enumerate(self.state_list):
             for a in self._cached_actions(s):
-                am[si, aai[a]] = 1
+                ai = self.action_list.index(a)
+                am[si, ai] = 1
         am.setflags(write=False)
         return am
 
     @cached_property
     def reward_matrix(self):
-        ss = self.state_list
-        ssi = self.state_index
-        aa = self.action_list
-        aai = self.action_index
-        rf = np.zeros((len(ss), len(aa), len(ss)))
-        for s, si in ssi.items():
-            # by definition, reward from a terminal state is 0
-            # if self.is_terminal(s):
-            #     continue
+        rf = np.zeros((
+            len(self.state_list),
+            len(self.action_list), 
+            len(self.state_list)
+        ))
+        for si, s in enumerate(self.state_list):
             for a in self._cached_actions(s):
+                ai = self.action_list.index(a)
                 for ns, p in self._cached_next_state_dist(s, a).items():
+                    nsi = self.state_list.index(ns)
                     if p == 0.:
                         continue
-                    rf[si, aai[a], ssi[ns]] = self.reward(s, a, ns)
+                    rf[si, ai, nsi] = self.reward(s, a, ns)
         rf.setflags(write=False)
         return rf
 
@@ -208,8 +202,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         return s0
     @cached_property
     def nonterminal_state_vec(self):
-        ss = self.state_list
-        nt = np.array([0 if self.is_terminal(s) else 1 for s in ss])
+        nt = np.array([0 if self.is_terminal(s) else 1 for s in self.state_list])
         nt.setflags(write=False)
         return nt
 
