@@ -9,10 +9,15 @@ FieldValue = TypeVar("FieldValue", bound=Hashable)
 FieldDomain = Sequence[FieldValue]
 
 class domaintuple(tuple):
+    def __new__(cls, elements):
+        if isinstance(elements, cls):
+            return elements
+        return super().__new__(cls, elements)
     def __repr__(self):
         return f"{self.__class__.__name__}({super().__repr__()})"
     def __eq__(self, other) -> bool:
         return (
+            self is other or \
             (
                 self.__class__ == other.__class__ or \
                 type(other) == tuple
