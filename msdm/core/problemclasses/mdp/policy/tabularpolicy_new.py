@@ -7,7 +7,7 @@ from msdm.core.table import Table, ProbabilityTable, TableIndex
 from msdm.core.mdp_tables import StateActionTable, StateTable
 
 class TabularPolicy(StateActionTable,ProbabilityTable,Policy):
-    def action_dist(self, s : State) -> DictDistribution[Action]:
+    def action_dist(self, s : State) -> DictDistribution:
         return self[s]
 
     def evaluate_on(
