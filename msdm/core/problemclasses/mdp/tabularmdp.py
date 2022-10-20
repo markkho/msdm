@@ -154,10 +154,6 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         aai = self.action_index
         tf = np.zeros((len(ss), len(aa), len(ss)))
         for s, si in ssi.items():
-            # by definition, terminal states lead only to themselves
-            # if self.is_terminal(s):
-            #     tf[si, :, si] = 1
-            #     continue
             for a in self._cached_actions(s):
                 for ns, nsp in self._cached_next_state_dist(s, a).items():
                     tf[si, aai[a], ssi[ns]] = nsp
@@ -200,7 +196,9 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
     def state_action_reward_matrix(self):
         rf = self.reward_matrix
         tf = self.transition_matrix
-        return np.einsum("san,san->sa", rf, tf)
+        sa_rf = np.einsum("san,san->sa", rf, tf)
+        sa_rf.setflags(write=False)
+        return sa_rf
 
     @cached_property
     def initial_state_vec(self):
@@ -237,11 +235,11 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         return absorbing
 
     @method_cache
-    def reachable_states(self) -> Set[HashableState]:
+    def reachable_states(self, max_states=float('inf')) -> Set[HashableState]:
         S0 = {e for e, p in self.initial_state_dist().items() if p > 0}
         frontier = set(S0)
         visited = set(S0)
-        while len(frontier) > 0:
+        while max_states > len(frontier) > 0:
             s = frontier.pop()
             for a in self._cached_actions(s):
                 for ns, prob in self._cached_next_state_dist(s, a).items():
