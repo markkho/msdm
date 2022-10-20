@@ -1,11 +1,10 @@
-import warnings
 from dataclasses import dataclass
 import numpy as np
-from collections import defaultdict
 
-from msdm.core.distributions import DictDistribution
-from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess, TabularPolicy
+from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess
+from msdm.core.problemclasses.mdp.policy.tabularpolicy_new import TabularPolicy
 from msdm.core.algorithmclasses import Plans, PlanningResult
+from msdm.core.mdp_tables import StateActionTable, StateTable
 
 class PolicyIteration(Plans):
     VALUE_DECIMAL_PRECISION = 10
@@ -19,7 +18,7 @@ class PolicyIteration(Plans):
 
     def plan_on(self, mdp: TabularMarkovDecisionProcess):
         if self._version == 'vectorized':
-            v, q, _, iterations = policy_iteration_vectorized(
+            state_values, action_values, policy_matrix, iterations = policy_iteration_vectorized(
                 transition_matrix=mdp.transition_matrix,
                 terminal_state_vector=~mdp.nonterminal_state_vec.astype(bool),
                 discount_rate=mdp.discount_rate,
@@ -27,31 +26,41 @@ class PolicyIteration(Plans):
                 action_matrix=mdp.action_matrix.astype(bool),
                 max_iterations=self.max_iterations
             )
-            action_value = {}
-            for s in mdp.state_list:
-                si = mdp.state_index[s]
-                action_value[s] = {}
-                for a in mdp.actions(s):
-                    ai = mdp.action_index[a]
-                    action_value[s][a] = q[si][ai]
-            state_value = dict(zip(mdp.state_list, v))
+            # terminal dead ends are handled by turning them into a uniform distribution
+            # since they are all equally -inf, but non-terminal dead end states 
+            # are allowed to have their single action taken
+            policy_matrix = np.isclose(
+                action_values,
+                np.max(action_values, axis=-1, keepdims=True),
+                atol=10**(-self.VALUE_DECIMAL_PRECISION),
+                rtol=0
+            )
+            policy_matrix = policy_matrix/policy_matrix.sum(-1, keepdims=True)
+            single_action_states = mdp.action_matrix.sum(-1) == 1
+            policy_matrix[single_action_states] = mdp.action_matrix[single_action_states]
+            policy=TabularPolicy.from_state_action_lists(
+                state_list=mdp.state_list,
+                action_list=mdp.action_list,
+                data=policy_matrix
+            )
+            state_values=StateTable.from_state_list(
+                state_list=mdp.state_list,
+                data=state_values
+            )
+            action_values=StateActionTable.from_state_action_lists(
+                state_list=mdp.state_list,
+                action_list=mdp.action_list,
+                data=action_values
+            )
         else:
-            raise
-        policy = {}
-        round_val = lambda v: round(v, self.VALUE_DECIMAL_PRECISION)
-        for s in mdp.state_list:
-            if len(action_value[s]) == 0:
-                continue
-            maxq = max([round_val(v) for v in action_value[s].values()])
-            max_actions = [a for a in mdp.actions(s) if round_val(action_value[s][a]) == maxq]
-            policy[s] = DictDistribution({a: 1/len(max_actions) for a in max_actions})
+            raise ValueError
         return PolicyIterationResult(
             iterations=iterations,
+            state_value=state_values,
+            action_value=action_values,
             converged=iterations < (self.max_iterations - 1),
-            state_value=state_value,
-            initial_value=sum([state_value[s]*p for s, p in mdp.initial_state_dist().items()]),
-            action_value=action_value,
-            policy=TabularPolicy(policy)
+            initial_value=sum([state_values[s]*p for s, p in mdp.initial_state_dist().items()]),
+            policy=policy
         )
 
 @dataclass
