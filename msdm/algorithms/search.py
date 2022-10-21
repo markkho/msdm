@@ -1,10 +1,15 @@
 import collections
+from functools import lru_cache
 import heapq
 import random
+from re import M
+from typing import Dict
 
 from msdm.core.algorithmclasses import Plans, Result
+from msdm.core.distributions import DeterministicDistribution, DictDistribution, dictdistribution
 from msdm.core.problemclasses.mdp import DeterministicShortestPathProblem
-from msdm.core.problemclasses.mdp import TabularPolicy
+from msdm.core.problemclasses.mdp.mdp import MarkovDecisionProcess
+from msdm.core.problemclasses.mdp.policy.policy import FunctionalPolicy
 
 def reconstruct_path(camefrom, start, terminal_state):
     '''
@@ -16,11 +21,19 @@ def reconstruct_path(camefrom, start, terminal_state):
         path.append(camefrom[path[-1]])
     return path[::-1]
 
-def path_to_policy(path):
+def path_to_policy(path, mdp: MarkovDecisionProcess):
     '''
     Converts a path (a sequence of states from a start to a goal) into a policy.
     '''
-    return TabularPolicy.from_deterministic_map(dict(zip(path[:-1], path[1:])))
+    policy_dict = dict(zip(path[:-1], path[1:]))
+    @FunctionalPolicy
+    @lru_cache(maxsize=None)
+    def policy(s):
+        try:
+            return DeterministicDistribution(policy_dict[s])
+        except KeyError:
+            return DictDistribution.uniform(mdp.actions(s))
+    return policy
 
 def make_shuffled(rnd):
     def shuffled(iterable):
@@ -58,7 +71,7 @@ class BreadthFirstSearch(Plans):
                 path = reconstruct_path(camefrom, start, s)
                 return Result(
                     path=path,
-                    policy=path_to_policy(path),
+                    policy=path_to_policy(path, mdp),
                     visited=visited,
                 )
 
@@ -107,7 +120,7 @@ class AStarSearch(Plans):
                 path = reconstruct_path(camefrom, start, s)
                 return Result(
                     path=path,
-                    policy=path_to_policy(path),
+                    policy=path_to_policy(path, mdp),
                     visited=visited,
                 )
 

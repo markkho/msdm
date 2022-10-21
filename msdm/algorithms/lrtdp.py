@@ -1,12 +1,15 @@
+from functools import lru_cache
 import random
 import copy
 import warnings
 from collections import defaultdict
 from abc import ABC, abstractmethod
 from typing import Callable
+from msdm.core.problemclasses.mdp.tabularmdp import TabularMarkovDecisionProcess
 from msdm.core.utils.dictutils import defaultdict2
 from msdm.core.distributions import DictDistribution
-from msdm.core.problemclasses.mdp import MarkovDecisionProcess, TabularPolicy, HashableState
+from msdm.core.problemclasses.mdp import MarkovDecisionProcess, HashableState
+from msdm.core.problemclasses.mdp.policy.policy import FunctionalPolicy
 from msdm.core.algorithmclasses import Plans, PlanningResult
 
 class LRTDP(Plans):
@@ -93,21 +96,44 @@ class LRTDP(Plans):
         else:
             self.res.event_listener = None
 
-    def _tear_down_plan_on(self, mdp, heuristic):
+    def _tear_down_plan_on(
+        self,
+        mdp : TabularMarkovDecisionProcess,
+        heuristic
+    ):
         res = self.res
 
-        # put together policy, q-values and initial value
-        res.policy = {}
-        res.Q = defaultdict(lambda : dict())
-        for s in res.V.keys():
-            res.policy[s] = DictDistribution.deterministic(self.policy(mdp, s))
+        q_values = defaultdict(lambda : dict())
+        policy_dict = {}
+        for s in self.res.V.keys():
+            policy_dict[s] = self.policy(mdp, s)
             for a in mdp.actions(s):
-                res.Q[s][a] = self.Q(mdp, s, a)
+                q_values[s][a] = self.Q(mdp, s, a)
+        res.Q = q_values
 
-        res.policy = DefaultTabularPolicy.with_default(
-            policy_dict=res.policy,
-            default_generator=lambda s: DictDistribution.uniform(mdp.actions(s))
-        )
+        @FunctionalPolicy
+        @lru_cache(maxsize=None)
+        def policy(s):
+            try:
+                action = policy_dict[s]
+                return DictDistribution.deterministic(action)
+            except KeyError:
+                pass
+            max_actions = []
+            max_val = float('-inf')
+            for a in mdp.actions(s):
+                ns_dist = mdp.next_state_dist(s, a)
+                val = ns_dist.expectation(
+                    lambda ns : mdp.reward(s, a, ns) + mdp.discount_rate*heuristic(ns)
+                ) 
+                if val > max_val:
+                    max_actions = [a]
+                elif val == max_val:
+                    max_actions.append(a)
+                max_val = max(val, max_val)
+            return DictDistribution.uniform(max_actions)
+
+        res.policy = policy
         res.initial_value = sum([res.V[s0]*p for s0, p in mdp.initial_state_dist().items()])
 
         #clear result
@@ -209,21 +235,6 @@ class LRTDP(Plans):
                 action_list = mdp.actions(s)
             self.res.action_orders[s] = action_list
         return max(action_list, key=lambda a: self.Q(mdp, s, a))
-
-# TODO: this is a copy from laostar_refactor, we should consolidate
-# once this is finalized
-class DefaultTabularPolicy(TabularPolicy):
-    @classmethod
-    def with_default(cls, policy_dict, default_generator):
-        instance = DefaultTabularPolicy(policy_dict)
-        instance.default_generator = default_generator
-        return instance
-
-    def action_dist(self, s):
-        try:
-            return self[s]
-        except KeyError:
-            return self.default_generator(s)
 
 class LRTDPEventListener(ABC):
     @abstractmethod

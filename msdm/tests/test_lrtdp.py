@@ -48,7 +48,7 @@ def _test_expected_error_bound(bellman_error_margin, optimal_res, test_res, mdp)
     initial states of an MDP.
     """
     test_eval = test_res.policy.evaluate_on(mdp)
-    test_occ = test_eval.occupancy #occupancy from start state
+    test_occ = test_eval.state_occupancy  #occupancy from start state
     test_start_steps = sum(test_occ.values())
     value_diff = test_res.initial_value - optimal_res.initial_value
     within_bound = 0 <= value_diff <= bellman_error_margin*test_start_steps

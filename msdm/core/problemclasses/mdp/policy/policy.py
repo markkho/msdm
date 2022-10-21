@@ -25,7 +25,7 @@ class Policy(ABC):
         action_list : Sequence[Action]
     ):
         # import here to avoid circular dependency
-        from msdm.core.problemclasses.mdp.policy.tabularpolicy_new import TabularPolicy
+        from msdm.core.problemclasses.mdp.policy.tabularpolicy import TabularPolicy
         policy_matrix = np.zeros((len(state_list), len(action_list)))
         action_index = {a: ai for ai, a in enumerate(action_list)}
         for si, s in enumerate(state_list):

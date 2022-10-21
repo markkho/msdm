@@ -42,7 +42,7 @@ def test_Policy_to_tabular():
             assert tb_policy[s].isclose(policy.action_dist(s))
     
 def test_TabularPolicy_Policy_evaluate_on():
-    rng = random
+    rng = random.Random(123999)
     for mdp in test_mdps:
         policy = FunctionalPolicy(
             lambda s: 

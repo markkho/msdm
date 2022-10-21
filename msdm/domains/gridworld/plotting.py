@@ -12,7 +12,7 @@ import matplotlib.colors as colors
 import matplotlib.cm as cmx
 import matplotlib.patheffects as path_effects
 
-from msdm.core.problemclasses.mdp import TabularPolicy
+from msdm.core.problemclasses.mdp.policy.tabularpolicy import TabularPolicy
 from msdm.domains.gridworld.mdp import GridWorld
 
 

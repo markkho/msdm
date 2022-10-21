@@ -1,11 +1,12 @@
 """Temporal difference learning algorithms for discrete MDPs
 
 """
+from functools import lru_cache
 from msdm.core.algorithmclasses import Learns, Result
-from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess, TabularPolicy
+from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess
+from msdm.core.problemclasses.mdp.policy.policy import FunctionalPolicy
 from msdm.core.distributions import DictDistribution, SoftmaxDistribution
 from msdm.core.utils.dictutils import defaultdict2
-from collections import defaultdict
 from types import SimpleNamespace
 from abc import abstractmethod, ABC
 import random
@@ -130,19 +131,16 @@ class TemporalDifferenceLearning(Learns):
         return rng
 
     def _create_policy(self, mdp, q):
-        policy = {}
-        try:
-            state_list = mdp.state_list
-        except AttributeError:
-            state_list = q.keys()
-        for s in state_list:
-            if s not in q:
-                max_aa = mdp.actions(s)
-            else:
-                maxq = max(q[s].values())
-                max_aa = [a for a in q[s].keys() if q[s][a] == maxq]
-            policy[s] = DictDistribution({a: 1/len(max_aa) for a in max_aa})
-        policy = TabularPolicy(policy)
+        @FunctionalPolicy
+        @lru_cache(maxsize=None)
+        def policy(s):
+            try:
+                action_vals = q[s]
+                maxq = max(action_vals.values())
+                max_actions = [a for a in action_vals.keys() if action_vals[a] == maxq]
+            except KeyError:
+                max_actions = mdp.actions(s)
+            return DictDistribution.uniform(max_actions)
         return policy
 
     def _initial_q_table(self, mdp):
