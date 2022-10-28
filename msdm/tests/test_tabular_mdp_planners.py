@@ -1,27 +1,47 @@
-import numpy as np 
+import numpy as np
+from msdm.algorithms.multichainpolicyiteration import MultichainPolicyIteration 
 
 from msdm.algorithms.valueiteration import ValueIteration
 from msdm.algorithms.policyiteration import PolicyIteration 
 from msdm.core.algorithmclasses import Plans
 from msdm.tests.domains import DeterministicCounter, DeterministicUnreachableCounter, GNTFig6_6, \
     GeometricCounter, VaryingActionNumber, DeadEndBandit, TiedPaths, \
-    RussellNorvigGrid_Fig17_3, PositiveRewardCycle
+    RussellNorvigGrid_Fig17_3, PositiveRewardCycle, Puterman_Example_9_1_1
 
-def _test_tabular_planner_correctness(pl: Plans):
-    test_mdps = [
-        DeterministicCounter(3, discount_rate=1.0),
-        DeterministicUnreachableCounter(3, discount_rate=.95),
-        GeometricCounter(p=1/13, discount_rate=1.0),
-        GeometricCounter(p=1/13, discount_rate=.95),
-        GeometricCounter(p=1/13, discount_rate=.513),
-        PositiveRewardCycle(),
-        VaryingActionNumber(),
-        DeadEndBandit(),
-        TiedPaths(discount_rate=1.0),
-        TiedPaths(discount_rate=.99),
-        RussellNorvigGrid_Fig17_3()
-    ]
+discounted_mdps = [
+    PositiveRewardCycle(discount_rate=.95),
+    VaryingActionNumber(discount_rate=1.0),
+    DeterministicUnreachableCounter(3, discount_rate=.95),
+    DeterministicCounter(3, discount_rate=.95),
+    GeometricCounter(p=1/13, discount_rate=.95),
+    GeometricCounter(p=1/13, discount_rate=.513),
+    TiedPaths(discount_rate=.99),
+]
 
+stochastic_shortest_path_mdps =[
+    DeterministicCounter(3, discount_rate=1.0),
+    GeometricCounter(p=1/13, discount_rate=1.0),
+    TiedPaths(discount_rate=1.0),
+]
+
+# An ergodic or recurrent MDP is one where the transition matrix corresponding to every 
+# (deterministic stationary) policy has a single recurrent class. 
+ergodic_undiscounted_mdps = [
+    RussellNorvigGrid_Fig17_3(discount_rate=1.0),
+]
+safe_mdps = \
+    discounted_mdps +\
+    stochastic_shortest_path_mdps +\
+    ergodic_undiscounted_mdps
+
+non_terminating_mdps = [
+    Puterman_Example_9_1_1()
+]
+# deadend_mdps = [
+#     DeadEndBandit(),
+# ]
+
+def _test_tabular_planner_correctness(pl: Plans, test_mdps):
     for mdp in test_mdps:
         print(f"Testing {pl} on {mdp}")
         result = pl.plan_on(mdp)
@@ -35,10 +55,25 @@ def _test_tabular_planner_correctness(pl: Plans):
             assert np.isclose(optimal_state_value[s], result.state_value[s], atol=1e-3)
 
 def test_ValueIteration_dict_correctness():
-    _test_tabular_planner_correctness(ValueIteration(max_iterations=1000, max_residual=1e-5, _version="dict"))
+    _test_tabular_planner_correctness(
+        ValueIteration(max_iterations=1000, max_residual=1e-5, _version="dict"),
+        test_mdps=safe_mdps
+    )
 
 def test_ValueIteration_vec_correctness():
-    _test_tabular_planner_correctness(ValueIteration(max_iterations=1000, max_residual=1e-5, _version="vectorized"))
+    _test_tabular_planner_correctness(
+        ValueIteration(max_iterations=1000, max_residual=1e-5, _version="vectorized"),
+        test_mdps=safe_mdps
+    )
 
 def test_PolicyIteration_vec_correctness():
-    _test_tabular_planner_correctness(PolicyIteration(max_iterations=1000, _version="vectorized"))
+    _test_tabular_planner_correctness(
+        PolicyIteration(max_iterations=1000, _version="vectorized"),
+        test_mdps=safe_mdps
+    )
+
+def test_MultiChainPolicyIteration_vec_correctness():
+    _test_tabular_planner_correctness(
+        MultichainPolicyIteration(max_iterations=1000),
+        test_mdps=safe_mdps+non_terminating_mdps
+    )

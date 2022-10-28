@@ -101,7 +101,12 @@ class DeterministicCounter(DeterministicShortestPathProblem, TabularMarkovDecisi
     def optimal_state_value(self):
         value = {}
         for s in self.state_list:
-            value[s] = -(self.goal - s)
+            steps_away = self.goal - s
+            discount = 1
+            value[s] = 0
+            for _ in range(steps_away):
+                value[s] += -1*discount
+                discount *= self.discount_rate
         return value
 
 class DeterministicUnreachableCounter(DeterministicCounter):
@@ -173,6 +178,8 @@ class VaryingActionNumber(DeterministicShortestPathProblem, TabularMarkovDecisio
     Counting MDP where actions at every state vary. Used to test handling of MDPs with
     varying numbers of states.
     '''
+    def __init__(self, discount_rate=1.0):
+        self.discount_rate = discount_rate
     def initial_state(self):
         return 0
 
@@ -295,6 +302,8 @@ class DeadEndBandit(TabularMarkovDecisionProcess, TestDomain):
 
 class TransitionRewardDictMDP(TabularMarkovDecisionProcess):
     _transition_rewards : dict
+    def __init__(self, discount_rate=.95):
+        self.discount_rate = discount_rate
     def actions(self, s):
         actions = tuple(self._transition_rewards[s].keys())
         return actions
@@ -308,7 +317,6 @@ class TransitionRewardDictMDP(TabularMarkovDecisionProcess):
         return ns_r[ns]
 
 class PositiveRewardCycle(TransitionRewardDictMDP, TestDomain):
-    discount_rate: float = .95
     _transition_rewards = {
         'a': {
             'b': {'b': (1, -1)},
@@ -348,6 +356,49 @@ class PositiveRewardCycle(TransitionRewardDictMDP, TestDomain):
             'c': value_from_c
         }
 
+class Puterman_Example_9_1_1(TransitionRewardDictMDP,TestDomain):
+    discount_rate = 1
+    _transition_rewards = {
+        's1': {
+            "a1": {
+                's1': (1, 3)
+            },
+            "a2": {
+                's2': (1, 1)
+            }
+        },
+        's2': {
+            "a1": {
+                "s2": (1, 0)
+            },
+            "a2": {
+                "s3": (1, 1)
+            }
+        },
+        "s3": {
+            "a1": {
+                "s3": (1, 2)
+            }
+        }
+    }
+    def initial_state_dist(self):
+        return DictDistribution({'s1': 1})
+    def is_terminal(self, s):
+        return False
+    def optimal_policy(self):
+        return {
+            "s1": DictDistribution({'a1': 1}),
+            "s2": DictDistribution({'a2': 1}),
+            "s3": DictDistribution({'a1': 1})
+        }
+    def optimal_state_value(self):
+        # technically this should be up to an additive constant
+        return {
+            "s1": 0,
+            "s2": -1,
+            "s3": 0
+        }
+
 class TiedPaths(TransitionRewardDictMDP, TestDomain):
     """
     Acyclic MDP with 3 paths that are tied in
@@ -380,8 +431,6 @@ class TiedPaths(TransitionRewardDictMDP, TestDomain):
         'c2': {'end': {'end': (1, 0)}},
         'end': {'end': {'end': (1, 0)}},
     }
-    def __init__(self, discount_rate):
-        self.discount_rate = discount_rate
     def initial_state_dist(self):
         return DictDistribution({'start': 1})
     def is_terminal(self, s):
@@ -499,13 +548,14 @@ class RussellNorvigGrid_Fig17_3(RussellNorvigGrid, TestDomain):
     Slippery gridworld with parameters from AIMA (3rd Ed)
     Figure 17.2 and 17.3.
     """
-    def __init__(self) -> None:
+    def __init__(self, discount_rate=1.0) -> None:
         super().__init__(
-            discount_rate=1.0,
+            discount_rate=discount_rate,
             slip_prob=0.2,
             step_reward=-0.04
         )
     def optimal_policy(self):
+        assert self.discount_rate == 1.0
         return {
             (0, 0): DictDistribution({(0, 1): 1}),
             (0, 1): DictDistribution({(0, 1): 1}),
@@ -521,6 +571,7 @@ class RussellNorvigGrid_Fig17_3(RussellNorvigGrid, TestDomain):
             (3, 2): DictDistribution({a: 1/len(self.actions((3, 2))) for a in self.actions((3, 2))}),
         } 
     def optimal_state_value(self):
+        assert self.discount_rate == 1.0
         return {
             (0, 0): .705,
             (0, 1): .762,
