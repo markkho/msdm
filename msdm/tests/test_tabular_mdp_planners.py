@@ -5,7 +5,7 @@ from msdm.algorithms.valueiteration import ValueIteration
 from msdm.algorithms.policyiteration import PolicyIteration 
 from msdm.core.algorithmclasses import Plans
 from msdm.tests.domains import DeterministicCounter, DeterministicUnreachableCounter, GNTFig6_6, \
-    GeometricCounter, VaryingActionNumber, DeadEndBandit, TiedPaths, \
+    GeometricCounter, TestDomain, VaryingActionNumber, DeadEndBandit, TiedPaths, \
     RussellNorvigGrid_Fig17_3, PositiveRewardCycle, Puterman_Example_9_1_1
 
 discounted_mdps = [
@@ -16,6 +16,7 @@ discounted_mdps = [
     GeometricCounter(p=1/13, discount_rate=.95),
     GeometricCounter(p=1/13, discount_rate=.513),
     TiedPaths(discount_rate=.99),
+    Puterman_Example_9_1_1(discount_rate=.9312)
 ]
 
 stochastic_shortest_path_mdps =[
@@ -35,7 +36,7 @@ safe_mdps = \
     ergodic_undiscounted_mdps
 
 non_terminating_mdps = [
-    Puterman_Example_9_1_1()
+    Puterman_Example_9_1_1(discount_rate=1.0)
 ]
 # deadend_mdps = [
 #     DeadEndBandit(),
@@ -43,6 +44,7 @@ non_terminating_mdps = [
 
 def _test_tabular_planner_correctness(pl: Plans, test_mdps):
     for mdp in test_mdps:
+        assert isinstance(mdp, TestDomain)
         print(f"Testing {pl} on {mdp}")
         result = pl.plan_on(mdp)
         optimal_policy = mdp.optimal_policy()
@@ -53,6 +55,8 @@ def _test_tabular_planner_correctness(pl: Plans, test_mdps):
         for s in optimal_policy:
             assert optimal_policy[s].isclose(result.policy[s])
             assert np.isclose(optimal_state_value[s], result.state_value[s], atol=1e-3)
+            if hasattr(mdp, "optimal_state_gain") and hasattr(result, "state_gain"):
+                assert np.isclose(mdp.optimal_state_gain()[s], result.state_gain[s], atol=1e-3)
 
 def test_ValueIteration_dict_correctness():
     _test_tabular_planner_correctness(

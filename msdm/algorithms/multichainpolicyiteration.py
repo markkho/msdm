@@ -12,7 +12,7 @@ class MultichainPolicyIteration(Plans):
     as described in Puterman (1994) Section 9.2.2.
     
     This algorithm can handle problems where the discount rate is 
-    1 (as well as below). It returns a gain-bias optimal policy, the
+    <= 1. It returns a gain-bias optimal policy, the
     corresponding gain (the "average recurrent value function"),
     and the bias (the "transient value function") for states and actions.
     """
@@ -20,10 +20,8 @@ class MultichainPolicyIteration(Plans):
     def __init__(
         self,
         max_iterations=int(1e5),
-        _version="vectorized"
     ):
         self.max_iterations = max_iterations
-        self._version = _version
 
     def plan_on(self, mdp: TabularMarkovDecisionProcess):
         state_gain, action_gain, state_bias, action_bias, _, iterations = multichain_policy_iteration_vectorized(

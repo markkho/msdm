@@ -302,8 +302,6 @@ class DeadEndBandit(TabularMarkovDecisionProcess, TestDomain):
 
 class TransitionRewardDictMDP(TabularMarkovDecisionProcess):
     _transition_rewards : dict
-    def __init__(self, discount_rate=.95):
-        self.discount_rate = discount_rate
     def actions(self, s):
         actions = tuple(self._transition_rewards[s].keys())
         return actions
@@ -331,6 +329,8 @@ class PositiveRewardCycle(TransitionRewardDictMDP, TestDomain):
             'b': {'b': (1, -3)}
         }
     }
+    def __init__(self, discount_rate=.95):
+        self.discount_rate = discount_rate
     def initial_state_dist(self):
         return DictDistribution({'a': 1/3, 'b': 1/3, 'c': 1/3})
     def is_terminal(self, s):
@@ -357,7 +357,8 @@ class PositiveRewardCycle(TransitionRewardDictMDP, TestDomain):
         }
 
 class Puterman_Example_9_1_1(TransitionRewardDictMDP,TestDomain):
-    discount_rate = 1
+    def __init__(self, discount_rate=1.0): 
+        self.discount_rate = discount_rate
     _transition_rewards = {
         's1': {
             "a1": {
@@ -392,11 +393,30 @@ class Puterman_Example_9_1_1(TransitionRewardDictMDP,TestDomain):
             "s3": DictDistribution({'a1': 1})
         }
     def optimal_state_value(self):
+        if self.discount_rate < 1.0:
+            return {
+                "s1": self.reward("s1", "a1", "s1")*(1/(1 - self.discount_rate)),
+                "s2": self.reward("s2", "a2", "s3") + \
+                    self.discount_rate*self.reward("s3", "a1", "s3")*(1/(1 - self.discount_rate)),
+                "s3": self.reward("s3", "a1", "s3")*(1/(1 - self.discount_rate))
+            }
         # technically this should be up to an additive constant
         return {
             "s1": 0,
             "s2": -1,
             "s3": 0
+        }
+    def optimal_state_gain(self):
+        if self.discount_rate < 1.0:
+            return {
+                "s1": 0,
+                "s2": 0,
+                "s3": 0
+            }
+        return {
+            "s1": 3,
+            "s2": 2,
+            "s3": 2,
         }
 
 class TiedPaths(TransitionRewardDictMDP, TestDomain):
@@ -431,6 +451,8 @@ class TiedPaths(TransitionRewardDictMDP, TestDomain):
         'c2': {'end': {'end': (1, 0)}},
         'end': {'end': {'end': (1, 0)}},
     }
+    def __init__(self, discount_rate=.95):
+        self.discount_rate = discount_rate
     def initial_state_dist(self):
         return DictDistribution({'start': 1})
     def is_terminal(self, s):
