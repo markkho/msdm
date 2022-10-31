@@ -50,7 +50,7 @@ class ValueIteration(Plans):
         elif self._version == "vectorized":
             state_values, action_values, iterations = value_iteration_vectorized(
                 transition_matrix=mdp.transition_matrix,
-                terminal_state_vector=~mdp.nonterminal_state_vec.astype(bool),
+                terminal_state_vector=~mdp.transient_state_vec.astype(bool),
                 discount_rate=mdp.discount_rate,
                 reward_matrix=mdp.reward_matrix,
                 action_matrix=mdp.action_matrix,

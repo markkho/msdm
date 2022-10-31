@@ -42,6 +42,7 @@ def test_MarkovDecisionProcess_reachable_states():
 
 def test_TabularMarkovDecisionProcess_from_matrices():
     for mdp1 in test_mdps:
+        mdp1 : TabularMarkovDecisionProcess
         print(mdp1)
         mdp2 = TabularMarkovDecisionProcess.from_matrices(
             state_list = mdp1.state_list,
@@ -50,7 +51,7 @@ def test_TabularMarkovDecisionProcess_from_matrices():
             transition_matrix = mdp1.transition_matrix,
             action_matrix = mdp1.action_matrix,
             reward_matrix = mdp1.reward_matrix,
-            nonterminal_state_vec = mdp1.nonterminal_state_vec,
+            transient_state_vec  = mdp1.transient_state_vec,
             discount_rate = mdp1.discount_rate
         )
         pi1 = PolicyIteration().plan_on(mdp1)
@@ -62,7 +63,7 @@ def test_TabularMarkovDecisionProcess_from_matrices():
         assert (mdp2.transition_matrix == mdp1.transition_matrix).all()
         assert (mdp2.action_matrix == mdp1.action_matrix).all()
         assert (mdp2.reward_matrix == mdp1.reward_matrix).all()
-        assert (mdp2.nonterminal_state_vec == mdp1.nonterminal_state_vec).all()
+        assert (mdp2.transient_state_vec == mdp1.transient_state_vec).all()
         assert mdp2.discount_rate == mdp1.discount_rate
 
         assert np.isclose(pi1.initial_value, pi2.initial_value)

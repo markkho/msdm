@@ -17,7 +17,7 @@ class TabularPolicy(StateActionTable,ProbabilityTable,Policy):
         assert set(self.action_list) <= set(mdp.action_list), \
             "All policy actions must be in the mdp"
         policy_matrix = np.array(self[mdp.state_list,][:,mdp.action_list])
-        terminal_state_vec = ~mdp.nonterminal_state_vec.astype(bool)
+        terminal_state_vec = ~mdp.transient_state_vec.astype(bool)
         state_rewards = np.einsum(
             "sa,sa->s",
             policy_matrix, mdp.state_action_reward_matrix

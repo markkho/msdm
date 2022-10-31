@@ -26,7 +26,7 @@ class MultichainPolicyIteration(Plans):
     def plan_on(self, mdp: TabularMarkovDecisionProcess):
         state_gain, action_gain, state_bias, action_bias, _, iterations = multichain_policy_iteration_vectorized(
             transition_matrix=mdp.transition_matrix,
-            terminal_state_vector=~mdp.nonterminal_state_vec.astype(bool),
+            terminal_state_vector=~mdp.transient_state_vec.astype(bool),
             discount_rate=mdp.discount_rate,
             reward_matrix=mdp.reward_matrix,
             action_matrix=mdp.action_matrix.astype(bool),

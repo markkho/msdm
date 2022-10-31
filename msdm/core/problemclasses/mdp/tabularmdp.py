@@ -30,14 +30,14 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         transition_matrix : np.array,
         action_matrix : np.array,
         reward_matrix : np.array,
-        nonterminal_state_vec : np.array,
+        transient_state_vec  : np.array,
         discount_rate : float,
     ) -> "TabularMarkovDecisionProcess":
         assert len(state_list) \
             == transition_matrix.shape[0] \
             == transition_matrix.shape[2] \
             == action_matrix.shape[0] \
-            == nonterminal_state_vec.shape[0] \
+            == transient_state_vec .shape[0] \
             == initial_state_vec.shape[0] \
             == reward_matrix.shape[0] \
             == reward_matrix.shape[2] 
@@ -66,7 +66,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
             s: p for s, p in zip(state_list, initial_state_vec) if p > 0
         })
         def is_terminal(s):
-            return not nonterminal_state_vec[ss_i[s]]
+            return not transient_state_vec [ss_i[s]]
         mdp = QuickTabularMDP(
             next_state_dist=next_state_dist,
             reward=reward,
@@ -208,8 +208,8 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         return s0
 
     @cached_property
-    def nonterminal_state_vec(self):
-        nt = np.array([0 if self.is_terminal(s) else 1 for s in self.state_list])
+    def transient_state_vec(self) -> np.ndarray:
+        nt = np.array([0 if self.is_terminal(s) else 1 for s in self.state_list], dtype=bool)
         nt.setflags(write=False)
         return nt
 
@@ -228,6 +228,6 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
             'rf': self.reward_matrix,
             'sarf': self.state_action_reward_matrix,
             's0': self.initial_state_vec,
-            'nt': self.nonterminal_state_vec,
+            'nt': self.transient_state_vec,
             'rs': self.reachable_state_vec,
         }
