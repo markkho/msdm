@@ -37,7 +37,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
             == transition_matrix.shape[0] \
             == transition_matrix.shape[2] \
             == action_matrix.shape[0] \
-            == transient_state_vec .shape[0] \
+            == transient_state_vec.shape[0] \
             == initial_state_vec.shape[0] \
             == reward_matrix.shape[0] \
             == reward_matrix.shape[2] 
@@ -66,7 +66,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
             s: p for s, p in zip(state_list, initial_state_vec) if p > 0
         })
         def is_terminal(s):
-            return not transient_state_vec [ss_i[s]]
+            return not transient_state_vec[ss_i[s]]
         mdp = QuickTabularMDP(
             next_state_dist=next_state_dist,
             reward=reward,
@@ -209,18 +209,29 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
 
     @cached_property
     def transient_state_vec(self) -> np.ndarray:
-        nt = np.array([0 if self.is_terminal(s) else 1 for s in self.state_list], dtype=bool)
-        nt.setflags(write=False)
-        return nt
+        """
+        Transient states are states that are neither absorbing nor recurrent.
+        That is, there exists at least one policy under which a transient
+        state will only be visited a finite number of times.
+        """
+        transient = ~self.absorbing_state_vec & ~self.recurrent_state_vec
+        transient.setflags(write=False)
+        return transient
     
-    # @cached_property
-    # def absorbing_state_vec(self) -> np.ndarray:
-    #     """
-    #     Absorbing states are states that only have actions that self-loop and return 
-    #     a reward of 0.
-    #     """
-    #     self_looping = (np.diagonal(self.transition_matrix, axis1=0, axis2=2) == 1).all(axis=0)
-    #     zero_reward = (self.reward_matrix == 0).all(axis=(1, 2))
+    @cached_property
+    def absorbing_state_vec(self) -> np.ndarray:
+        """
+        Absorbing states are states that only have actions that self-loop and return 
+        a reward of 0, or are explicitly marked as absorbing with `is_absorbing`.
+        """
+        self_looping = np.diagonal(self.transition_matrix, axis1=0, axis2=2).T
+        self_looping = (self_looping == 1) | ~self.action_matrix.astype(bool)
+        self_looping = self_looping.all(-1)
+        zero_reward = (self.reward_matrix == 0).all(axis=(1, 2))
+        absorbing_state_vec = np.array([self.is_absorbing(s) for s in self.state_list], dtype=bool)
+        absorbing_state_vec = (self_looping & zero_reward) | absorbing_state_vec
+        absorbing_state_vec.setflags(write=False)
+        return absorbing_state_vec
     
     @cached_property
     def recurrent_state_vec(self) -> np.ndarray:
@@ -229,7 +240,10 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         number of times under any policy.
         """
         if self.discount_rate < 1.0:
-            return np.zeros(len(self.state_list)).astype(bool)
+            # no states are recurrent with a discount rate
+            recurrent_states = np.zeros(len(self.state_list)).astype(bool)
+            recurrent_states.setflags(write=False)
+            return recurrent_states
         uniform_markov_chain = np.einsum("san,sa->sn", self.transition_matrix, self.action_matrix)
         np.divide(
             uniform_markov_chain,
@@ -237,16 +251,10 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
             where=(uniform_markov_chain > 0),
             out=uniform_markov_chain
         )
-        # TODO: calculate absorbing_state_vec locally for now, in the future we should have a more general
-        # property built in, but we need to figure out canonical MDP
-        self_looping = (np.diagonal(self.transition_matrix, axis1=0, axis2=2) == 1).all(axis=0)
-        zero_reward = (self.reward_matrix == 0).all(axis=(1, 2))
-        absorbing_state_vec = self_looping & zero_reward
-        # HACK: need to refactor to have a single source of truth
-        absorbing_state_vec = absorbing_state_vec | ~(self.transient_state_vec.astype(bool))
-        uniform_markov_chain[absorbing_state_vec] = 0
+        uniform_markov_chain[self.absorbing_state_vec] = 0
         eigvals, eigvecs = np.linalg.eig(uniform_markov_chain)
         recurrent_states = (eigvecs[:, eigvals == 1] > 0).any(-1)
+        recurrent_states.setflags(write=False)
         return recurrent_states
 
     @cached_property

@@ -4,7 +4,7 @@ from msdm.algorithms.policyiteration import PolicyIteration
 from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess
 from msdm.core.distributions import DictDistribution
 
-from msdm.tests.domains import DeterministicCounter, DeterministicUnreachableCounter, GNTFig6_6, \
+from msdm.tests.domains import AbsorbingStateTester, DeterministicCounter, DeterministicUnreachableCounter, GNTFig6_6, \
     GeometricCounter, VaryingActionNumber, DeadEndBandit, TiedPaths, \
     RussellNorvigGrid_Fig17_3, PositiveRewardCycle, RussellNorvigGrid
 
@@ -39,6 +39,31 @@ def test_MarkovDecisionProcess_reachable_states():
     )
     assert set(line_world.reachable_states()) == {0, 1, 2, 3, 4, 5}
     assert set(line_world.reachable_states(max_states=2)) == {0, 1}
+
+def test_TabularMarkovDecisionProcess_implicit_absorbing_state_detection():
+    # action space and reward function leads to last being an absorbing state
+    mdp = AbsorbingStateTester(discount_rate=1.0, last_reward=0, last_actions=(0, ))
+    assert (mdp.absorbing_state_vec == np.array([False, False, True])).all()
+
+    # reward function leads to last not being an absorbing state
+    mdp = AbsorbingStateTester(discount_rate=1.0, last_reward=1, last_actions=(0, ))
+    assert (mdp.absorbing_state_vec == np.array([False, False, False])).all()
+    # set absorbing state explicitly
+    mdp = AbsorbingStateTester(
+        discount_rate=1.0, last_reward=1, last_actions=(0, ),
+        explicit_absorbing_flag=True
+    )
+    assert (mdp.absorbing_state_vec == np.array([False, False, True])).all()
+
+    # action space leads to last not being an absorbing state
+    mdp = AbsorbingStateTester(discount_rate=1.0, last_reward=0, last_actions=(-1, 0))
+    assert (mdp.absorbing_state_vec == np.array([False, False, False])).all()
+    # set absorbing state explicitly
+    mdp = AbsorbingStateTester(
+        discount_rate=1.0, last_reward=1, last_actions=(0, -1),
+        explicit_absorbing_flag=True
+    )
+    assert (mdp.absorbing_state_vec == np.array([False, False, True])).all()
 
 def test_TabularMarkovDecisionProcess_from_matrices():
     for mdp1 in test_mdps:
@@ -81,12 +106,12 @@ def test_QuickMDP_equivalence():
             initial_state_dist = mdp.initial_state_dist,
             actions            = mdp.actions,
             next_state_dist    = mdp.next_state_dist,
-            is_terminal        = mdp.is_terminal,
+            is_terminal        = mdp.is_absorbing,
             reward             = mdp.reward,
         )
         assert mdp.initial_state_dist().isclose(quick_mdp.initial_state_dist())
         for s in mdp.state_list:
             assert set(mdp.actions(s)) == set(quick_mdp.actions(s))
-            assert mdp.is_terminal(s) == quick_mdp.is_terminal(s)
+            assert mdp.is_absorbing(s) == quick_mdp.is_absorbing(s)
             for a in mdp.actions(s):
                 assert mdp.next_state_dist(s, a).isclose(quick_mdp.next_state_dist(s, a))
