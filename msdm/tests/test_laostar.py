@@ -3,7 +3,7 @@ import random
 
 from msdm.algorithms.laostar import LAOStar, ExplicitStateGraph
 from msdm.algorithms.policyiteration import PolicyIteration
-from msdm.core.problemclasses.mdp import QuickTabularMDP
+from msdm.core.problemclasses.mdp.quickmdp import QuickTabularMDP
 from msdm.core.distributions import DictDistribution
 from msdm.algorithms.policyiteration import PolicyIteration
 from msdm.algorithms.valueiteration import ValueIteration

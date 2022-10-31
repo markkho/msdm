@@ -47,7 +47,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
             == reward_matrix.shape[1]
 
         #avoids circular dependency
-        from msdm.core.problemclasses.mdp.quicktabularmdp import QuickTabularMDP
+        from msdm.core.problemclasses.mdp.quickmdp import QuickTabularMDP
 
         ss_i = {s: i for i, s in enumerate(state_list)} #state indices
         aa_i = {a: i for i, a in enumerate(action_list)}

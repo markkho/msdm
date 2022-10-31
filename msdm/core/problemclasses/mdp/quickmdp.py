@@ -1,6 +1,7 @@
 from msdm.core.distributions import Distribution, DeterministicDistribution
 from msdm.core.problemclasses.mdp.mdp import MarkovDecisionProcess, \
     State, Action
+from msdm.core.problemclasses.mdp.tabularmdp import TabularMarkovDecisionProcess
 from typing import Callable, Sequence, Union
 
 class QuickMDP(MarkovDecisionProcess):
@@ -48,3 +49,6 @@ class QuickMDP(MarkovDecisionProcess):
 
     def is_absorbing(self, s):
         return self._is_terminal(s)
+
+class QuickTabularMDP(QuickMDP,TabularMarkovDecisionProcess):
+    pass
