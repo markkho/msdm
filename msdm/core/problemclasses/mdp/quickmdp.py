@@ -46,5 +46,5 @@ class QuickMDP(MarkovDecisionProcess):
     def initial_state_dist(self):
         return self._initial_state_dist()
 
-    def is_terminal(self, s):
+    def is_absorbing(self, s):
         return self._is_terminal(s)

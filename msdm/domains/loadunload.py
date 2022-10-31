@@ -26,7 +26,7 @@ class LoadUnload(TabularPOMDP):
     def initial_state_dist(self):
         return DictDistribution.deterministic(State(0, False))
 
-    def is_terminal(self, s):
+    def is_absorbing(self, s):
         return False
 
     def actions(self, s):

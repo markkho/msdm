@@ -50,7 +50,7 @@ class Policy(ABC):
         traj = []
         s = initial_state
         for t in range(max_steps):
-            if mdp.is_terminal(s):
+            if mdp.is_absorbing(s):
                 break
             a = self.action_dist(s).sample(rng=rng)
             ns = mdp.next_state_dist(s, a).sample(rng=rng)

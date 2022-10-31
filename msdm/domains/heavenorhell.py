@@ -74,7 +74,7 @@ class HeavenOrHell(TabularPOMDP):
             Action(0, 0, True),
         )
 
-    def is_terminal(self, s):
+    def is_absorbing(self, s):
         loc = (s.x, s.y)
         return self.loc_features[loc] in (s.heaven, s.hell)
 

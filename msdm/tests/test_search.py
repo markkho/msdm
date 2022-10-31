@@ -1,6 +1,7 @@
 import unittest
 
 from msdm.algorithms import BreadthFirstSearch, AStarSearch
+from msdm.core.problemclasses.mdp.mdp import MarkovDecisionProcess
 from msdm.domains import GridWorld
 from msdm.tests.domains import DeterministicCounter
 
@@ -43,9 +44,9 @@ class SearchTestCase(unittest.TestCase):
     def test_astarsearch(self):
         soln1 = [(0, 2), (0, 3), (0, 4), (1, 4), (2, 4), (2, 3), (2, 2), (-1, -1)]
         soln2 = [(0, 2), (0, 1), (0, 0), (1, 0), (2, 0), (2, 1), (2, 2), (-1, -1)]
-        def make_manhattan_distance_heuristic(mdp):
+        def make_manhattan_distance_heuristic(mdp : MarkovDecisionProcess):
             def manhattan_distance_heuristic(s):
-                if mdp.is_terminal(s):
+                if mdp.is_absorbing(s):
                     return 0
                 goal = mdp.absorbing_states[0]
                 dist = abs(s['x'] - goal['x']) + abs(s['y'] - goal['y'])

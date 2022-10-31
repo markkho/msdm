@@ -26,7 +26,7 @@ class MultichainPolicyIteration(Plans):
     def plan_on(self, mdp: TabularMarkovDecisionProcess):
         state_gain, action_gain, state_bias, action_bias, _, iterations = multichain_policy_iteration_vectorized(
             transition_matrix=mdp.transition_matrix,
-            terminal_state_vector=~mdp.transient_state_vec.astype(bool),
+            absorbing_state_vec=mdp.absorbing_state_vec.astype(bool),
             discount_rate=mdp.discount_rate,
             reward_matrix=mdp.reward_matrix,
             action_matrix=mdp.action_matrix.astype(bool),
@@ -95,14 +95,14 @@ def multichain_policy_iteration_vectorized(
     transition_matrix,
     discount_rate,
     reward_matrix,
-    terminal_state_vector,
+    absorbing_state_vec,
     action_matrix,
     max_iterations,
     policy=None
 ):
-    assert terminal_state_vector.dtype == bool
+    assert absorbing_state_vec.dtype == bool
     assert action_matrix.dtype == bool
-    assert action_matrix[~terminal_state_vector].any(-1).all(), \
+    assert action_matrix[~absorbing_state_vec].any(-1).all(), \
         "MDP has non-terminal states where no action can be taken (deadends)"
     
     if policy is None:
@@ -113,7 +113,7 @@ def multichain_policy_iteration_vectorized(
         transition_matrix,
         reward_matrix
     )
-    sa_rf[terminal_state_vector] = 0
+    sa_rf[absorbing_state_vec] = 0
     action_penalty = np.log(action_matrix)
     n_states = transition_matrix.shape[0]
     ss_range = np.arange(len(transition_matrix))
@@ -128,7 +128,7 @@ def multichain_policy_iteration_vectorized(
         # the system of linear equations
         s_rf = sa_rf[ss_range, policy]
         mp = discount_rate*transition_matrix[ss_range, policy]
-        mp[terminal_state_vector] = 0
+        mp[absorbing_state_vec] = 0
         eigvals, eigvecs = np.linalg.eig(mp)
         if (eigvals == 1).any():
             eigvals, eigvecs = np.linalg.eig(mp.T)
@@ -179,7 +179,7 @@ def multichain_policy_iteration_vectorized(
         # Policy improvement based on *bias*
         # Note: We always break max ties on the side of the previous policy
         bias_q = sa_rf + discount_rate*np.einsum("san,n->sa", transition_matrix, bias) + action_penalty
-        bias_q[terminal_state_vector] = 0
+        bias_q[absorbing_state_vec] = 0
         new_policy = np.argmax(bias_q, axis=-1)
         policy_is_max = np.isclose(bias_q[ss_range, policy], bias_q[ss_range, new_policy])
         new_policy[policy_is_max] = policy[policy_is_max]

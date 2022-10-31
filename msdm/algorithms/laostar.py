@@ -147,7 +147,7 @@ class LAOStarEventListener(ABC):
 class ExplicitStateGraph:
     def __init__(
         self,
-        mdp,
+        mdp : MarkovDecisionProcess,
         heuristic,
         randomize_action_order,
         randomize_nextstate_order,
@@ -199,7 +199,7 @@ class ExplicitStateGraph:
     def expand_while(self, condition):
         while True:
             unexpanded = [s for s, n in self.states_to_nodes.items() if not n.expanded]
-            unexpanded = [s for s in unexpanded if not self.mdp.is_terminal(s)]
+            unexpanded = [s for s in unexpanded if not self.mdp.is_absorbing(s)]
             unexpanded = [s for s in unexpanded if condition(s)]
             if len(unexpanded) == 0:
                 break
@@ -324,7 +324,7 @@ class ExplicitStateGraph:
         for node in state_nodes:
             s = node.state
             si = state_index[s]
-            if self.mdp.is_terminal(s):
+            if self.mdp.is_absorbing(s):
                 tf[si, :, -1] = 1
                 am[si, :] = 1
                 continue
@@ -345,7 +345,7 @@ class ExplicitStateGraph:
                         # Also, the pseudo-terminal reward is a probability weighted sum
                         # of the rewards and needs to be renormalized by the total
                         # probability of entering the pseudo-terminal state (see below).
-                        if self.mdp.is_terminal(ns):
+                        if self.mdp.is_absorbing(ns):
                             rf[si, ai, -1] += prob*reward
                         else:
                             rf[si, ai, -1] += prob*(reward + self.mdp.discount_rate*self.states_to_nodes[ns].value)

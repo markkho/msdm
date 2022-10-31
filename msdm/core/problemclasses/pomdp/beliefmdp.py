@@ -17,9 +17,9 @@ class BeliefMDP(MarkovDecisionProcess):
         s0 = Belief(tuple(self.pomdp.state_list), tuple(self.pomdp.initial_state_vec))
         return DictDistribution.deterministic(s0)
 
-    def is_terminal(self, s):
+    def is_absorbing(self, s):
         for state, prob in zip(*s):
-            if (prob > 0.0) and not self.pomdp.is_terminal(state):
+            if (prob > 0.0) and not self.pomdp.is_absorbing(state):
                 return False
         return True
 

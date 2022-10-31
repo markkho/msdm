@@ -186,7 +186,7 @@ class RMAX(Learns):
         index_to_action = dict(enumerate(mdp.action_list))
         for ep in range(self.episodes):
             s = mdp.initial_state_dist().sample(rng=rng)
-            while not mdp.is_terminal(s):
+            while not mdp.is_absorbing(s):
                 # select action
                 ai = self._act(mdp.state_list.index(s), rng)
                 a = index_to_action[ai]

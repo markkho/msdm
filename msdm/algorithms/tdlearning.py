@@ -4,6 +4,7 @@
 from functools import lru_cache
 from msdm.core.algorithmclasses import Learns, Result
 from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess
+from msdm.core.problemclasses.mdp.mdp import MarkovDecisionProcess
 from msdm.core.problemclasses.mdp.policy.policy import FunctionalPolicy
 from msdm.core.distributions import DictDistribution, SoftmaxDistribution
 from msdm.core.utils.dictutils import defaultdict2
@@ -143,9 +144,9 @@ class TemporalDifferenceLearning(Learns):
             return DictDistribution.uniform(max_actions)
         return policy
 
-    def _initial_q_table(self, mdp):
+    def _initial_q_table(self, mdp: MarkovDecisionProcess):
         def initial_q(s, a):
-            if mdp.is_terminal(s):
+            if mdp.is_absorbing(s):
                 return 0.0
             return self.initial_q(s, a)
         initial_avals = lambda s: {a: initial_q(s, a) for a in mdp.actions(s)}
@@ -170,11 +171,11 @@ class QLearning(TemporalDifferenceLearning):
     \delta_t = R_{t+1} + \gamma\max_a Q(S_{t+1}, a) - Q(S_t, A_t)
     $$
     """
-    def _training(self, mdp, rng, event_listener):
+    def _training(self, mdp: MarkovDecisionProcess, rng, event_listener):
         q = self._initial_q_table(mdp)
         for ep in range(self.episodes):
             s = mdp.initial_state_dist().sample(rng=rng)
-            while not mdp.is_terminal(s):
+            while not mdp.is_absorbing(s):
                 # select action
                 a = epsilon_softmax_sample(q[s], self.rand_choose, self.softmax_temp, rng)
                 # transition to next state
@@ -198,12 +199,12 @@ class DoubleQLearning(TemporalDifferenceLearning):
     $$
     where Q_i and Q_j are two different Q functions selected at random each update.
     """
-    def _training(self, mdp, rng, event_listener):
+    def _training(self, mdp: MarkovDecisionProcess, rng, event_listener):
         q1 = self._initial_q_table(mdp)
         q2 = self._initial_q_table(mdp)
         for ep in range(self.episodes):
             s = mdp.initial_state_dist().sample(rng=rng)
-            while not mdp.is_terminal(s):
+            while not mdp.is_absorbing(s):
                 # select action
                 avals = {a: q1[s][a]*.5 + q2[s][a]*.5 for a in mdp.actions(s)}
                 a = epsilon_softmax_sample(avals, self.rand_choose, self.softmax_temp, rng)
@@ -239,14 +240,14 @@ class SARSA(TemporalDifferenceLearning):
     \delta_t = R_{t+1} + \gamma Q(S_{t+1}, A_{t+1}) - Q(S_t, A_t)
     $$
     """
-    def _training(self, mdp, rng, event_listener):
+    def _training(self, mdp: MarkovDecisionProcess, rng, event_listener):
         q = self._initial_q_table(mdp)
         for ep in range(self.episodes):
             s = mdp.initial_state_dist().sample(rng=rng)
             if s not in q:
                 q[s] = {a: self.initial_q(s, a) for a in mdp.actions(s)}
             a = epsilon_softmax_sample(q[s], self.rand_choose, self.softmax_temp, rng)
-            while not mdp.is_terminal(s):
+            while not mdp.is_absorbing(s):
                 # get next state, reward, next action
                 ns = mdp.next_state_dist(s, a).sample(rng=rng)
                 r = mdp.reward(s, a, ns)
@@ -267,11 +268,11 @@ class ExpectedSARSA(TemporalDifferenceLearning):
     \delta_t = R_{t+1} + \gamma \sum_a \pi(a \mid S_{t + 1})Q(S_{t+1}, a) - Q(S_t, A_t)
     $$
     """
-    def _training(self, mdp, rng, event_listener):
+    def _training(self, mdp: MarkovDecisionProcess, rng, event_listener):
         q = self._initial_q_table(mdp)
         for ep in range(self.episodes):
             s = mdp.initial_state_dist().sample(rng=rng)
-            while not mdp.is_terminal(s):
+            while not mdp.is_absorbing(s):
                 # select action
                 a = epsilon_softmax_sample(q[s], self.rand_choose, self.softmax_temp, rng)
                 # transition to next state

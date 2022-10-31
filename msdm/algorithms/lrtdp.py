@@ -140,7 +140,7 @@ class LRTDP(Plans):
         self.res = None
         return res
 
-    def lrtdp(self, mdp, heuristic=None, iterations=None):
+    def lrtdp(self, mdp : MarkovDecisionProcess, heuristic=None, iterations=None):
         # Ghallab, Nau, Traverso: Algorithm 6.17
         self.res.V = defaultdict2(heuristic)
         self.res.action_orders = dict()
@@ -158,7 +158,7 @@ class LRTDP(Plans):
         else:
             self.res.converged = True
 
-    def lrtdp_trial(self, mdp, s):
+    def lrtdp_trial(self, mdp : MarkovDecisionProcess, s):
         # Ghallab, Nau, Traverso: Algorithm 6.17
         visited = [s, ]
         while not self.res.solved[s]:
@@ -167,7 +167,7 @@ class LRTDP(Plans):
             visited.append(s)
 
             # Terminal states are solved.
-            if mdp.is_terminal(s):
+            if mdp.is_absorbing(s):
                 self.res.solved[s] = True
             if len(visited) > self.max_trial_length:
                 break
@@ -213,13 +213,13 @@ class LRTDP(Plans):
         '''
         self.res.V[s] = max(self.Q(mdp, s, a) for a in mdp.actions(s))
 
-    def Q(self, mdp, s, a):
-        if mdp.is_terminal(s):
+    def Q(self, mdp: MarkovDecisionProcess, s, a):
+        if mdp.is_absorbing(s):
             return 0
         q = 0
         for ns, prob in mdp.next_state_dist(s, a).items():
             future = 0
-            if not mdp.is_terminal(ns):
+            if not mdp.is_absorbing(ns):
                 future = self.res.V[ns]
             q += prob * (mdp.reward(s, a, ns) + mdp.discount_rate*future)
         return q

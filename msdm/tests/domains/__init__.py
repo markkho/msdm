@@ -43,7 +43,7 @@ class GNTFig6_6(TabularMarkovDecisionProcess):
     def initial_state_dist(self) -> Distribution:
         return DeterministicDistribution(0)
 
-    def is_terminal(self, s):
+    def is_absorbing(self, s):
         return s in (12, 15, 16)
 
     def actions(self, s) -> Sequence:
@@ -87,13 +87,13 @@ class DeterministicCounter(DeterministicShortestPathProblem, TabularMarkovDecisi
     def reward(self, s, a, ns):
         return -1
 
-    def is_terminal(self, s):
+    def is_absorbing(self, s):
         return s == self.goal
     
     def optimal_policy(self):
         policy = {}
         for s in self.state_list:
-            if self.is_terminal(s):
+            if self.is_absorbing(s):
                 policy[s] = DictDistribution({1: .5, -1: .5})
             else:
                 policy[s] = DictDistribution({1: 1})
@@ -116,7 +116,7 @@ class DeterministicUnreachableCounter(DeterministicCounter):
     def optimal_policy(self):
         policy = {}
         for s in self.state_list:
-            if self.is_terminal(s) or s == float('-inf'):
+            if self.is_absorbing(s) or s == float('-inf'):
                 policy[s] = DictDistribution({1: .5, -1: .5})
             else:
                 policy[s] = DictDistribution({1: 1})
@@ -167,7 +167,7 @@ class GeometricCounter(TabularMarkovDecisionProcess, TestDomain):
     def reward(self, s, a, ns):
         return -1
 
-    def is_terminal(self, s):
+    def is_absorbing(self, s):
         return s == 1
     
     def optimal_policy(self):
@@ -211,7 +211,7 @@ class VaryingActionNumber(DeterministicShortestPathProblem, TabularMarkovDecisio
     def reward(self, s, a, ns):
         return -1
 
-    def is_terminal(self, s):
+    def is_absorbing(self, s):
         return s == 2
 
     def optimal_policy(self):
@@ -245,7 +245,7 @@ class DeadEndBandit(TabularMarkovDecisionProcess, TestDomain):
     def initial_state_dist(self):
         return DictDistribution({"abc": 1})
     def actions(self, s):
-        if len(set(s)) == 3 or self.is_terminal(s):
+        if len(set(s)) == 3 or self.is_absorbing(s):
             return ('left', 'right', 'mid')
         if s[0] != s[1] == s[2]:
             return ('left',)
@@ -255,7 +255,7 @@ class DeadEndBandit(TabularMarkovDecisionProcess, TestDomain):
             return ('mid',)
         if s[0] == s[1] == s[2]:
             return ()
-    def is_terminal(self, s):
+    def is_absorbing(self, s):
         return s in ['bbb', 'ccc']
     def reward(self, s, a, ns):
         return -1
@@ -341,7 +341,7 @@ class PositiveRewardCycle(TransitionRewardDictMDP, TestDomain):
         self.discount_rate = discount_rate
     def initial_state_dist(self):
         return DictDistribution({'a': 1/3, 'b': 1/3, 'c': 1/3})
-    def is_terminal(self, s):
+    def is_absorbing(self, s):
         return False
     def optimal_policy(self):
         return {
@@ -392,7 +392,7 @@ class Puterman_Example_9_1_1(TransitionRewardDictMDP,TestDomain):
     }
     def initial_state_dist(self):
         return DictDistribution({'s1': 1})
-    def is_terminal(self, s):
+    def is_absorbing(self, s):
         return False
     def optimal_policy(self):
         return {
@@ -426,6 +426,36 @@ class Puterman_Example_9_1_1(TransitionRewardDictMDP,TestDomain):
             "s2": 2,
             "s3": 2,
         }
+
+class AbsorbingStateTester(TabularMarkovDecisionProcess):
+    def __init__(
+        self,
+        discount_rate=1.0,
+        last_reward=0,
+        last_actions=(0, ),
+        explicit_absorbing_flag=False
+    ): 
+        self.discount_rate = discount_rate
+        self.last_reward = last_reward
+        self.last_actions = last_actions
+        self.explicit_absorbing_flag = explicit_absorbing_flag
+    def initial_state_dist(self):
+        return DictDistribution({0: 1})
+    def actions(self, s):
+        if s == 2:
+            return self.last_actions
+        return (0, 1)
+    def next_state_dist(self, s, a):
+        assert s + a <= 2
+        return DictDistribution({s + a: 1})
+    def reward(self, s, a, ns):
+        if ns == 2:
+            return self.last_reward
+        return 0
+    def is_absorbing(self, s) -> bool:
+        if self.explicit_absorbing_flag and s == 2:
+            return True
+        return False 
 
 class TiedPaths(TransitionRewardDictMDP, TestDomain):
     """
@@ -463,7 +493,7 @@ class TiedPaths(TransitionRewardDictMDP, TestDomain):
         self.discount_rate = discount_rate
     def initial_state_dist(self):
         return DictDistribution({'start': 1})
-    def is_terminal(self, s):
+    def is_absorbing(self, s):
         return s == 'end'
     def optimal_policy(self):
         basic_policy = {
@@ -533,7 +563,7 @@ class RussellNorvigGrid(GridWorld, TabularMarkovDecisionProcess):
         self._states = tuple(sorted(self.loc_to_feature.keys()))
         self._width = max([x for x, y in self._states]) + 1
         self._height = max([y for x, y in self._states]) + 1
-    def is_terminal(self, s):
+    def is_absorbing(self, s):
         return self.loc_to_feature[s] in 'gx'
     def actions(self, s):
         return ((1, 0), (-1, 0), (0, 1), (0, -1))

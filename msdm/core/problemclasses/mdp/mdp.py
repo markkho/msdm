@@ -30,7 +30,7 @@ class MarkovDecisionProcess(ProblemClass, Generic[State, Action]):
         pass
 
     @abstractmethod
-    def is_terminal(self, s: State) -> bool:
+    def is_absorbing(self, s: State) -> bool:
         pass
 
     @method_cache

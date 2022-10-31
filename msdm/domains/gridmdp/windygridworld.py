@@ -72,7 +72,7 @@ class WindyGridWorld(GridMDP):
         nsr_dist = nsr_dist.condition(lambda nsr: nsr[0] == ns)
         return nsr_dist.expectation(lambda nsr: nsr[1])
 
-    def is_terminal(self, s):
+    def is_absorbing(self, s):
         return self.feature_at(s) in self.goal_features
 
     @method_cache

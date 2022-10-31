@@ -2,6 +2,7 @@ import copy
 
 from msdm.algorithms.lrtdp import LRTDP
 from msdm.algorithms.valueiteration import ValueIteration
+from msdm.core.problemclasses.mdp.mdp import MarkovDecisionProcess
 from msdm.tests.domains import GNTFig6_6, DeterministicCounter
 from msdm.domains import GridWorld
 from msdm.domains.gridmdp.windygridworld import WindyGridWorld
@@ -144,7 +145,7 @@ def test_gridworld():
 
     goal = mdp.absorbing_states[0]
     def heuristic(s):
-        if mdp.is_terminal(s):
+        if mdp.is_absorbing(s):
             return 0.0
         return -(abs(s['x']-goal['x']) + abs(s['y']-goal['y']))
 
@@ -159,7 +160,7 @@ def test_GNTFig6_6():
     m = LRTDP(heuristic=lambda s: 0, seed=12388)
     _assert_equal_value_iteration(m, mdp)
 
-def _assert_equal_value_iteration(planner, mdp):
+def _assert_equal_value_iteration(planner, mdp: MarkovDecisionProcess):
     lrtdp_res = planner.plan_on(mdp)
 
     vi = ValueIteration()
@@ -185,7 +186,7 @@ def _assert_equal_value_iteration(planner, mdp):
         for ns, p in mdp.next_state_dist(s, policy(s)).items():
             if p == 0:
                 continue
-            if not mdp.is_terminal(ns):
+            if not mdp.is_absorbing(ns):
                 reachable.append(ns)
 
         # For reachable states under our policy, ensure:

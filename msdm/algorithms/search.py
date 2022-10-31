@@ -67,7 +67,7 @@ class BreadthFirstSearch(Plans):
         while queue:
             s = queue.popleft()
 
-            if mdp.is_terminal(s):
+            if mdp.is_absorbing(s):
                 path = reconstruct_path(camefrom, start, s)
                 return Result(
                     path=path,
@@ -116,7 +116,7 @@ class AStarSearch(Plans):
         while queue:
             (f, g, r), s = heapq.heappop(queue)
 
-            if mdp.is_terminal(s):
+            if mdp.is_absorbing(s):
                 path = reconstruct_path(camefrom, start, s)
                 return Result(
                     path=path,

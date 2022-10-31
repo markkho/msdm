@@ -146,7 +146,7 @@ def value_iteration_tabular(
             q[s] = {}
             for a in mdp.actions(s):
                 q[s][a] = 0
-                if mdp.is_terminal(s):
+                if mdp.is_absorbing(s):
                     continue
                 for ns, prob in mdp.next_state_dist(s, a).items():
                     q[s][a] += prob*(mdp.reward(s, a, ns) + mdp.discount_rate*v[ns])
