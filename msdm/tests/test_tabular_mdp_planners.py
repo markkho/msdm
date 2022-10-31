@@ -71,14 +71,14 @@ def test_ValueIteration_vec_correctness():
         test_mdps=safe_mdps
     )
 
-def test_PolicyIteration_vec_correctness():
+def test_PolicyIteration_correctness():
     _test_tabular_planner_correctness(
-        PolicyIteration(max_iterations=1000, _version="vectorized", undefined_value=float('-inf')),
+        PolicyIteration(max_iterations=1000, undefined_value=float('-inf')),
         test_mdps=safe_mdps
     )
 
-def test_PolicyIteration_vec_with_recurrent_states():
-    pi = PolicyIteration(max_iterations=1000, _version="vectorized", undefined_value=0)
+def test_PolicyIteration_with_recurrent_states():
+    pi = PolicyIteration(max_iterations=1000, undefined_value=0)
     recurrent_mdp = DeterministicUnreachableCounter(3, discount_rate=1.0)
     pi_res = pi.plan_on(recurrent_mdp)
     for s, v in recurrent_mdp.optimal_state_value().items():

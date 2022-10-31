@@ -227,6 +227,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         self_looping = np.diagonal(self.transition_matrix, axis1=0, axis2=2).T
         self_looping = (self_looping == 1) | ~self.action_matrix.astype(bool)
         self_looping = self_looping.all(-1)
+        self_looping &= ~self.dead_end_state_vec
         zero_reward = (self.reward_matrix == 0).all(axis=(1, 2))
         absorbing_state_vec = np.array([self.is_absorbing(s) for s in self.state_list], dtype=bool)
         absorbing_state_vec = (self_looping & zero_reward) | absorbing_state_vec
@@ -256,11 +257,17 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         recurrent_states = (eigvecs[:, eigvals == 1] > 0).any(-1)
         recurrent_states.setflags(write=False)
         return recurrent_states
+    
+    @cached_property
+    def dead_end_state_vec(self):
+        dead_ends = (~self.action_matrix.astype(bool)).all(-1)
+        dead_ends.setflags(write=False)
+        return dead_ends
 
     @cached_property
     def reachable_state_vec(self):
         reachable = self.reachable_states()
-        reachable = np.array([1 if s in reachable else 0 for s in self.state_list])
+        reachable = np.array([1 if s in reachable else 0 for s in self.state_list], dtype=bool)
         reachable.setflags(write=False)
         return reachable
 

@@ -16,7 +16,6 @@ test_mdps = [
     GeometricCounter(p=1/13, discount_rate=.513),
     PositiveRewardCycle(),
     VaryingActionNumber(),
-    DeadEndBandit(),
     TiedPaths(discount_rate=1.0),
     TiedPaths(discount_rate=.99),
     RussellNorvigGrid_Fig17_3(), 
@@ -64,6 +63,10 @@ def test_TabularMarkovDecisionProcess_implicit_absorbing_state_detection():
         explicit_absorbing_flag=True
     )
     assert (mdp.absorbing_state_vec == np.array([False, False, True])).all()
+
+def test_TabularMarkovDecisionProcess_dead_end_detection():
+    mdp = DeadEndBandit()
+    assert mdp.dead_end_state_vec.any()
 
 def test_TabularMarkovDecisionProcess_from_matrices():
     for mdp1 in test_mdps:
