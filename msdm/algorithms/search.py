@@ -9,7 +9,7 @@ from msdm.core.algorithmclasses import Plans, Result
 from msdm.core.distributions import DeterministicDistribution, DictDistribution, dictdistribution
 from msdm.core.problemclasses.mdp import DeterministicShortestPathProblem
 from msdm.core.problemclasses.mdp.mdp import MarkovDecisionProcess
-from msdm.core.problemclasses.mdp.policy.policy import FunctionalPolicy
+from msdm.core.problemclasses.mdp.policy import FunctionalPolicy
 
 def reconstruct_path(camefrom, start, terminal_state):
     '''

@@ -9,7 +9,7 @@ from msdm.core.problemclasses.mdp.tabularmdp import TabularMarkovDecisionProcess
 from msdm.core.utils.dictutils import defaultdict2
 from msdm.core.distributions import DictDistribution
 from msdm.core.problemclasses.mdp import MarkovDecisionProcess, HashableState
-from msdm.core.problemclasses.mdp.policy.policy import FunctionalPolicy
+from msdm.core.problemclasses.mdp.policy import FunctionalPolicy
 from msdm.core.algorithmclasses import Plans, PlanningResult
 
 class LRTDP(Plans):

@@ -2,7 +2,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess
-from msdm.core.problemclasses.mdp.policy.tabularpolicy import TabularPolicy
+from msdm.core.problemclasses.mdp.tabularpolicy import TabularPolicy
 from msdm.core.algorithmclasses import Plans, PlanningResult
 from msdm.core.mdp_tables import StateActionTable, StateTable
 

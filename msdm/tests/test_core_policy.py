@@ -3,7 +3,7 @@ import numpy as np
 from msdm.tests.domains import GeometricCounter, DeterministicCounter, \
     DeterministicUnreachableCounter, PositiveRewardCycle, VaryingActionNumber, TiedPaths
 from msdm.core.distributions import DictDistribution
-from msdm.core.problemclasses.mdp.policy.policy import Policy, FunctionalPolicy
+from msdm.core.problemclasses.mdp.policy import Policy, FunctionalPolicy
 
 test_mdps = [
     DeterministicCounter(3, discount_rate=1.0),

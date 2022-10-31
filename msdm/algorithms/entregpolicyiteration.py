@@ -6,7 +6,7 @@ import numpy as np
 import warnings
 from msdm.core.problemclasses.mdp import \
     TabularMarkovDecisionProcess
-from msdm.core.problemclasses.mdp.policy.tabularpolicy import TabularPolicy
+from msdm.core.problemclasses.mdp.tabularpolicy import TabularPolicy
 from msdm.core.algorithmclasses import Plans, PlanningResult
 
 def clamp_zero(tensor):

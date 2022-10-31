@@ -5,7 +5,7 @@ from functools import lru_cache
 from msdm.core.algorithmclasses import Learns, Result
 from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess
 from msdm.core.problemclasses.mdp.mdp import MarkovDecisionProcess
-from msdm.core.problemclasses.mdp.policy.policy import FunctionalPolicy
+from msdm.core.problemclasses.mdp.policy import FunctionalPolicy
 from msdm.core.distributions import DictDistribution, SoftmaxDistribution
 from msdm.core.utils.dictutils import defaultdict2
 from types import SimpleNamespace

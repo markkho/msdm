@@ -7,7 +7,7 @@ import numpy as np
 
 from msdm.core.algorithmclasses import Plans, PlanningResult
 from msdm.core.problemclasses.mdp import MarkovDecisionProcess, HashableState
-from msdm.core.problemclasses.mdp.policy.policy import FunctionalPolicy
+from msdm.core.problemclasses.mdp.policy import FunctionalPolicy
 from msdm.core.distributions.dictdistribution import DeterministicDistribution, DictDistribution
 from msdm.core.exceptions import SpecificationException, AlgorithmException
 
