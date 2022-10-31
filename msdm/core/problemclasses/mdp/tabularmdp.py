@@ -212,6 +212,42 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         nt = np.array([0 if self.is_terminal(s) else 1 for s in self.state_list], dtype=bool)
         nt.setflags(write=False)
         return nt
+    
+    # @cached_property
+    # def absorbing_state_vec(self) -> np.ndarray:
+    #     """
+    #     Absorbing states are states that only have actions that self-loop and return 
+    #     a reward of 0.
+    #     """
+    #     self_looping = (np.diagonal(self.transition_matrix, axis1=0, axis2=2) == 1).all(axis=0)
+    #     zero_reward = (self.reward_matrix == 0).all(axis=(1, 2))
+    
+    @cached_property
+    def recurrent_state_vec(self) -> np.ndarray:
+        """
+        Recurrent states are non-absorbing states that will be visited an infinite
+        number of times under any policy.
+        """
+        if self.discount_rate < 1.0:
+            return np.zeros(len(self.state_list)).astype(bool)
+        uniform_markov_chain = np.einsum("san,sa->sn", self.transition_matrix, self.action_matrix)
+        np.divide(
+            uniform_markov_chain,
+            uniform_markov_chain.sum(-1, keepdims=True),
+            where=(uniform_markov_chain > 0),
+            out=uniform_markov_chain
+        )
+        # TODO: calculate absorbing_state_vec locally for now, in the future we should have a more general
+        # property built in, but we need to figure out canonical MDP
+        self_looping = (np.diagonal(self.transition_matrix, axis1=0, axis2=2) == 1).all(axis=0)
+        zero_reward = (self.reward_matrix == 0).all(axis=(1, 2))
+        absorbing_state_vec = self_looping & zero_reward
+        # HACK: need to refactor to have a single source of truth
+        absorbing_state_vec = absorbing_state_vec | ~(self.transient_state_vec.astype(bool))
+        uniform_markov_chain[absorbing_state_vec] = 0
+        eigvals, eigvecs = np.linalg.eig(uniform_markov_chain)
+        recurrent_states = (eigvecs[:, eigvals == 1] > 0).any(-1)
+        return recurrent_states
 
     @cached_property
     def reachable_state_vec(self):
