@@ -11,21 +11,28 @@ class PolicyIteration(Plans):
     def __init__(
         self,
         max_iterations=int(1e5),
+        undefined_value=0,
         _version="vectorized"
     ):
         self.max_iterations = max_iterations
         self._version = _version
+        self.undefined_value = undefined_value
 
     def plan_on(self, mdp: TabularMarkovDecisionProcess):
         if self._version == 'vectorized':
+            transition_matrix = mdp.transition_matrix.copy()
+            transition_matrix[mdp.recurrent_state_vec,] = 0
             state_values, action_values, policy_matrix, iterations = policy_iteration_vectorized(
-                transition_matrix=mdp.transition_matrix,
+                transition_matrix=transition_matrix,
                 terminal_state_vector=~mdp.transient_state_vec.astype(bool),
                 discount_rate=mdp.discount_rate,
                 reward_matrix=mdp.reward_matrix,
                 action_matrix=mdp.action_matrix.astype(bool),
                 max_iterations=self.max_iterations
             )
+            state_values[mdp.recurrent_state_vec,] = self.undefined_value
+            action_values[mdp.recurrent_state_vec,] = self.undefined_value
+            
             # terminal dead ends are handled by turning them into a uniform distribution
             # since they are all equally -inf, but non-terminal dead end states 
             # are allowed to have their single action taken

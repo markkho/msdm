@@ -36,7 +36,8 @@ safe_mdps = \
     ergodic_undiscounted_mdps
 
 non_terminating_mdps = [
-    Puterman_Example_9_1_1(discount_rate=1.0)
+    Puterman_Example_9_1_1(discount_rate=1.0),
+    DeterministicUnreachableCounter(3, discount_rate=1.0),
 ]
 # deadend_mdps = [
 #     DeadEndBandit(),
@@ -72,9 +73,16 @@ def test_ValueIteration_vec_correctness():
 
 def test_PolicyIteration_vec_correctness():
     _test_tabular_planner_correctness(
-        PolicyIteration(max_iterations=1000, _version="vectorized"),
+        PolicyIteration(max_iterations=1000, _version="vectorized", undefined_value=float('-inf')),
         test_mdps=safe_mdps
     )
+
+def test_PolicyIteration_vec_with_recurrent_states():
+    pi = PolicyIteration(max_iterations=1000, _version="vectorized", undefined_value=0)
+    recurrent_mdp = DeterministicUnreachableCounter(3, discount_rate=1.0)
+    pi_res = pi.plan_on(recurrent_mdp)
+    for s, v in recurrent_mdp.optimal_state_value().items():
+        assert np.isclose(pi_res.state_value[s], v)
 
 def test_MultiChainPolicyIteration_vec_correctness():
     _test_tabular_planner_correctness(

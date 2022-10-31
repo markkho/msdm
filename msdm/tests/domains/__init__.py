@@ -110,7 +110,6 @@ class DeterministicCounter(DeterministicShortestPathProblem, TabularMarkovDecisi
         return value
 
 class DeterministicUnreachableCounter(DeterministicCounter):
-    discount_rate: float = .95
     @property
     def state_list(self):
         return (float('-inf'), -1) + tuple(range(self.goal + 1))
@@ -126,13 +125,22 @@ class DeterministicUnreachableCounter(DeterministicCounter):
         value = {}
         for s in self.state_list:
             if s == float('-inf'):
-                value[s] = -1/(1 - self.discount_rate)
+                if self.discount_rate < 1.0:
+                    value[s] = -1/(1 - self.discount_rate)
+                else:
+                    value[s] = 0
                 continue
+            
             steps_left = self.goal - s
             v = 0
             for i in range(steps_left):
                 v += -1*(self.discount_rate**i)
             value[s] = v
+        return value
+    def optimal_state_gain(self):
+        value = {s: 0 for s in self.state_list}
+        if self.discount_rate == 1.0:
+            value[float('-inf')] = -1
         return value
 
 class GeometricCounter(TabularMarkovDecisionProcess, TestDomain):
