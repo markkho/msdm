@@ -1,5 +1,6 @@
 import logging
 import numpy as np
+from scipy.sparse.csgraph import floyd_warshall
 from abc import abstractmethod
 from typing import Set, Sequence, Hashable, Mapping, TypeVar
 from msdm.core.problemclasses.mdp import MarkovDecisionProcess
@@ -214,7 +215,16 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         That is, there exists at least one policy under which a transient
         state will only be visited a finite number of times.
         """
-        transient = ~self.absorbing_state_vec & ~self.recurrent_state_vec
+        if self.discount_rate < 1.0:
+            transient = ~self.absorbing_state_vec
+            transient.setflags(write=False)
+            return transient
+        valid_transitions = \
+            (self.transition_matrix > 0) & self.action_matrix.astype(bool)[:, :, None]
+        adjacency = valid_transitions.any(axis=1)
+        distances = floyd_warshall(adjacency)
+        transient = (distances[:, self.absorbing_state_vec] < float('inf')).any(-1)
+        transient[self.absorbing_state_vec] = False
         transient.setflags(write=False)
         return transient
     
@@ -240,21 +250,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         Recurrent states are non-absorbing states that will be visited an infinite
         number of times under any policy.
         """
-        if self.discount_rate < 1.0:
-            # no states are recurrent with a discount rate
-            recurrent_states = np.zeros(len(self.state_list)).astype(bool)
-            recurrent_states.setflags(write=False)
-            return recurrent_states
-        uniform_markov_chain = np.einsum("san,sa->sn", self.transition_matrix, self.action_matrix)
-        np.divide(
-            uniform_markov_chain,
-            uniform_markov_chain.sum(-1, keepdims=True),
-            where=(uniform_markov_chain > 0),
-            out=uniform_markov_chain
-        )
-        uniform_markov_chain[self.absorbing_state_vec] = 0
-        eigvals, eigvecs = np.linalg.eig(uniform_markov_chain)
-        recurrent_states = (eigvecs[:, eigvals == 1] > 0).any(-1)
+        recurrent_states = ~self.transient_state_vec & ~self.absorbing_state_vec
         recurrent_states.setflags(write=False)
         return recurrent_states
     
