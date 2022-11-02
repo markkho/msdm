@@ -9,6 +9,7 @@ from msdm.core.distributions import \
     Distribution, DictDistribution,\
     DeterministicDistribution, UniformDistribution
 from msdm.tests.domains.russell_norvig import make_russell_norvig_grid
+from msdm.tests.domains.slipperymaze import SlipperyMaze
 
 class TestDomain:
     def optimal_policy(self):

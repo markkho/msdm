@@ -6,7 +6,7 @@ from msdm.core.distributions import DictDistribution
 
 from msdm.tests.domains import AbsorbingStateTester, DeterministicCounter, DeterministicUnreachableCounter, GNTFig6_6, \
     GeometricCounter, VaryingActionNumber, DeadEndBandit, TiedPaths, \
-    RussellNorvigGrid_Fig17_3, PositiveRewardCycle, RussellNorvigGrid
+    RussellNorvigGrid_Fig17_3, PositiveRewardCycle, RussellNorvigGrid, SlipperyMaze
 
 test_mdps = [
     DeterministicCounter(3, discount_rate=1.0),
@@ -63,6 +63,80 @@ def test_TabularMarkovDecisionProcess_implicit_absorbing_state_detection():
         explicit_absorbing_flag=True
     )
     assert (mdp.absorbing_state_vec == np.array([False, False, True])).all()
+
+def test_TabularMDP_recurrent_state_identification():
+    reccurent_tile_array = [
+        "$$$$$",
+        ".....",
+        ".....",
+        "#####",
+        ".....",
+        ".....",
+    ]
+    has_recurrent_states = SlipperyMaze(
+        tile_array=reccurent_tile_array,
+        left_slip_prob=.021,
+        right_slip_prob=.0149,
+        back_slip_prob=.06,
+        stay_prob=.011,
+        discount_rate=1.0
+    )
+    exp_reccurent_state_vec = np.array(
+        [True, True, False, False, False, False]*5
+    )
+    exp_transient_state_vec = np.array(
+        [False, False, True, True, True, False]*5
+    )
+    exp_absorbing_state_vec = np.array(
+        [False, False, False, False, False, True]*5
+    )
+    assert (has_recurrent_states.recurrent_state_vec == exp_reccurent_state_vec).all()
+    assert (has_recurrent_states.transient_state_vec == exp_transient_state_vec).all()
+    assert (has_recurrent_states.absorbing_state_vec == exp_absorbing_state_vec).all()
+
+    # discount rate < 1 means all non-absorbing states are transient
+    no_recurrent_states = SlipperyMaze(
+        tile_array=reccurent_tile_array,
+        discount_rate=1-1e-4
+    )
+    exp_transient_state_vec = np.array(
+        [True, True, True, True, True, False]*5
+    )
+    exp_absorbing_state_vec = np.array(
+        [False, False, False, False, False, True]*5
+    )
+    assert not no_recurrent_states.recurrent_state_vec.any()
+    assert (no_recurrent_states.transient_state_vec == exp_transient_state_vec).all()
+    assert (no_recurrent_states.absorbing_state_vec == exp_absorbing_state_vec).all()
+
+    # we can have multiple recurrent and transient classes 
+    # (but these are collapsed)
+    multiple_closed_tile_array = [
+        "$$$$$",
+        "..#..",
+        "..#..",
+        "#####",
+        ".##..",
+        "..##.",
+    ]
+    multiple_closed_maze = SlipperyMaze(
+        tile_array=multiple_closed_tile_array,
+        discount_rate=1.0
+    )
+    exp_reccurent_state_vec = np.array(
+        [True, True, False, False, False, False]*5
+    )
+    exp_reccurent_state_vec[14] = True
+    exp_transient_state_vec = np.array(
+        [False, False, True, True, True, False]*5
+    )
+    exp_transient_state_vec[14] = False
+    exp_absorbing_state_vec = np.array(
+        [False, False, False, False, False, True]*5
+    )
+    assert (multiple_closed_maze.recurrent_state_vec == exp_reccurent_state_vec).all()
+    assert (multiple_closed_maze.transient_state_vec == exp_transient_state_vec).all()
+    assert (multiple_closed_maze.absorbing_state_vec == exp_absorbing_state_vec).all()
 
 def test_TabularMarkovDecisionProcess_dead_end_detection():
     mdp = DeadEndBandit()
