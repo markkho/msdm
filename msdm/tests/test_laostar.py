@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 import random
 
 from msdm.algorithms.laostar import LAOStar, ExplicitStateGraph
@@ -179,11 +180,8 @@ def test_laostar_duplicate_actions():
         is_terminal=is_terminal,
         discount_rate=.99
     )
-    try:
+    with pytest.raises(SpecificationException):
         LAOStar(heuristic=0).plan_on(mdp)
-        assert False
-    except SpecificationException:
-        pass
 
 def test_laostar_correctness():
     VALUE_TOLERANCE = 1e-8

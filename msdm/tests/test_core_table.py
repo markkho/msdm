@@ -1,4 +1,6 @@
 import numpy as np
+import contextlib
+import pytest
 from msdm.core.table import Table, ProbabilityTable
 from msdm.core.tableindex import TableIndex, Field, domaintuple, DomainError, SliceError
 from msdm.core.distributions import Distribution 
@@ -49,21 +51,18 @@ def test_TableIndex_to_numpy_array_index_conversion():
     assert idx._array_index(('c', 'c')) == (3, 2)
     assert idx._array_index(['c', 'c']) == [3, 3], idx._array_index(['c', 'c'])
     assert idx._array_index((['c', 'c'],)) == ([3, 3],), idx._array_index(['c', 'c'])
-    try: # error if we use numpy-like "advanced indexing" on more than one field 
+
+    # error if we use numpy-like "advanced indexing" on more than one field 
+    with pytest.raises(KeyError):
         idx._array_index((['c'], ['c']))
-        assert False
-    except KeyError:
-        pass
-    try: # error if we try to select more than the num. of fields
+
+    # error if we try to select more than the num. of fields
+    with pytest.raises(KeyError):
         idx._array_index(('a', 'b', 'c', 'd',))
-        assert False
-    except KeyError:
-        pass
-    try: # unrecognized field selector (dict, which is not hashable nor a list)
+
+    # unrecognized field selector (dict, which is not hashable nor a list)
+    with pytest.raises(KeyError):
         assert idx._array_index((slice(None),{})) == (slice(None),)
-        assert False
-    except KeyError:
-        pass
     assert idx._array_index(['a', 'b']) == [1, 2]
     assert idx._array_index(['a', 'b', ('a', 'b')]) == [1, 2, 0]
     assert idx._array_index((['a', 'b'],)) == ([1, 2],)
@@ -328,7 +327,11 @@ def test_TableIndex_numpy_array_TableIndex_conversion():
 
 
     for test in tests:
-        try:
+        if 'error' in test:
+            context_manager = pytest.raises(test['error'])
+        else:
+            context_manager = contextlib.nullcontext()
+        with context_manager:
             for sel in test['sel']:
                 array_idx = idx._array_index(sel)
                 updated_idx = idx._updated_index(array_idx)
@@ -338,10 +341,6 @@ def test_TableIndex_numpy_array_TableIndex_conversion():
                 # test short-circuiting if index is unchanged
                 if idx == test['exp_idx']:
                     assert id(idx) == id(updated_idx)
-                if 'error' in test:
-                    assert False, f"Expected {test['error']}"
-        except test.get('error', ()):
-            pass
 
 def test_Table_construction_and_writing():
     # Can we construct a Table
@@ -360,7 +359,7 @@ def test_Table_construction_and_writing():
     
     # Catch bad constructions?
     # too few coordinates
-    try:
+    with pytest.raises(ValueError):
         Table(
             data=np.random.random((5, 3)),
             table_index=TableIndex(
@@ -371,12 +370,9 @@ def test_Table_construction_and_writing():
                 )
             )
         )
-        assert False
-    except ValueError:
-        pass
 
     # too many coordinates
-    try:
+    with pytest.raises(ValueError):
         Table(
             data=np.random.random((5, 3)),
             table_index=TableIndex(
@@ -387,12 +383,9 @@ def test_Table_construction_and_writing():
                 )
             )
         )
-        assert False
-    except ValueError:
-        pass
 
     # non-unique coordinates
-    try:
+    with pytest.raises(ValueError):
         Table(
             data=np.random.random((5, 3)),
             table_index=TableIndex(
@@ -403,9 +396,7 @@ def test_Table_construction_and_writing():
                 )
             )
         )
-        assert False
-    except ValueError:
-        pass
+
     # test equality of tables
     data = np.random.random((5, 3))
     tb1 = Table(
@@ -467,11 +458,9 @@ def test_Table_construction_and_writing():
     assert np.isclose(tb1._data, tb4._data).all()
 
     # blocking write to underlying array
-    try:
+    with pytest.raises(ValueError):
         tb._data[:] = 1
-        assert False
-    except ValueError:
-        pass
+
     # test repr
     tb1_repr = eval(repr(tb1), {**globals(), 'array': np.array})
     assert tb1_repr.equivalent_to(tb1)
@@ -494,11 +483,8 @@ def test_Table_array_like_interface():
 
     # Throw error when accessing a non-existent key
     tb["d"]
-    try:
+    with pytest.raises(KeyError):
         tb["d", "w"]
-        assert False
-    except KeyError:
-        pass
 
     # Support for some numpy attributes on object
     assert tb.shape == (5, 3)

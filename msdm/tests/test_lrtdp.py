@@ -1,4 +1,5 @@
 import copy
+import pytest
 
 from msdm.algorithms.lrtdp import LRTDP
 from msdm.algorithms.valueiteration import ValueIteration
@@ -116,7 +117,7 @@ def _test_lrtdp_heuristics_on_stochastic_domain(discount_rate):
         mdp=wg
     )
 
-    try:
+    with pytest.raises(OutOfExpectedErrorBound):
         # this should fail since we did not use an admissible heuristic
         _test_expected_error_bound(
             bellman_error_margin=bellman_error_margin,
@@ -124,9 +125,6 @@ def _test_lrtdp_heuristics_on_stochastic_domain(discount_rate):
             test_res=lrtdp_res_not_admissible,
             mdp=wg
         )
-        assert False
-    except OutOfExpectedErrorBound:
-        pass
 
 def test_gridworld():
     mdp = GridWorld(
