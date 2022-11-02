@@ -10,7 +10,6 @@ from msdm.tests.domains import DeterministicCounter, DeterministicUnreachableCou
 
 discounted_mdps = [
     PositiveRewardCycle(discount_rate=.95),
-    VaryingActionNumber(discount_rate=1.0),
     DeterministicUnreachableCounter(3, discount_rate=.95),
     DeterministicCounter(3, discount_rate=.95),
     GeometricCounter(p=1/13, discount_rate=.95),
@@ -20,6 +19,7 @@ discounted_mdps = [
 ]
 
 stochastic_shortest_path_mdps =[
+    VaryingActionNumber(discount_rate=1.0),
     DeterministicCounter(3, discount_rate=1.0),
     GeometricCounter(p=1/13, discount_rate=1.0),
     TiedPaths(discount_rate=1.0),
@@ -65,11 +65,25 @@ def test_ValueIteration_dict_correctness():
         test_mdps=safe_mdps
     )
 
+def test_ValueIteration_dict_with_recurrent_states():
+    vi = ValueIteration(max_iterations=100, undefined_value=0, _version="dict")
+    recurrent_mdp = DeterministicUnreachableCounter(3, discount_rate=1.0)
+    vi_res = vi.plan_on(recurrent_mdp)
+    for s, v in recurrent_mdp.optimal_state_value().items():
+        assert np.isclose(vi_res.state_value[s], v)
+
 def test_ValueIteration_vec_correctness():
     _test_tabular_planner_correctness(
         ValueIteration(max_iterations=1000, max_residual=1e-5, _version="vectorized"),
         test_mdps=safe_mdps
     )
+
+def test_ValueIteration_vec_with_recurrent_states():
+    vi = ValueIteration(max_iterations=100, undefined_value=0, _version="vectorized")
+    recurrent_mdp = DeterministicUnreachableCounter(3, discount_rate=1.0)
+    vi_res = vi.plan_on(recurrent_mdp)
+    for s, v in recurrent_mdp.optimal_state_value().items():
+        assert np.isclose(vi_res.state_value[s], v)
 
 def test_PolicyIteration_correctness():
     _test_tabular_planner_correctness(

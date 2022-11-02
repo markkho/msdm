@@ -17,18 +17,18 @@ class TabularPolicy(StateActionTable,ProbabilityTable,Policy):
         assert set(self.action_list) <= set(mdp.action_list), \
             "All policy actions must be in the mdp"
         policy_matrix = np.array(self[mdp.state_list,][:,mdp.action_list])
-        terminal_state_vec = ~mdp.transient_state_vec.astype(bool)
+        absorbing_state_vec = mdp.absorbing_state_vec.astype(bool)
         state_rewards = np.einsum(
             "sa,sa->s",
             policy_matrix, mdp.state_action_reward_matrix
         )
-        state_rewards[terminal_state_vec] = 0
+        state_rewards[absorbing_state_vec] = 0
         markov_process = np.einsum(
             "san,sa->sn",
             mdp.transition_matrix,
             policy_matrix
         )
-        markov_process[terminal_state_vec, :] = 0
+        markov_process[absorbing_state_vec, :] = 0
         successor_representation = np.linalg.inv(
             np.eye(markov_process.shape[0]) - mdp.discount_rate*markov_process
         )
