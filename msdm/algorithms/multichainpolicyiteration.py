@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 import numpy as np
+from scipy.sparse.csgraph import floyd_warshall
 
 from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess
 from msdm.core.problemclasses.mdp.tabularpolicy import TabularPolicy
@@ -24,7 +25,7 @@ class MultichainPolicyIteration(Plans):
         self.max_iterations = max_iterations
 
     def plan_on(self, mdp: TabularMarkovDecisionProcess):
-        state_gain, action_gain, state_bias, action_bias, _, iterations = multichain_policy_iteration_vectorized(
+        results = multichain_policy_iteration_vectorized(
             transition_matrix=mdp.transition_matrix,
             absorbing_state_vec=mdp.absorbing_state_vec.astype(bool),
             discount_rate=mdp.discount_rate,
@@ -32,6 +33,7 @@ class MultichainPolicyIteration(Plans):
             action_matrix=mdp.action_matrix.astype(bool),
             max_iterations=self.max_iterations
         )
+        state_gain, action_gain, state_bias, action_bias, _, iterations = results
         gain_max_actions = np.isclose(
             action_gain, action_gain.max(-1, keepdims=True),
             atol=10**(-self.VALUE_DECIMAL_PRECISION),
@@ -122,29 +124,36 @@ def multichain_policy_iteration_vectorized(
         
     for i in range(max_iterations):
         # Policy Evaluation
-        # Construct markov reward process and calculate the
-        # recurrent classes using eigenvalues and eigenvectors.
+        # Construct a markov chain and analyze it to get the
+        # (non-absorbing) recurrent classes.
         # If there are no recurrent classes, we don't need to augment
         # the system of linear equations
         s_rf = sa_rf[ss_range, policy]
         mp = discount_rate*transition_matrix[ss_range, policy]
         mp[absorbing_state_vec] = 0
-        eigvals, eigvecs = np.linalg.eig(mp)
-        if (eigvals == 1).any():
-            eigvals, eigvecs = np.linalg.eig(mp.T)
-            rec_classes = (eigvecs > 0) & (eigvals == 1)[None, :]
-            rec_classes = rec_classes[:,rec_classes.any(axis=0)].T
-            ref_vals = np.argmax(rec_classes, axis=-1)
-            ref_eq = np.zeros((len(ref_vals), n_states*2))
-            ref_eq[np.arange(len(ref_vals)), ref_vals + n_states] = 1
-            ref_eq = [[ref_eq]]
-        else:
+        if discount_rate < 1.0:
             ref_eq = []
+        else:
+            reachable = floyd_warshall(mp) < float('inf')
+            transient = (reachable & ~reachable.T).any(-1)
+            nonrecurrent_states = transient | ~np.isclose(mp.sum(-1), 1)
+            communicating = reachable & reachable.T
+            communicating[nonrecurrent_states,:] = False
+            communicating[:,nonrecurrent_states] = False
+            rec_classes = np.unique(communicating, axis=0)
+            rec_classes = rec_classes[rec_classes.any(-1)]
+            if rec_classes.any():
+                ref_vals = np.argmax(rec_classes, axis=-1)
+                ref_eq = np.zeros((len(ref_vals), n_states*2))
+                ref_eq[np.arange(len(ref_vals)), ref_vals + n_states] = 1
+                ref_eq = [[ref_eq]]
+            else:
+                ref_eq = []
 
         # evaluate policy by solving system of linear
         # equations to get gain and bias vectors
-        # note we need to fix the bias for a state in each
-        # recurrent class
+        # note we need to set the bias for a state in each
+        # recurrent class to 0
         coeff_block = np.block([
             [mp - eye, zeros],
             [-eye, mp - eye],
