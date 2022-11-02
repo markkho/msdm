@@ -118,10 +118,10 @@ class WindyGridWorld(GridMDP):
             r += self.wall_bump_cost
             return DictDistribution({(s, r): 1})
         nx, ny = ns
-        if ns.x < 0 or ns.x > (self._width - 1):
+        if ns.x < 0 or ns.x > (self.width - 1):
             r += self.wall_bump_cost
             nx = s.x
-        if ns.y < 0 or ns.y > (self._height - 1):
+        if ns.y < 0 or ns.y > (self.height - 1):
             r += self.wall_bump_cost
             ny = s.y
         return DictDistribution({

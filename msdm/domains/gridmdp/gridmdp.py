@@ -21,21 +21,7 @@ class GridMDP(TabularMarkovDecisionProcess):
             Each column and row is parsed into a
             Location(x, y) and feature map.
         """
-        self._grid = tuple(tuple(list(r.strip())) for r in grid.strip().split('\n')[::-1])
-        assert len(set([len(r) for r in self._grid])) == 1
-        self._loc_features = {}
-        self._feature_locs = defaultdict(list)
-        self._locations = []
-        for y, row in enumerate(self._grid):
-            for x, f in enumerate(row):
-                loc = Location(x, y)
-                self._loc_features[loc] = f
-                self._feature_locs[f].append(loc)
-                self._locations.append(loc)
-        self._width = len(self.grid[0])
-        self._height = len(self.grid)
-        self._feature_locs = \
-            {f: tuple(locs) for f, locs in self._feature_locs.items()}
+        self._grid_string = grid
 
     def plot(self, feature_colors, feature_markers, ax=None):
         #avoid circular dependency
@@ -51,12 +37,12 @@ class GridMDP(TabularMarkovDecisionProcess):
         plotter.mark_features(feature_markers)
         plotter.plot_outer_box()
         return plotter
-
+    
     def feature_at(self, xy):
-        return self._loc_features.get(xy, None)
+        return self.location_feature_dict.get(xy, None)
 
     def locations_with(self, f):
-        return self._feature_locs.get(f, ())
+        return self.feature_locations_dict.get(f, ())
 
     def actions(self, s):
         return (
@@ -67,21 +53,41 @@ class GridMDP(TabularMarkovDecisionProcess):
         )
 
     @cached_property
+    def grid(self):
+        grid = tuple(tuple(list(r.strip())) for r in self._grid_string.strip().split('\n'))
+        assert len(set([len(r) for r in grid])) == 1
+        return grid
+
+    @cached_property
+    def location_feature_dict(self):
+        location_features = {}
+        for y, row in enumerate(self.grid[::-1]):
+            for x, f in enumerate(row):
+                loc = Location(x, y)
+                location_features[loc] = f
+        return location_features
+    
+    @cached_property
+    def feature_locations_dict(self):
+        feature_locations = defaultdict(list)
+        for loc, feature in self.location_feature_dict.items():
+            feature_locations[feature].append(loc)
+        feature_locations = \
+            {f: tuple(locs) for f, locs in feature_locations.items()}
+        return feature_locations
+
+    @cached_property
     def feature_list(self):
-        return tuple(sorted(self._feature_locs.keys()))
+        return tuple(sorted(self.feature_locations_dict.keys()))
 
     @cached_property
     def location_list(self):
-        return tuple(sorted(self._loc_features.keys()))
-
-    @property
-    def grid(self):
-        return self._grid
+        return tuple(sorted(self.location_feature_dict.keys()))
 
     @property
     def width(self):
-        return self._width
+        return len(self.grid[0])
 
     @property
     def height(self):
-        return self._height
+        return len(self.grid)
