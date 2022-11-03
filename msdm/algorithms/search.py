@@ -29,10 +29,7 @@ def path_to_policy(path, mdp: MarkovDecisionProcess):
     @FunctionalPolicy
     @lru_cache(maxsize=None)
     def policy(s):
-        try:
-            return DeterministicDistribution(policy_dict[s])
-        except KeyError:
-            return DictDistribution.uniform(mdp.actions(s))
+        return DeterministicDistribution(policy_dict[s])
     return policy
 
 def make_shuffled(rnd):
