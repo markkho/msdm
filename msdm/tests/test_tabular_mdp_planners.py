@@ -1,4 +1,5 @@
 import numpy as np
+import warnings
 from msdm.algorithms.multichainpolicyiteration import MultichainPolicyIteration 
 
 from msdm.algorithms.valueiteration import ValueIteration
@@ -94,7 +95,10 @@ def test_PolicyIteration_correctness():
 def test_PolicyIteration_with_recurrent_states():
     pi = PolicyIteration(max_iterations=1000, undefined_value=0)
     recurrent_mdp = DeterministicUnreachableCounter(3, discount_rate=1.0)
-    pi_res = pi.plan_on(recurrent_mdp)
+    with warnings.catch_warnings(record=True) as w:
+        pi_res = pi.plan_on(recurrent_mdp)
+        assert len(w) == 1
+        assert 'MDP contains states that never reach an absorbing state' in str(w[0])
     for s, v in recurrent_mdp.optimal_state_value().items():
         assert np.isclose(pi_res.state_value[s], v)
 
