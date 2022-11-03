@@ -9,6 +9,7 @@ from msdm.core.algorithmclasses import Plans, PlanningResult
 from msdm.core.mdp_tables import StateActionTable, StateTable
 
 class PolicyIteration(Plans):
+    VALUE_DECIMAL_PRECISION = 10
     def __init__(
         self,
         max_iterations=int(1e5),
@@ -51,7 +52,7 @@ class PolicyIteration(Plans):
             action_matrices[mdp_i] = mdp.action_matrix.astype(bool)
         
         policy_norm = action_matrices.sum(-1, keepdims=True)
-        policy_norm[policy_norm == 0] = 1
+        policy_norm[policy_norm == 0] = 1 #this is to handle deadends
         policy_matrices = action_matrices/policy_norm
 
         state_values_batch, action_values_batch, policy_matrix_batch, iterations = policy_iteration_vectorized(
@@ -61,6 +62,7 @@ class PolicyIteration(Plans):
             action_matrix=action_matrices,
             max_iterations=self.max_iterations,
             policy_matrix=policy_matrices,
+            value_difference=10**(-self.VALUE_DECIMAL_PRECISION)
         )
 
         results = []
@@ -110,6 +112,7 @@ def policy_iteration_vectorized(
     policy_matrix,
     max_iterations=int(1e5),
     value_difference=1e-10,
+    probability_difference=1e-10
 ):
     """
     Implementation of regularized policy iteration with
@@ -119,21 +122,50 @@ def policy_iteration_vectorized(
     Note that the first dimension of all inputs is a batch dimension.
     """
     assert action_matrix.dtype == bool
-    action_penalty = np.log(action_matrix)
-    n_states = transition_matrix.shape[1]
-    eye = np.eye(n_states)
+
+    nbatches, nstates, nactions, _ = transition_matrix.shape
+    eye = np.eye(nstates)
+    cumulant_matrix = np.zeros((nbatches, nstates, nstates))
+    state_rewards = np.zeros((nbatches, nstates))
+    state_values = np.zeros((nbatches, nstates))
+    action_values = np.zeros((nbatches, nstates, nactions))
     
     for i in range(max_iterations):
-        mp = np.einsum("bsan,bsa,b->bsn", transition_matrix, policy_matrix, discount_rate)
-        rf_s = np.einsum("bsa,bsa->bs", state_action_reward_matrix, policy_matrix)
-        v = np.linalg.solve(eye[None,...] - mp, rf_s)
-        next_q = np.einsum("b,bsan,bn->bsa", discount_rate, transition_matrix, v)
-        q = state_action_reward_matrix + action_penalty + next_q 
-        new_policy = np.isclose(q, np.max(q, axis=-1, keepdims=True), atol=value_difference, rtol=0)
+        cumulant_matrix = np.einsum(
+            "bsan,bsa,b->bsn",
+            transition_matrix,
+            policy_matrix,
+            discount_rate,
+            out=cumulant_matrix
+        )
+        cumulant_matrix[:] = eye[np.newaxis, ...] - cumulant_matrix
+        state_rewards = np.einsum(
+            "bsa,bsa->bs",
+            state_action_reward_matrix,
+            policy_matrix,
+            out=state_rewards
+        )
+        state_values = \
+            np.linalg.solve(
+                cumulant_matrix,
+                state_rewards,
+            )
+        action_values = np.einsum(
+            "b,bsan,bn->bsa",
+            discount_rate,
+            transition_matrix,
+            state_values,
+            out=action_values
+        )
+        action_values[:] = state_action_reward_matrix + action_values 
+        action_values[~action_matrix] = float('-inf')
+        new_policy = np.isclose(
+            action_values, np.max(action_values, axis=-1, keepdims=True),
+            atol=value_difference, rtol=0,
+        )
         new_policy = new_policy/new_policy.sum(-1, keepdims=True)
-        if np.isclose(new_policy, policy_matrix, atol=value_difference, rtol=0).all():
+        if np.isclose(new_policy, policy_matrix, atol=probability_difference, rtol=0).all():
             break
         policy_matrix = new_policy
-    policy_matrix[~action_matrix] = 0
-    v = np.max(q, axis=-1)
-    return v, q, policy_matrix, i
+    state_values = np.max(action_values, axis=-1)
+    return state_values, action_values, policy_matrix, i
