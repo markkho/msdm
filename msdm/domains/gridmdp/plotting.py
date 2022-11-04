@@ -11,6 +11,7 @@ import matplotlib.cm as cmx
 import matplotlib.patheffects as path_effects
 
 from msdm.domains.gridmdp import GridMDP, Location, GridAction
+from msdm.core.problemclasses.mdp.policy import Policy
 from msdm.core.distributions import FiniteDistribution
 
 DISTINCT_COLORS = [
@@ -177,6 +178,19 @@ class GridMDPPlotter:
                 )
                 artists.append(number)
         return artists
+    
+    def plot_policy(
+        self,
+        policy : Policy,
+        **kws
+    ):
+        return self.plot_location_action_map(
+            policy,
+            vmin=0.,
+            vmax=1.0,
+            color_value_func=lambda loc : 'k',
+            **kws
+        )
 
     def plot_location_action_map(
         self,
