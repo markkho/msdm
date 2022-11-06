@@ -142,7 +142,7 @@ class WindyGridWorld(GridMDP):
         self,
         feature_colors=None,
         mark_initial_states=True,
-        mark_terminal_states=True,
+        mark_absorbing_states=True,
         mark_wind=True,
         ax=None
     ):
@@ -173,7 +173,7 @@ class WindyGridWorld(GridMDP):
                     zorder=-1
                 )
             )
-        if mark_terminal_states:
+        if mark_absorbing_states:
             plotter.mark_features(
                 feature_markers={'$': '*'},
                 plot_kwargs=dict(
