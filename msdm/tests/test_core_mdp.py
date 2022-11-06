@@ -5,7 +5,7 @@ from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess
 from msdm.core.distributions import DictDistribution
 
 from msdm.tests.domains import AbsorbingStateTester, DeterministicCounter, DeterministicUnreachableCounter, GNTFig6_6, \
-    GeometricCounter, VaryingActionNumber, DeadEndBandit, TiedPaths, \
+    GeometricCounter, VaryingActionNumber, DeadEndBandit, TiedPaths, LineWorld, \
     RussellNorvigGrid_Fig17_3, PositiveRewardCycle, RussellNorvigGrid, SlipperyMaze
 
 test_mdps = [
@@ -14,11 +14,11 @@ test_mdps = [
     GeometricCounter(p=1/13, discount_rate=1.0),
     GeometricCounter(p=1/13, discount_rate=.95),
     GeometricCounter(p=1/13, discount_rate=.513),
-    PositiveRewardCycle(),
-    VaryingActionNumber(),
+    PositiveRewardCycle(discount_rate=.95),
+    VaryingActionNumber(discount_rate=1.0),
     TiedPaths(discount_rate=1.0),
     TiedPaths(discount_rate=.99),
-    RussellNorvigGrid_Fig17_3(), 
+    RussellNorvigGrid_Fig17_3(discount_rate=1.0), 
     RussellNorvigGrid(
         discount_rate=.41192,
         slip_prob=.7140
