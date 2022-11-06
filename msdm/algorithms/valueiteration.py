@@ -124,8 +124,9 @@ class ValueIteration(Plans):
             policy=policy
         )
 
+from msdm.core.tablemisc import dataclass_repr_html_MixIn
 @dataclass
-class ValueIterationResult(PlanningResult):
+class ValueIterationResult(PlanningResult,dataclass_repr_html_MixIn):
     iterations : int
     converged : bool
     state_value : dict
