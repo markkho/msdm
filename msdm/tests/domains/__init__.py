@@ -290,7 +290,7 @@ class DeadEndBandit(TabularMarkovDecisionProcess, TestDomain):
     def optimal_policy(self):
         """
         The optimal policy is to pull the arm of 'a' whenever there is a single
-        'a'. Otherwise, its a terminal/dead end/single action state.
+        'a'. Otherwise, its an absorbing/dead end/single action state.
         """
         policy = {}
         for s in self.state_list:

@@ -12,7 +12,7 @@ class QuickMDP(MarkovDecisionProcess):
         reward: Union[float, Callable[[State, Action, State], float]],
         actions: Union[Sequence[Action], Callable[[State], Sequence[Action]]],
         initial_state_dist: Union[Distribution[State], Callable[[], Distribution[State]]]=None,
-        is_terminal: Callable[[State], bool],
+        is_absorbing: Callable[[State], bool],
         # Deterministic variants.
         next_state: Callable[[State, Action], State]=None,
         initial_state: State=None,
@@ -32,7 +32,7 @@ class QuickMDP(MarkovDecisionProcess):
             self._initial_state_dist = initial_state_dist
         else:
             self._initial_state_dist = lambda: initial_state_dist
-        self._is_terminal = is_terminal
+        self._is_absorbing = is_absorbing
         self.discount_rate = discount_rate
 
     def next_state_dist(self, s, a):
@@ -48,7 +48,7 @@ class QuickMDP(MarkovDecisionProcess):
         return self._initial_state_dist()
 
     def is_absorbing(self, s):
-        return self._is_terminal(s)
+        return self._is_absorbing(s)
 
 class QuickTabularMDP(QuickMDP,TabularMarkovDecisionProcess):
     pass

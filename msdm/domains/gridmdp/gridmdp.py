@@ -10,7 +10,7 @@ class GridMDP(TabularMarkovDecisionProcess):
         """
         Generic class for MDPs that can be expressed as grids.
         This requires specifying `next_state_dist`,
-        `initial_state_dist`, `is_terminal`, and `reward`
+        `initial_state_dist`, `is_absorbing`, and `reward`
         methods.
 
         Parameters

@@ -66,14 +66,14 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         initial_state_dist = DictDistribution({
             s: p for s, p in zip(state_list, initial_state_vec) if p > 0
         })
-        def is_terminal(s):
+        def is_absorbing(s):
             return absorbing_state_vec[ss_i[s]]
         mdp = QuickTabularMDP(
             next_state_dist=next_state_dist,
             reward=reward,
             actions=actions,
             initial_state_dist=initial_state_dist,
-            is_terminal=is_terminal,
+            is_absorbing=is_absorbing,
             discount_rate=discount_rate
         )
         mdp._state_list = domaintuple(state_list)

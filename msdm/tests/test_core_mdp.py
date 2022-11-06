@@ -34,7 +34,7 @@ def test_MarkovDecisionProcess_reachable_states():
         reward=lambda s, a, ns: 0,
         actions=(-1, 1),
         initial_state_dist=DictDistribution({0: 1, 10: 0}),
-        is_terminal=lambda s: s == -1
+        is_absorbing=lambda s: s == -1
     )
     assert set(line_world.reachable_states()) == {0, 1, 2, 3, 4, 5}
     assert set(line_world.reachable_states(max_states=2)) == {0, 1}
@@ -107,7 +107,7 @@ def test_QuickMDP_equivalence():
             initial_state_dist = mdp.initial_state_dist,
             actions            = mdp.actions,
             next_state_dist    = mdp.next_state_dist,
-            is_terminal        = mdp.is_absorbing,
+            is_absorbing        = mdp.is_absorbing,
             reward             = mdp.reward,
         )
         assert mdp.initial_state_dist().isclose(quick_mdp.initial_state_dist())

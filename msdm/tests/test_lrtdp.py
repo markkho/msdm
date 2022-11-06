@@ -43,7 +43,7 @@ def _test_expected_error_bound(bellman_error_margin, optimal_res, test_res, mdp)
 
     0 <= V(s) - V^*(s) <= \\eta x \\Phi^{\\pi}(s)
 
-    where \\Phi^{\\pi} is the expected number of steps to reach a terminal
+    where \\Phi^{\\pi} is the expected number of steps to reach an absorbing
     state from s under \\pi and \\eta is the error margin for the
     Bellman residual (see Ghallab, Nau & Traverso, pg 229).
     This function tests whether the expected error bound holds from the

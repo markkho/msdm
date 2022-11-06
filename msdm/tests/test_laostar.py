@@ -98,7 +98,7 @@ def test_best_breadth_first_state_evaluation_order():
             "X": 1,
             "Y": 1
         }.get(ns, 0)
-    def is_terminal(s):
+    def is_absorbing(s):
         return s in "XY"
 
     # these two MDPs are value-equivalent - only difference is the next state order
@@ -108,7 +108,7 @@ def test_best_breadth_first_state_evaluation_order():
         reward=reward,
         actions=actions_CD_order,
         initial_state="A",
-        is_terminal=is_terminal,
+        is_absorbing=is_absorbing,
         discount_rate=.99
     )
     mdp_DC = QuickTabularMDP(
@@ -116,7 +116,7 @@ def test_best_breadth_first_state_evaluation_order():
         reward=reward,
         actions=actions_DC_order,
         initial_state="A",
-        is_terminal=is_terminal,
+        is_absorbing=is_absorbing,
         discount_rate=.99
     )
     pi_res_CD = PolicyIteration().plan_on(mdp_CD)
@@ -170,14 +170,14 @@ def test_laostar_duplicate_actions():
         return DictDistribution.uniform(list(a))
     def reward(s, a, ns):
         return -1
-    def is_terminal(s):
+    def is_absorbing(s):
         return s == "X"
     mdp = QuickTabularMDP(
         next_state_dist=next_state_dist,
         reward=reward,
         actions=actions,
         initial_state="A",
-        is_terminal=is_terminal,
+        is_absorbing=is_absorbing,
         discount_rate=.99
     )
     with pytest.raises(SpecificationException):
@@ -293,7 +293,7 @@ def test_explicit_state_graph_with_heuristic():
     initial_value = explicit_graph.states_to_nodes[gw.initial_state_dist().support[0]].value
     assert np.isclose(initial_value, vi_res.initial_value, atol=1e-10)
 
-    # the solution graph should NOT be solved since there are non-terminal tips
+    # the solution graph should NOT be solved since there are non-absorbing tips
     solution_graph = explicit_graph.solution_graph()
     assert not solution_graph.is_solved()
 

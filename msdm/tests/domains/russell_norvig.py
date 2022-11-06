@@ -26,8 +26,8 @@ def make_russell_norvig_grid(
     # actions are tuples: the following are right, left, up, down
     actions = ((1, 0), (-1, 0), (0, 1), (0, -1))
 
-    # the two terminal states are the goal and lava
-    def is_terminal(s):
+    # the two absorbing states are the goal and lava
+    def is_absorbing(s):
         return loc_to_feature[s] == 'g' or loc_to_feature[s] == 'x'
 
     # standard reward function assigns +1 for goal, -1 for lava, -0.04 for all other states
@@ -55,7 +55,7 @@ def make_russell_norvig_grid(
         return ns
 
     def next_state_dist(s, a):
-        if is_terminal(s):
+        if is_absorbing(s):
             return DeterministicDistribution(s)
 
         # the two potential 'slips'
@@ -87,7 +87,7 @@ def make_russell_norvig_grid(
         reward=reward,
         actions=actions,
         initial_state_dist=initial_state_dist,
-        is_terminal=is_terminal,
+        is_absorbing=is_absorbing,
         discount_rate=discount_rate
     )
 
