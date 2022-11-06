@@ -5,6 +5,7 @@ from collections import defaultdict
 from msdm.domains.gridworld.mdp import GridWorld
 
 from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess, DeterministicShortestPathProblem
+from msdm.core.utils.funcutils import cached_property
 from msdm.core.distributions import \
     Distribution, DictDistribution,\
     DeterministicDistribution, UniformDistribution
@@ -143,6 +144,28 @@ class DeterministicUnreachableCounter(DeterministicCounter):
         if self.discount_rate == 1.0:
             value[float('-inf')] = -1
         return value
+
+class LineWorld(TabularMarkovDecisionProcess):
+    def __init__(self, line="s..#...#s.g", discount_rate=1.0):
+        self.line = line
+        self.discount_rate = discount_rate
+    @cached_property
+    def state_list(self):
+        return tuple(range(len(self.line)))
+    def next_state_dist(self, s, a):
+        ns = s + a
+        if not (0 <= ns < len(self.line)) or self.line[ns] == '#':
+            ns = s
+        return DictDistribution({ns: 1})
+    def is_absorbing(self, s) -> bool:
+        return self.line[s] == 'g'
+    def actions(self, s):
+        return (-1, 0, 1)
+    def initial_state_dist(self):
+        initial_states = [i for i, c in enumerate(self.line) if c == 's']
+        return DictDistribution.uniform(initial_states)
+    def reward(self, s, a, ns) -> float:
+        return -1
 
 class GeometricCounter(TabularMarkovDecisionProcess, TestDomain):
     '''
