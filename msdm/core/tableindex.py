@@ -116,47 +116,17 @@ class TableIndex:
             elif selector[0] == ...:
                 return selector
             
-        # If it is a list or domaintuple, we first try to index into the outermost field
-        # and then fall back to see if it indexes across fields. This 
-        # fallback behavior should NOT be relied on.
+        # If it is a list or domaintuple, we try to index into the outermost field
         if isinstance(selector, (list, domaintuple)):
-            try:
-                field_indices = self._index_into_domain(selector, self.fields[0].domain)
-                field_indices = type(selector)(field_indices)
-            except DomainError:
-                warnings.warn(
-                    f"List selector, {selector}, produces a DomainError. Testing" +\
-                    " to see if it works as a field selector, but this behavior should not" +\
-                    " be relied on."
-                )
-                try:
-                    field_indices = self._index_into_fields(selector)
-                    field_indices = tuple(field_indices)
-                except IndexError:
-                    raise KeyError(f"Unable to resolve selector {selector} in {repr(self)}")
-                
+            field_indices = self._index_into_domain(selector, self.fields[0].domain)
+            field_indices = type(selector)(field_indices)
         
-        # If it is a tuple, we first try to index across fields 
-        # unless there's an IndexError, then we fall back to indexing into
-        # the outermost field. This fallback behavior should NOT be relied on.
+        # If it is a tuple, we try to index across fields 
         if isinstance(selector, tuple):
-            try:
-                field_indices = self._index_into_fields(selector)
-                field_indices = tuple(field_indices)
-            except IndexError:
-                warnings.warn(
-                    f"Tuple selector, {selector}, produces an IndexError. Testing" +\
-                    " to see if it works as a selector for the outermost field,"+\
-                    " but this behavior should not be relied on."
-                )
-                try:
-                    if any(isinstance(s, slice) or s == ... for s in selector):
-                        raise DomainError
-                    field_indices = self._index_into_domain(selector, self.fields[0].domain)
-                    field_indices = list(field_indices)
-                except DomainError:
-                    raise KeyError(f"Unable to resolve selector {selector} in {repr(self)}")
+            field_indices = self._index_into_fields(selector)
+            field_indices = tuple(field_indices)
         return field_indices
+
     def _updated_index(self, array_index):
         # short-circuiting if array_index is ellipses or all slices
         if (

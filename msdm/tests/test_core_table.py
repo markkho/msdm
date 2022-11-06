@@ -2,7 +2,8 @@ import numpy as np
 import contextlib
 import pytest
 from msdm.core.table import Table, ProbabilityTable
-from msdm.core.tableindex import TableIndex, Field, domaintuple, DomainError, SliceError
+from msdm.core.tableindex import TableIndex, Field, domaintuple, DomainError, SliceError, \
+    MultipleIndexError, IndexSizeError
 from msdm.core.distributions import Distribution 
 
 def test_TableIndex():
@@ -53,15 +54,15 @@ def test_TableIndex_to_numpy_array_index_conversion():
     assert idx._array_index((['c', 'c'],)) == ([3, 3],), idx._array_index(['c', 'c'])
 
     # error if we use numpy-like "advanced indexing" on more than one field 
-    with pytest.raises(KeyError):
+    with pytest.raises(MultipleIndexError):
         idx._array_index((['c'], ['c']))
 
     # error if we try to select more than the num. of fields
-    with pytest.raises(KeyError):
+    with pytest.raises(IndexSizeError):
         idx._array_index(('a', 'b', 'c', 'd',))
 
     # unrecognized field selector (dict, which is not hashable nor a list)
-    with pytest.raises(KeyError):
+    with pytest.raises(IndexError):
         assert idx._array_index((slice(None),{})) == (slice(None),)
     assert idx._array_index(['a', 'b']) == [1, 2]
     assert idx._array_index(['a', 'b', ('a', 'b')]) == [1, 2, 0]
@@ -309,7 +310,7 @@ def test_TableIndex_numpy_array_TableIndex_conversion():
             sel=[
                 (slice(None), ["b"], [100]),
             ],
-            error=KeyError
+            error=MultipleIndexError
         ),
         dict(
             sel=[
@@ -483,7 +484,7 @@ def test_Table_array_like_interface():
 
     # Throw error when accessing a non-existent key
     tb["d"]
-    with pytest.raises(KeyError):
+    with pytest.raises(IndexError):
         tb["d", "w"]
 
     # Support for some numpy attributes on object
