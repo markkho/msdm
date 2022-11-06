@@ -23,7 +23,6 @@ class TabularPOMDP(TabularMarkovDecisionProcess, PartiallyObservableMDP):
             'rf': self.reward_matrix,
             'sarf': self.state_action_reward_matrix,
             's0': self.initial_state_vec,
-            'nt': self.transient_state_vec,
             'rs': self.reachable_state_vec,
             'obs': self.observation_matrix
         }

@@ -38,13 +38,13 @@ class PolicyIteration(Plans):
         for mdp_i, mdp in enumerate(mdps):
             if mdp.dead_end_state_vec.any():
                 warnings.warn("MDP contains states where no actions can be taken. This can have unanticipated effects.")
-            if mdp.recurrent_state_vec.any():
+            if mdp._unable_to_reach_absorbing.any():
                 warnings.warn("MDP contains states that never reach an absorbing state. " +\
                     f"Values for these states will be set using self.undefined_value={self.undefined_value}"
                 )
             transition_matrices[mdp_i] = mdp.transition_matrix
             transition_matrix = transition_matrices[mdp_i]
-            transition_matrix[mdp.recurrent_state_vec,] = 0
+            transition_matrix[mdp._unable_to_reach_absorbing,] = 0
             transition_matrix[mdp.absorbing_state_vec,] = 0
             discount_rates[mdp_i] = mdp.discount_rate
             state_action_reward_matrix = np.einsum("san,san->sa", transition_matrix, mdp.reward_matrix)
@@ -69,8 +69,8 @@ class PolicyIteration(Plans):
         for mdp, state_values, action_values, policy_matrix in zip(
             mdps, state_values_batch, action_values_batch, policy_matrix_batch
         ):
-            state_values[mdp.recurrent_state_vec,] = self.undefined_value
-            action_values[mdp.recurrent_state_vec,] = self.undefined_value
+            state_values[mdp._unable_to_reach_absorbing,] = self.undefined_value
+            action_values[mdp._unable_to_reach_absorbing,] = self.undefined_value
             policy=TabularPolicy.from_state_action_lists(
                 state_list=mdp.state_list,
                 action_list=mdp.action_list,

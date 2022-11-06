@@ -31,15 +31,15 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         transition_matrix : np.array,
         action_matrix : np.array,
         reward_matrix : np.array,
-        transient_state_vec  : np.array,
+        absorbing_state_vec : np.array,
         discount_rate : float,
     ) -> "TabularMarkovDecisionProcess":
         assert len(state_list) \
             == transition_matrix.shape[0] \
             == transition_matrix.shape[2] \
             == action_matrix.shape[0] \
-            == transient_state_vec.shape[0] \
             == initial_state_vec.shape[0] \
+            == absorbing_state_vec.shape[0] \
             == reward_matrix.shape[0] \
             == reward_matrix.shape[2] 
         assert len(action_list) \
@@ -67,7 +67,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
             s: p for s, p in zip(state_list, initial_state_vec) if p > 0
         })
         def is_terminal(s):
-            return not transient_state_vec[ss_i[s]]
+            return absorbing_state_vec[ss_i[s]]
         mdp = QuickTabularMDP(
             next_state_dist=next_state_dist,
             reward=reward,
@@ -207,26 +207,6 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         s0 = np.array([s0.prob(s) for s in self.state_list])
         s0.setflags(write=False)
         return s0
-
-    @cached_property
-    def transient_state_vec(self) -> np.ndarray:
-        """
-        Transient states are states that are neither absorbing nor recurrent.
-        That is, there exists at least one policy under which a transient
-        state will only be visited a finite number of times.
-        """
-        if self.discount_rate < 1.0:
-            transient = ~self.absorbing_state_vec
-            transient.setflags(write=False)
-            return transient
-        valid_transitions = \
-            (self.transition_matrix > 0) & self.action_matrix.astype(bool)[:, :, None]
-        adjacency = valid_transitions.any(axis=1)
-        distances = floyd_warshall(adjacency)
-        transient = (distances[:, self.absorbing_state_vec] < float('inf')).any(-1)
-        transient[self.absorbing_state_vec] = False
-        transient.setflags(write=False)
-        return transient
     
     @cached_property
     def absorbing_state_vec(self) -> np.ndarray:
@@ -245,14 +225,21 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         return absorbing_state_vec
     
     @cached_property
-    def recurrent_state_vec(self) -> np.ndarray:
+    def _unable_to_reach_absorbing(self) -> np.ndarray:
         """
-        Recurrent states are non-absorbing states that will be visited an infinite
-        number of times under any policy.
+        States that can never access an absorbing state under any policy.
         """
-        recurrent_states = ~self.transient_state_vec & ~self.absorbing_state_vec
-        recurrent_states.setflags(write=False)
-        return recurrent_states
+        if self.discount_rate < 1.0:
+            unable_to_reach_absorbing = np.zeros(len(self.state_list), dtype=bool)
+            unable_to_reach_absorbing.setflags(write=False)
+            return unable_to_reach_absorbing
+        valid_transitions = \
+            (self.transition_matrix > 0) & self.action_matrix.astype(bool)[:, :, None]
+        adjacency = valid_transitions.any(axis=1)
+        accessibilty = floyd_warshall(adjacency)
+        unable_to_reach_absorbing = (accessibilty[:, self.absorbing_state_vec] == float('inf')).all(-1)
+        unable_to_reach_absorbing.setflags(write=False)
+        return unable_to_reach_absorbing
     
     @cached_property
     def dead_end_state_vec(self):
@@ -275,6 +262,5 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
             'rf': self.reward_matrix,
             'sarf': self.state_action_reward_matrix,
             's0': self.initial_state_vec,
-            'nt': self.transient_state_vec,
             'rs': self.reachable_state_vec,
         }

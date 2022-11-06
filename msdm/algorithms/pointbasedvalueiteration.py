@@ -61,7 +61,7 @@ def point_based_value_iteration(
 
     tf = pomdp.transition_matrix
     sa_rf = pomdp.state_action_reward_matrix
-    nt = pomdp.transient_state_vec
+    nt = ~pomdp.absorbing_state_vec.astype(bool)
     of = pomdp.observation_matrix
     aa = pomdp.action_list
     ss = pomdp.state_list

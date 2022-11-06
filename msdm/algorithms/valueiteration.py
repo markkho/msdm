@@ -25,7 +25,7 @@ class ValueIteration(Plans):
     def plan_on(self, mdp: TabularMarkovDecisionProcess):
         if mdp.dead_end_state_vec.any():
             warnings.warn("MDP contains states where no actions can be taken. This can have unanticipated effects.")
-        if mdp.recurrent_state_vec.any():
+        if mdp._unable_to_reach_absorbing.any():
             warnings.warn("MDP contains states that never reach an absorbing state. " +\
                 f"Values for these states will be set using self.undefined_value={self.undefined_value}"
             )
@@ -38,10 +38,10 @@ class ValueIteration(Plans):
 
     def _vectorized_plan_on(self, mdp: TabularMarkovDecisionProcess):
         transition_matrix = mdp.transition_matrix.copy()
-        transition_matrix[mdp.recurrent_state_vec,] = 0
+        transition_matrix[mdp._unable_to_reach_absorbing,] = 0
         transition_matrix[mdp.absorbing_state_vec,] = 0
         state_action_reward_matrix = mdp.state_action_reward_matrix.copy()
-        state_action_reward_matrix[mdp.recurrent_state_vec,] = 0
+        state_action_reward_matrix[mdp._unable_to_reach_absorbing,] = 0
         state_action_reward_matrix[mdp.absorbing_state_vec,] = 0
         state_values, action_values, iterations = value_iteration_vectorized(
             transition_matrix=transition_matrix,
@@ -51,8 +51,8 @@ class ValueIteration(Plans):
             max_residual=self.max_residual,
             max_iterations=self.max_iterations
         )
-        state_values[mdp.recurrent_state_vec,] = self.undefined_value
-        action_values[mdp.recurrent_state_vec,] = self.undefined_value
+        state_values[mdp._unable_to_reach_absorbing,] = self.undefined_value
+        action_values[mdp._unable_to_reach_absorbing,] = self.undefined_value
         policy_matrix = np.isclose(
             action_values,
             np.max(action_values, axis=-1, keepdims=True),
@@ -92,7 +92,7 @@ class ValueIteration(Plans):
             max_iterations=self.max_iterations
         )
         state_values = {
-            s: v if not mdp.recurrent_state_vec[mdp.state_list.index(s)]
+            s: v if not mdp._unable_to_reach_absorbing[mdp.state_list.index(s)]
             else self.undefined_value
             for s, v in state_values.items()
         }
@@ -173,7 +173,7 @@ def value_iteration_tabular(
             action_values[s] = {}
             for a in mdp.actions(s):
                 action_values[s][a] = 0
-                if mdp.is_absorbing(s) or mdp.recurrent_state_vec[si]:
+                if mdp.is_absorbing(s) or mdp._unable_to_reach_absorbing[si]:
                     continue
                 for ns, prob in mdp.next_state_dist(s, a).items():
                     action_values[s][a] += prob*(mdp.reward(s, a, ns) + mdp.discount_rate*state_values[ns])
