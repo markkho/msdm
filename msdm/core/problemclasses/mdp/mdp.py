@@ -46,7 +46,7 @@ class MarkovDecisionProcess(ProblemClass, Generic[State, Action]):
                 for ns, prob in self.next_state_dist(s, a).items():
                     if prob == 0:
                         continue
-                    if ns not in visited:
+                    if ns not in visited and not self.is_absorbing(ns):
                         frontier.add(ns)
                     visited.add(ns)
         return visited

@@ -38,6 +38,16 @@ def test_MarkovDecisionProcess_reachable_states():
     )
     assert set(line_world.reachable_states()) == {0, 1, 2, 3, 4, 5}
     assert set(line_world.reachable_states(max_states=2)) == {0, 1}
+    
+    bounded_lineworld = QuickMDP(
+        next_state_dist=lambda s, a: DictDistribution({s + a: .8, s - a: .1, s: .1}),
+        reward=lambda s, a, ns: -1,
+        actions=(-1, 1),
+        initial_state_dist=DictDistribution({0: 1}),
+        is_absorbing=lambda s: ((s <= -1) or (s >= 1))
+    )
+    reachable = bounded_lineworld.reachable_states(max_states=10)
+    assert reachable == set([-1, 0, 1])
 
 def test_TabularMarkovDecisionProcess_implicit_absorbing_state_detection():
     # action space and reward function leads to last being an absorbing state
