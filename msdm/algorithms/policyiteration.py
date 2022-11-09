@@ -92,7 +92,7 @@ class PolicyIteration(Plans):
             ))
         return results
 
-from msdm.core.tablemisc import dataclass_repr_html_MixIn
+from msdm.core.table.tablemisc import dataclass_repr_html_MixIn
 @dataclass
 class PolicyIterationResult(PlanningResult,dataclass_repr_html_MixIn):
     iterations : int

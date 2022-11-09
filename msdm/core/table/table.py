@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod, abstractproperty
 import numpy as np
 from typing import Sequence, Union, Tuple, TypeVar, Any
 from msdm.core.distributions.dictdistribution import DictDistribution
-from msdm.core.tableindex import FieldValue, TableIndex
+from msdm.core.table.tableindex import FieldValue, TableIndex
 
 TableKey = Union[FieldValue,Tuple[FieldValue,...]]
 TableEntry = TypeVar("TableEntry")
@@ -90,7 +90,7 @@ class AbstractTable(ABC):
     @abstractproperty
     def table_index(self) -> "TableIndex": pass
 
-from msdm.core.tablemisc import Table_repr_html_MixIn
+from msdm.core.table.tablemisc import Table_repr_html_MixIn
 class Table(Table_repr_html_MixIn,AbstractTable):
     """
     A Table backed by a numpy array.

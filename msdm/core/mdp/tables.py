@@ -1,8 +1,7 @@
 import numpy as np
 from typing import Mapping, Sequence
 from msdm.core.mdp.mdp import Action, State
-from msdm.core.table import Table, TableIndex
-from msdm.core.tableindex import domaintuple
+from msdm.core.table import Table, TableIndex, domaintuple
 
 Vector = Sequence[float]
 Matrix = Sequence[Vector]

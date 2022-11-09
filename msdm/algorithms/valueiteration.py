@@ -119,7 +119,7 @@ class ValueIteration(Plans):
             policy=policy
         )
 
-from msdm.core.tablemisc import dataclass_repr_html_MixIn
+from msdm.core.table.tablemisc import dataclass_repr_html_MixIn
 @dataclass
 class ValueIterationResult(PlanningResult,dataclass_repr_html_MixIn):
     iterations : int

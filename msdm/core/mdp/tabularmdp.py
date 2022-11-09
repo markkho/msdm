@@ -6,7 +6,7 @@ from typing import Set, Sequence, Hashable, Mapping, TypeVar
 from msdm.core.mdp.mdp import MarkovDecisionProcess
 from msdm.core.utils.funcutils import method_cache, cached_property
 from msdm.core.distributions import FiniteDistribution, DictDistribution
-from msdm.core.tableindex import domaintuple
+from msdm.core.table import domaintuple
 
 logger = logging.getLogger(__name__)
 

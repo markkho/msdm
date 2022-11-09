@@ -1,5 +1,5 @@
 from itertools import product
-from msdm.core.table import AbstractTable
+from msdm.core.table.table import AbstractTable
 
 class Table_repr_html_MixIn(AbstractTable):
     _column_dims_idx = -1 #this is for interpreting a table as a matrix
