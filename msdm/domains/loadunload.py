@@ -1,5 +1,5 @@
 from collections import namedtuple
-from msdm.core.problemclasses.pomdp import TabularPOMDP
+from msdm.core.pomdp import TabularPOMDP
 from msdm.core.distributions import DictDistribution
 
 State = namedtuple("State", "location is_loaded")

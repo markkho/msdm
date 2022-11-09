@@ -5,7 +5,7 @@ from typing import Set, Sequence, Hashable, Mapping, TypeVar
 import numpy as np
 
 from msdm.core.utils.funcutils import method_cache, cached_property
-from msdm.core.problemclasses.pomdp.pomdp import PartiallyObservableMDP
+from msdm.core.pomdp.pomdp import PartiallyObservableMDP
 from msdm.core.mdp import TabularMarkovDecisionProcess
 from msdm.core.distributions import FiniteDistribution, DictDistribution
 

@@ -1,9 +1,9 @@
 from collections import namedtuple, defaultdict
 import numpy as np
-from msdm.core.problemclasses.pomdp.policy import ValueBasedTabularPOMDPPolicy
-from msdm.core.problemclasses.pomdp import TabularPOMDP
-from msdm.core.problemclasses.pomdp.pomdp import Action
-from msdm.core.problemclasses.pomdp.tabularpomdp import Belief
+from msdm.core.pomdp.policy import ValueBasedTabularPOMDPPolicy
+from msdm.core.pomdp import TabularPOMDP
+from msdm.core.pomdp.pomdp import Action
+from msdm.core.pomdp.tabularpomdp import Belief
 from msdm.core.distributions import DictDistribution, Distribution
 
 class AlphaVectorPolicy(ValueBasedTabularPOMDPPolicy):

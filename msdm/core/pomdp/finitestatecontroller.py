@@ -1,6 +1,6 @@
-from msdm.core.problemclasses.pomdp.policy import POMDPPolicy, AgentState
-from msdm.core.problemclasses.pomdp.pomdp import Action, Observation
-from msdm.core.problemclasses.pomdp.tabularpomdp import TabularPOMDP
+from msdm.core.pomdp.policy import POMDPPolicy, AgentState
+from msdm.core.pomdp.pomdp import Action, Observation
+from msdm.core.pomdp.tabularpomdp import TabularPOMDP
 from msdm.core.distributions import Distribution, DictDistribution
 
 class FiniteStateController(POMDPPolicy):

@@ -3,9 +3,9 @@ from collections import namedtuple
 from abc import abstractmethod, ABC
 from typing import TypeVar
 
-from msdm.core.problemclasses.pomdp.pomdp import \
+from msdm.core.pomdp.pomdp import \
     State, Action, Observation, PartiallyObservableMDP
-from msdm.core.problemclasses.pomdp.tabularpomdp import TabularPOMDP, Belief
+from msdm.core.pomdp.tabularpomdp import TabularPOMDP, Belief
 from msdm.core.distributions import Distribution, DictDistribution
 from msdm.core.algorithmclasses import Result
 
