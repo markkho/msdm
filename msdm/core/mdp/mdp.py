@@ -1,14 +1,13 @@
 from abc import abstractmethod
 from typing import TypeVar, Generic, Sequence, Set
 
-from msdm.core.problemclasses.problemclass import ProblemClass
 from msdm.core.distributions import Distribution
 from msdm.core.utils.funcutils import method_cache
 
 State = TypeVar('State')
 Action = TypeVar('Action')
 
-class MarkovDecisionProcess(ProblemClass, Generic[State, Action]):
+class MarkovDecisionProcess(Generic[State, Action]):
     discount_rate : float = 1.0
     _state_list : Sequence[State]
     _action_list : Sequence[Action]

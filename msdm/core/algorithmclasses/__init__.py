@@ -1,7 +1,4 @@
 from abc import ABC, abstractmethod
-from typing import Iterable
-from msdm.core.problemclasses.problemclass import ProblemClass
-from msdm.core.assignment.assignmentmap import AssignmentMap
 
 class Algorithm(ABC):
     """Abstract superclass for all algorithms"""
@@ -23,14 +20,14 @@ class PlanningResult(Result):
     converged : bool
 
 class Plans(Algorithm):
-    def __call__(self, problem: ProblemClass):
+    def __call__(self, problem):
         return self.plan_on(problem)
 
     @abstractmethod
-    def plan_on(self, problem: ProblemClass) -> Result:
+    def plan_on(self, problem) -> Result:
         pass
 
 class Learns(Algorithm):
     @abstractmethod
-    def train_on(self, problem: ProblemClass) -> Result:
+    def train_on(self, problem) -> Result:
         pass

@@ -1,10 +1,9 @@
 from typing import Mapping, Hashable
 from abc import abstractmethod
 
-from msdm.core.problemclasses.problemclass import ProblemClass
 from msdm.core.distributions import Distribution
 
-class StochasticGame(ProblemClass):
+class StochasticGame:
     def __init__(self, agent_names):
         self.agent_names = agent_names
 

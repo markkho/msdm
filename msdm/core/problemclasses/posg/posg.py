@@ -1,11 +1,10 @@
 from typing import Mapping, Hashable
 from abc import abstractmethod
 
-from msdm.core.problemclasses.problemclass import ProblemClass
 from msdm.core.distributions import Distribution
 
 
-class PartiallyObservableStochasticGame(ProblemClass):
+class PartiallyObservableStochasticGame:
     """
     POSGs are defined by:
     - action distributions, which bias actions at each state
