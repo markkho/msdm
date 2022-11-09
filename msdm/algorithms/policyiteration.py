@@ -9,7 +9,6 @@ from msdm.core.algorithmclasses import Plans, PlanningResult
 from msdm.core.mdp_tables import StateActionTable, StateTable
 
 class PolicyIteration(Plans):
-    VALUE_DECIMAL_PRECISION = 10
     def __init__(
         self,
         max_iterations=int(1e5),
@@ -62,7 +61,6 @@ class PolicyIteration(Plans):
             action_matrix=action_matrices,
             max_iterations=self.max_iterations,
             policy_matrix=policy_matrices,
-            value_difference=10**(-self.VALUE_DECIMAL_PRECISION)
         )
 
         results = []
@@ -112,8 +110,6 @@ def policy_iteration_vectorized(
     action_matrix,
     policy_matrix,
     max_iterations=int(1e5),
-    value_difference=1e-10,
-    probability_difference=1e-10
 ):
     """
     Implementation of regularized policy iteration with
@@ -162,10 +158,9 @@ def policy_iteration_vectorized(
         action_values[~action_matrix] = float('-inf')
         new_policy = np.isclose(
             action_values, np.max(action_values, axis=-1, keepdims=True),
-            atol=value_difference, rtol=0,
         )
         new_policy = new_policy/new_policy.sum(-1, keepdims=True)
-        if np.isclose(new_policy, policy_matrix, atol=probability_difference, rtol=0).all():
+        if np.isclose(new_policy, policy_matrix).all():
             break
         policy_matrix = new_policy
     state_values = np.max(action_values, axis=-1)

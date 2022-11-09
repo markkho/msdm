@@ -9,7 +9,6 @@ from msdm.core.mdp_tables import StateTable, StateActionTable
 from msdm.core.algorithmclasses import Plans, PlanningResult
 
 class ValueIteration(Plans):
-    VALUE_DECIMAL_PRECISION = 10
     def __init__(
         self,
         max_iterations=int(1e5),
@@ -56,8 +55,6 @@ class ValueIteration(Plans):
         policy_matrix = np.isclose(
             action_values,
             np.max(action_values, axis=-1, keepdims=True),
-            atol=10**(-self.VALUE_DECIMAL_PRECISION),
-            rtol=0
         )
         policy_matrix = policy_matrix/policy_matrix.sum(-1, keepdims=True)
         single_action_states = mdp.action_matrix.sum(-1) == 1
@@ -104,10 +101,9 @@ class ValueIteration(Plans):
             default_value=float('-inf')
         )
         policy = {}
-        round_val = lambda v: round(v, self.VALUE_DECIMAL_PRECISION)
         for s in action_values.keys():
-            maxq = max([round_val(v) for v in action_values[s].values()])
-            max_actions = [a for a in mdp.actions(s) if round_val(action_values[s][a]) == maxq]
+            maxq = max(action_values[s].values())
+            max_actions = [a for a in mdp.actions(s) if np.isclose(action_values[s][a], maxq)]
             if len(max_actions) == 0: #dead end
                 max_actions = mdp.action_list
             policy[s] = DictDistribution({a: 1/len(max_actions) for a in max_actions})
