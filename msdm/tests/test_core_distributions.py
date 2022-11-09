@@ -22,22 +22,28 @@ def test_basics():
         dist = cls({0: 0, 1: 1}) # Can construct with a logit dict
         assert dist == cls([0, 1], logits=[0, 1]) # or explicitly
         assert dist == cls([0, 1], scores=[0, 1]) # or explicitly
+
         # Per Python convention for repr, we ensure we can evaluate to the same.
         assert eval(repr(dist)) == dist
+
         # Testing close but not identical ones.
         dist_close = cls([0, 1], logits=[0, 1.000001])
         assert dist != dist_close
         assert dist.isclose(dist_close)
+
         # Testing case where logits differ but describe same probability dist
         dist_logit_fixed_dist = cls([0, 1], logits=[100, 101])
-        assert dist != dist_close
+        assert dist != dist_logit_fixed_dist
         assert dist.isclose(dist_close)
+        
         # Testing case where keys are out of order
         dist_logit_fixed_dist = cls([1, 0], logits=[1, 0])
-        assert dist != dist_close
+        assert dist != dist_logit_fixed_dist
         assert dist.isclose(dist_close)
+
         # Can do isclose to probabilities
         assert dist.isclose(cls([0, 1], probs=softmax([1, 2])))
+
         # Testing uniform distribution
         assert cls([0, 1, 2]).isclose(cls([0, 1, 2], logits=[1, 1, 1]))
 
@@ -47,6 +53,7 @@ def test_DictDistribution_is_close():
     dist_with_zero = DictDistribution(a=1/3, b=2/3, c=1e-8)
     assert dist.isclose(dist_with_zero)
     assert dist_with_zero.isclose(dist)
+
     # Make sure we're not equal to zero.
     empty = DictDistribution()
     assert not dist.isclose(empty)
@@ -65,6 +72,7 @@ def test_DictDistribution():
     dd1 = DictDistribution(a=.1, b=.2, c=.7)
     dd2 = DictDistribution(d=1)
     assert (dd2 * .5 | dd1 * .5) == {'d': 0.5, 'a': 0.05, 'b': 0.1, 'c': 0.35}
+
     dd1 = DictDistribution(a=.1, b=.2, c=.7)
     dd2 = DictDistribution(a=.5, b=.5)
     assert (dd1 & dd2) == {'b': 2/3, 'a': 1/3}
@@ -89,6 +97,7 @@ def test_uniform_dist():
     d = DictDistribution.uniform(['a', 'b'])
     assert DictDistribution(a=0.5, b=0.5).isclose(d)
     assert len(d) == 2
+
     # Handles duplicates by raising
     with pytest.raises(AssertionError) as e:
         DictDistribution.uniform('abb')
@@ -103,6 +112,14 @@ def test_DictDistribution_expectation():
     assert DictDistribution.uniform(range(4)).expectation(lambda x: x**2) == sum(i**2 for i in range(4))/4 == (1 + 4 + 9)/4
 
 def test_DictDistribution_marginalize():
+    assert DictDistribution({
+        (0, 0): 0.1,
+        (0, 1): 0.2,
+        (1, 0): 0.3,
+        (1, 1): 0.4,
+    }).marginalize(lambda x: x[0]).isclose(DictDistribution({0: 0.3, 1: 0.7}))
+
+def test_DictDistribution_condition():
     assert DictDistribution({
         (0, 0): 0.1,
         (0, 1): 0.2,

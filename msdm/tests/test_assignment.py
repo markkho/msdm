@@ -28,6 +28,7 @@ def test_DefaultAssignmentMap():
     assert m['number'] == 7
     del m['number']
     assert m['apples'] == 3
+    
     m = DefaultAssignmentMap(lambda key: key * 2)
     assert m[3] == 6
     m[3] = 7
