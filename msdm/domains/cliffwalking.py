@@ -15,7 +15,7 @@ class CliffWalking(GridMDP):
     def initial_state_dist(self):
         return DictDistribution.uniform(self.locations_with('s'))
 
-    def is_terminal(self, s):
+    def is_absorbing(self, s):
         return self.feature_at(s) == 'g'
 
     def _apply_action(self, s, a):

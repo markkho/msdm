@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 from msdm.domains import GridWorld
-from msdm.algorithms import ValueIteration
+from msdm.algorithms.valueiteration import ValueIteration
 from msdm.core.assignment import DefaultAssignmentMap, AssignmentMap
 
 np.seterr(divide='ignore')

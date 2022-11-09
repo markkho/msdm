@@ -1,4 +1,6 @@
 """RMAX learning algorithm for MDPs"""
+from functools import lru_cache
+from pyclbr import Function
 import random
 from types import SimpleNamespace
 
@@ -6,7 +8,8 @@ import numpy as np
 
 from msdm.core.distributions import DictDistribution
 from msdm.core.algorithmclasses import Learns, Result
-from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess, TabularPolicy
+from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess
+from msdm.core.problemclasses.mdp.policy import FunctionalPolicy
 from msdm.core.utils.funcutils import cached_property
 from abc import abstractmethod, ABC
 
@@ -83,26 +86,23 @@ class RMAX(Learns):
             rng = random
         return rng
 
-    def _create_policy(self, mdp, q):
-        policy = {}
-        try:
-            state_list = mdp.state_list
-        except AttributeError:
-            state_list = q.keys()
-        for s in state_list:
-            if s not in q:
-                max_aa = mdp.actions(s)
-            else:
-                maxq = max(q[s].values())
-                max_aa = [a for a in q[s].keys() if q[s][a] == maxq]
-            policy[s] = DictDistribution({a: 1/len(max_aa) for a in max_aa})
-        policy = TabularPolicy(policy)
+    def _create_policy(self, mdp : TabularMarkovDecisionProcess, q):
+        @FunctionalPolicy
+        @lru_cache(maxsize=None)
+        def policy(s):
+            try:
+                action_vals = q[s]
+                maxq = max(action_vals.values())
+                max_actions = [a for a in action_vals.keys() if action_vals[a] == maxq]
+            except KeyError:
+                max_actions = mdp.actions(s)
+            return DictDistribution.uniform(max_actions)
         return policy
 
-    def _create_q(self, q_matrix, mdp):
+    def _create_q(self, q_matrix, mdp : TabularMarkovDecisionProcess):
         """create a dictionary q from a q matrix"""
-        index_to_state = {v: k for k, v in mdp.state_index.items()}
-        index_to_action = {v: k for k, v in mdp.action_index.items()}
+        index_to_state = dict(enumerate(mdp.state_list))
+        index_to_action = dict(enumerate(mdp.action_list))
         q = {}
 
         for si in range(q_matrix.shape[0]):
@@ -113,7 +113,7 @@ class RMAX(Learns):
                 q[s][a] = q_matrix[si, ai]
         return q
     
-    def _init_training(self, mdp):
+    def _init_training(self, mdp : TabularMarkovDecisionProcess):
         """initialize training process by creating the data structure to build an empirical model of the MDP"""
         assert self.rmax == np.max(mdp.reward_matrix)
 
@@ -174,22 +174,27 @@ class RMAX(Learns):
         self_transition_mat[np.arange(self.n_states), :, np.arange(self.n_states)] = 1
         return self_transition_mat
 
-    def _training(self, mdp, rng, event_listener):
+    def _training(
+        self,
+        mdp : TabularMarkovDecisionProcess,
+        rng : random.Random,
+        event_listener : RMAXEventListener
+    ):
         """This is the main training loop. It should return
         a nested dictionary. Specifically, a dictionary with
         states as keys and action-value dictionaries as values."""
-        index_to_action = {v: k for k, v in mdp.action_index.items()}
+        index_to_action = dict(enumerate(mdp.action_list))
         for ep in range(self.episodes):
             s = mdp.initial_state_dist().sample(rng=rng)
-            while not mdp.is_terminal(s):
+            while not mdp.is_absorbing(s):
                 # select action
-                ai = self._act(mdp.state_index[s], rng)
+                ai = self._act(mdp.state_list.index(s), rng)
                 a = index_to_action[ai]
                 # transition to next state
                 ns = mdp.next_state_dist(s, a).sample(rng=rng)
                 r = mdp.reward(s, a, ns)
                 # update
-                self._observe(mdp.state_index[s], ai, r, mdp.state_index[ns], gamma=mdp.discount_rate)
+                self._observe(mdp.state_list.index(s), ai, r, mdp.state_list.index(ns), gamma=mdp.discount_rate)
                 # end of time step
                 event_listener.end_of_timestep(locals())
                 s = ns

@@ -25,7 +25,7 @@ def compare_lao_and_pbvi(pomdp):
     # compare policies on visited states
     bmdp_states = lao_res.solution_graph.states_to_nodes.keys()
     for b in bmdp_states:
-        if bmdp.is_terminal(b):
+        if bmdp.is_absorbing(b):
             continue
         pbvi_pol = set(pbvi_res.policy.action_dist(b).support)
         lao_pol = set(lao_res.policy.action_dist(b).support)

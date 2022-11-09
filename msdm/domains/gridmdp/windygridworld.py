@@ -72,7 +72,7 @@ class WindyGridWorld(GridMDP):
         nsr_dist = nsr_dist.condition(lambda nsr: nsr[0] == ns)
         return nsr_dist.expectation(lambda nsr: nsr[1])
 
-    def is_terminal(self, s):
+    def is_absorbing(self, s):
         return self.feature_at(s) in self.goal_features
 
     @method_cache
@@ -142,7 +142,7 @@ class WindyGridWorld(GridMDP):
         self,
         feature_colors=None,
         mark_initial_states=True,
-        mark_terminal_states=True,
+        mark_absorbing_states=True,
         mark_wind=True,
         ax=None
     ):
@@ -173,7 +173,7 @@ class WindyGridWorld(GridMDP):
                     zorder=-1
                 )
             )
-        if mark_terminal_states:
+        if mark_absorbing_states:
             plotter.mark_features(
                 feature_markers={'$': '*'},
                 plot_kwargs=dict(
@@ -217,7 +217,7 @@ class WindyGridWorldPlotter(GridMDPPlotter):
         )
 
 if __name__ == "__main__":
-    from msdm.algorithms import PolicyIteration
+    from msdm.algorithms.policyiteration import PolicyIteration
     wg = WindyGridWorld(
         grid="""
             ....$
@@ -240,7 +240,7 @@ if __name__ == "__main__":
     pi_res = PolicyIteration().plan_on(wg)
     plotter = wg.plot()
     for _ in range(20):
-        loc_traj = pi_res.policy.run_on(wg).state_traj
+        loc_traj = pi_res.policy.run_on(wg).state
         plotter.plot_location_trajectory(
             loc_traj,
             outline=True,

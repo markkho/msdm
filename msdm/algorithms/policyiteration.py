@@ -1,96 +1,167 @@
+from dataclasses import dataclass
+from typing import Sequence
 import warnings
 import numpy as np
-from collections import defaultdict
-from msdm.core.problemclasses.mdp import \
-    TabularMarkovDecisionProcess, TabularPolicy
+
+from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess
+from msdm.core.problemclasses.mdp.tabularpolicy import TabularPolicy
 from msdm.core.algorithmclasses import Plans, PlanningResult
+from msdm.core.mdp_tables import StateActionTable, StateTable
 
 class PolicyIteration(Plans):
-    def __init__(self, iterations=None,
-                 check_unreachable_convergence=True):
-        self.iterations = iterations
-        self.check_unreachable_convergence = check_unreachable_convergence
-        self.VALUE_DECIMAL_PRECISION = 10
+    def __init__(
+        self,
+        max_iterations=int(1e5),
+        undefined_value=0,
+    ):
+        self.max_iterations = max_iterations
+        self.undefined_value = undefined_value
 
-    def plan_on(self, mdp: TabularMarkovDecisionProcess):
-        ss = mdp.state_list
-        tf = mdp.transition_matrix
-        rf = mdp.reward_matrix
-        nt = mdp.nonterminal_state_vec
-        rs = mdp.reachable_state_vec
-        am = mdp.action_matrix
+    def plan_on(self, mdp: TabularMarkovDecisionProcess) -> "PolicyIterationResult":
+        return self.batch_plan_on([mdp])[0]
+    
+    def batch_plan_on(self, mdps: Sequence[TabularMarkovDecisionProcess]) -> Sequence["PolicyIterationResult"]:
+        transition_matrices = np.zeros(
+            (len(mdps), ) + mdps[0].transition_matrix.shape,
+            dtype=mdps[0].transition_matrix.dtype
+        )
+        discount_rates = np.zeros((len(mdps), ), dtype=type(mdps[0].discount_rate))
+        state_action_reward_matrices = np.zeros(
+            (len(mdps), ) + mdps[0].transition_matrix.shape[:-1],
+            dtype=mdps[0].reward_matrix.dtype
+        )
+        action_matrices = np.zeros(
+            (len(mdps), ) + mdps[0].transition_matrix.shape[:-1],
+            dtype=bool
+        )
+        for mdp_i, mdp in enumerate(mdps):
+            if mdp.dead_end_state_vec.any():
+                warnings.warn("MDP contains states where no actions can be taken. This can have unanticipated effects.")
+            if mdp._unable_to_reach_absorbing.any():
+                warnings.warn("MDP contains states that never reach an absorbing state. " +\
+                    f"Values for these states will be set using self.undefined_value={self.undefined_value}"
+                )
+            transition_matrices[mdp_i] = mdp.transition_matrix
+            transition_matrix = transition_matrices[mdp_i]
+            transition_matrix[mdp._unable_to_reach_absorbing,] = 0
+            transition_matrix[mdp.absorbing_state_vec,] = 0
+            discount_rates[mdp_i] = mdp.discount_rate
+            state_action_reward_matrix = np.einsum("san,san->sa", transition_matrix, mdp.reward_matrix)
+            state_action_reward_matrices[mdp_i] = state_action_reward_matrix
+            action_matrices[mdp_i] = mdp.action_matrix.astype(bool)
+        
+        policy_norm = action_matrices.sum(-1, keepdims=True)
+        policy_norm[policy_norm == 0] = 1 #this is to handle deadends
+        policy_matrices = action_matrices/policy_norm
 
-        # In general, terminal states only lead to themselves
-        # and return zero rewards, but to ensure that the
-        # the transition matrix is non-singular
-        # we assume terminal states transition nowhere.
-        tf = tf*nt[:, None, None]
+        state_values_batch, action_values_batch, policy_matrix_batch, iterations = policy_iteration_vectorized(
+            transition_matrix=transition_matrices,
+            discount_rate=discount_rates,
+            state_action_reward_matrix=state_action_reward_matrices,
+            action_matrix=action_matrices,
+            max_iterations=self.max_iterations,
+            policy_matrix=policy_matrices,
+        )
 
-        # reward function assigns 0 to all transitions out of a terminal
-        rf = rf*nt[:, None, None]
+        results = []
+        for mdp, state_values, action_values, policy_matrix in zip(
+            mdps, state_values_batch, action_values_batch, policy_matrix_batch
+        ):
+            state_values[mdp._unable_to_reach_absorbing,] = self.undefined_value
+            action_values[mdp._unable_to_reach_absorbing,] = self.undefined_value
+            policy=TabularPolicy.from_state_action_lists(
+                state_list=mdp.state_list,
+                action_list=mdp.action_list,
+                data=policy_matrix
+            )
+            state_values=StateTable.from_state_list(
+                state_list=mdp.state_list,
+                data=state_values
+            )
+            action_values=StateActionTable.from_state_action_lists(
+                state_list=mdp.state_list,
+                action_list=mdp.action_list,
+                data=action_values
+            )
+            results.append(PolicyIterationResult(
+                iterations=iterations,
+                state_value=state_values,
+                action_value=action_values,
+                converged=iterations < (self.max_iterations - 1),
+                initial_value=sum([state_values[s]*p for s, p in mdp.initial_state_dist().items()]),
+                policy=policy
+            ))
+        return results
 
-        iterations = self.iterations
-        if iterations is None:
-            iterations = max(len(ss), int(1e5))
+from msdm.core.tablemisc import dataclass_repr_html_MixIn
+@dataclass
+class PolicyIterationResult(PlanningResult,dataclass_repr_html_MixIn):
+    iterations : int
+    converged : bool
+    state_value : dict
+    initial_value : float
+    action_value: dict
+    policy : TabularPolicy
 
-        # Initialize to uniform random policy over available
-        # actions.
-        pi = am / am.sum(axis=1, keepdims=True)
+def policy_iteration_vectorized(
+    transition_matrix,
+    discount_rate,
+    state_action_reward_matrix,
+    action_matrix,
+    policy_matrix,
+    max_iterations=int(1e5),
+):
+    """
+    Implementation of regularized policy iteration with
+    an inverse temperature parameter of infinity, which
+    yields an equivalent optimal value function.
+    
+    Note that the first dimension of all inputs is a batch dimension.
+    """
+    assert action_matrix.dtype == bool
 
-        for i in range(iterations):
-            # Calculate the expected per-state reward under
-            # the current policy.
-            s_rf = (pi[:, :, None] * tf[:, :, :] * rf[:, :, :]).sum(axis=(1, 2))
-
-            # Construct a markov chain, marginalizing over
-            # the current policy. Only consider reachable states.
-            mp = (pi[:, :, None] * tf[:, :, :]).sum(axis=1)
-            mp = rs[:, None] * mp
-
-            # The value the solution to a set of linear equations.
-            v = np.linalg.solve(np.eye(len(ss)) - mdp.discount_rate * mp, s_rf)
-
-            # The action value is the expectation over next state transitions
-            q = (tf[:, :, :] * (rf[:, :, :] + mdp.discount_rate * v[None, None, :])).sum(axis=2)
-            q = np.around(q, decimals=self.VALUE_DECIMAL_PRECISION)
-
-            # Calculate the new policy, taking into account
-            # the "infinite" cost of unavailable actions.
-            new_pi = np.zeros_like(pi)
-            np.put_along_axis(new_pi, (q + np.log(am)).argmax(axis=1)[:, None], values=1, axis=1)
-
-            # Check convergence
-            if self.check_unreachable_convergence:
-                converged = (new_pi == pi).all()
-            else:
-                converged = (new_pi[rs, :] == pi[rs, :]).all()
-            if converged:
-                break
-            pi = new_pi
-
-        validq = q + np.log(am)
-        pi = TabularPolicy.from_q_matrix(mdp.state_list, mdp.action_list, validq)
-
-        # create result object
-        res = PlanningResult()
-        if i == (iterations - 1):
-            warnings.warn(f"Policy Iteration not converged after {iterations} iterations")
-            res.converged = False
-        else:
-            res.converged = True
-        res.mdp = mdp
-        res.policy = res.pi = pi
-        res._valuevec = v
-        vf = dict()
-        for s, vi in zip(mdp.state_list, v):
-            vf[s] = vi
-        res.valuefunc = res.V = vf
-        res._qvaluemat = q
-        res.iterations = i
-        qf = defaultdict(lambda : dict())
-        for si, s in enumerate(mdp.state_list):
-            for ai, a in enumerate(mdp.action_list):
-                qf[s][a] = q[si, ai]
-        res.actionvaluefunc = res.Q = qf
-        res.initial_value = sum([res.V[s0]*p for s0, p in mdp.initial_state_dist().items()])
-        return res
+    nbatches, nstates, nactions, _ = transition_matrix.shape
+    eye = np.eye(nstates)
+    cumulant_matrix = np.zeros((nbatches, nstates, nstates))
+    state_rewards = np.zeros((nbatches, nstates))
+    state_values = np.zeros((nbatches, nstates))
+    action_values = np.zeros((nbatches, nstates, nactions))
+    
+    for i in range(max_iterations):
+        cumulant_matrix = np.einsum(
+            "bsan,bsa,b->bsn",
+            transition_matrix,
+            policy_matrix,
+            discount_rate,
+            out=cumulant_matrix
+        )
+        cumulant_matrix[:] = eye[np.newaxis, ...] - cumulant_matrix
+        state_rewards = np.einsum(
+            "bsa,bsa->bs",
+            state_action_reward_matrix,
+            policy_matrix,
+            out=state_rewards
+        )
+        state_values = \
+            np.linalg.solve(
+                cumulant_matrix,
+                state_rewards,
+            )
+        action_values = np.einsum(
+            "b,bsan,bn->bsa",
+            discount_rate,
+            transition_matrix,
+            state_values,
+            out=action_values
+        )
+        action_values[:] = state_action_reward_matrix + action_values 
+        action_values[~action_matrix] = float('-inf')
+        new_policy = np.isclose(
+            action_values, np.max(action_values, axis=-1, keepdims=True),
+        )
+        new_policy = new_policy/new_policy.sum(-1, keepdims=True)
+        if np.isclose(new_policy, policy_matrix).all():
+            break
+        policy_matrix = new_policy
+    state_values = np.max(action_values, axis=-1)
+    return state_values, action_values, policy_matrix, i

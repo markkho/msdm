@@ -12,7 +12,7 @@ import matplotlib.colors as colors
 import matplotlib.cm as cmx
 import matplotlib.patheffects as path_effects
 
-from msdm.core.problemclasses.mdp import TabularPolicy
+from msdm.core.problemclasses.mdp.tabularpolicy import TabularPolicy
 from msdm.domains.gridworld.mdp import GridWorld
 
 
@@ -233,7 +233,7 @@ class GridWorldPlotter:
                                                 cmap=colorrange)
             color_value_func = lambda v: color_value_map.to_rgba(v)
         for s, v in state_map.items():
-            if self.gw.is_terminal(s):
+            if self.gw.is_absorbing(s):
                 continue
             if (not plot_over_walls) and (s in self.gw.walls):
                 continue
@@ -298,7 +298,7 @@ class GridWorldPlotter:
         if isinstance(next(iter(state_action_map)), (dict, frozendict)):
             to_plot = {}
             for s, a_v in state_action_map.items():
-                if self.gw.is_terminal(s):
+                if self.gw.is_absorbing(s):
                     continue
                 if (not plot_over_walls) and (s in self.gw.walls):
                     continue
@@ -310,7 +310,7 @@ class GridWorldPlotter:
         elif isinstance(next(iter(state_action_map)), (tuple, list)):
             to_plot = {}
             for s, a_v in state_action_map.items():
-                if self.gw.is_terminal(s):
+                if self.gw.is_absorbing(s):
                     continue
                 if (not plot_over_walls) and (s in self.gw.walls):
                     continue

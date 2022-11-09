@@ -27,12 +27,12 @@ class FiniteStateController(POMDPPolicy):
 
     def action_dist(self, ag : AgentState) -> Distribution[Action]:
         action = self.action_strategy[ag]
-        action = self.pomdp.action_index[action]
-        return DictDistribution.deterministic(action)
+        action_idx = self.pomdp.action_list.index(action)
+        return DictDistribution.deterministic(action_idx)
 
     def next_agentstate(self, ag : AgentState, a : Action, o : Observation) -> AgentState:
         oi = self.pomdp.observation_index[o]
-        ai = self.pomdp.action_index[a]
+        ai = self.pomdp.action_list.index(a)
 
         if len(self.observation_strategy.shape) == 3:
             return self.observation_strategy[ag, ai, oi]
@@ -59,11 +59,10 @@ class StochasticFiniteStateController(POMDPPolicy):
     def action_dist(self, ag : AgentState) -> Distribution[Action]:
         action_dist = ag @ self.action_strategy
         return DictDistribution({
-            a: action_dist[ai]
-            for a, ai in self.pomdp.action_index.items()
+            a: action_dist[ai] for ai, a in enumerate(self.pomdp.action_list)
         })
 
     def next_agentstate(self, ag : AgentState, a : Action, o : Observation) -> AgentState:
         oi = self.pomdp.observation_index[o]
-        ai = self.pomdp.action_index[a]
+        ai = self.pomdp.action_list.index(a)
         return ag @ self.observation_strategy[:, ai, oi]

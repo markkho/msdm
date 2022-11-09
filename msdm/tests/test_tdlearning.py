@@ -28,9 +28,15 @@ def _test_tdlearner(Learner):
         discount_rate=.99,
     )
     ql4 = Learner(**{**params, 'episodes': 1}).train_on(gw)
+    ql4_policy = ql4.policy.to_tabular(
+        state_list=gw.state_list, action_list=gw.action_list
+    )
     ql5 = Learner(**{**params, 'episodes': 60}).train_on(gw)
-    v0_4 = ql4.policy.evaluate_on(gw).initial_value
-    v0_5 = ql5.policy.evaluate_on(gw).initial_value
+    ql5_policy = ql5.policy.to_tabular(
+        state_list=gw.state_list, action_list=gw.action_list
+    )
+    v0_4 = ql4_policy.evaluate_on(gw).initial_value
+    v0_5 = ql5_policy.evaluate_on(gw).initial_value
     assert v0_4 < v0_5, Learner
 
 def test_tdlearners():

@@ -5,7 +5,8 @@ import torch
 import numpy as np
 import warnings
 from msdm.core.problemclasses.mdp import \
-    TabularMarkovDecisionProcess, TabularPolicy
+    TabularMarkovDecisionProcess
+from msdm.core.problemclasses.mdp.tabularpolicy import TabularPolicy
 from msdm.core.algorithmclasses import Plans, PlanningResult
 
 def clamp_zero(tensor):
@@ -127,7 +128,11 @@ class EntropyRegularizedPolicyIteration(Plans):
             check_convergence=True,
             force_nonzero_probabilities=True
         )
-        policy = TabularPolicy.from_matrix(mdp.state_list, mdp.action_list, pi_res.policy.detach().numpy())
+        policy = TabularPolicy.from_state_action_lists(
+            mdp.state_list,
+            mdp.action_list,
+            pi_res.policy.detach().numpy()
+        )
         res = PlanningResult()
         res.converged = pi_res.converged
         if not res.converged:

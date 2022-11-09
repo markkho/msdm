@@ -24,7 +24,7 @@ class Tiger(TabularPOMDP):
     def initial_state_dist(self):
         return DictDistribution.uniform(['left', 'right'])
 
-    def is_terminal(self, s):
+    def is_absorbing(self, s):
         return False
 
     def observation_dist(self, a, ns):

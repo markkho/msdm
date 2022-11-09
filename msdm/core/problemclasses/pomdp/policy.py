@@ -40,7 +40,7 @@ class POMDPPolicy(ABC):
         s = initial_state
         ag = initial_agentstate
         for t in range(max_steps):
-            if pomdp.is_terminal(s):
+            if pomdp.is_absorbing(s):
                 break
             a = self.action_dist(ag).sample(rng=rng)
             ns = pomdp.next_state_dist(s, a).sample(rng=rng)

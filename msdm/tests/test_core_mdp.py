@@ -1,150 +1,118 @@
-import unittest
 import numpy as np
-from frozendict import frozendict
-from msdm.domains import GridWorld
-from msdm.algorithms import PolicyIteration, ValueIteration
-from msdm.core.problemclasses.mdp import TabularPolicy, TabularMarkovDecisionProcess, QuickTabularMDP
+from msdm.core.problemclasses.mdp.quickmdp import QuickMDP
+from msdm.algorithms.policyiteration import PolicyIteration
+from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess
 from msdm.core.distributions import DictDistribution
 
+from msdm.tests.domains import AbsorbingStateTester, DeterministicCounter, DeterministicUnreachableCounter, GNTFig6_6, \
+    GeometricCounter, VaryingActionNumber, DeadEndBandit, TiedPaths, LineWorld, \
+    RussellNorvigGrid_Fig17_3, PositiveRewardCycle, RussellNorvigGrid, SlipperyMaze
 
-np.seterr(divide='ignore')
+test_mdps = [
+    DeterministicCounter(3, discount_rate=1.0),
+    DeterministicUnreachableCounter(3, discount_rate=.95),
+    GeometricCounter(p=1/13, discount_rate=1.0),
+    GeometricCounter(p=1/13, discount_rate=.95),
+    GeometricCounter(p=1/13, discount_rate=.513),
+    PositiveRewardCycle(discount_rate=.95),
+    VaryingActionNumber(discount_rate=1.0),
+    TiedPaths(discount_rate=1.0),
+    TiedPaths(discount_rate=.99),
+    RussellNorvigGrid_Fig17_3(discount_rate=1.0), 
+    RussellNorvigGrid(
+        discount_rate=.41192,
+        slip_prob=.7140
+    ),
+    GNTFig6_6()
+]
 
-class CoreTestCase(unittest.TestCase):
-    def test_runningAgentOnMDP(self):
-        gw1 = GridWorld(
-            tile_array=[
-                '...g',
-                '....',
-                '.###',
-                's..s'
-            ],
-            step_cost=-1,
-        )
-        vi = ValueIteration()
-        res = vi.plan_on(gw1)
-        stateTraj = res.policy.run_on(gw1).state_traj
-        self.assertTrue(stateTraj[-1] in gw1.absorbing_states)
-        self.assertTrue(stateTraj[0] in gw1.initial_states)
-
-    def test_policy_evaluation(self):
-        gw1 = GridWorld(
-            tile_array=[
-                '...g',
-                '....',
-                '.###',
-                's..s'
-            ],
-            step_cost=-1,
-        )
-        vi = ValueIteration()
-        res = vi.plan_on(gw1)
-        res.policy : TabularPolicy
-        eval_res = res.policy.evaluate_on(gw1)
-        ss0 = gw1.initial_states
-        true_v0 = sum([gw1.initial_state_dist().prob(s0)*res.valuefunc[s0] for s0 in ss0])
-        assert eval_res.initial_value == true_v0
-        assert eval_res.occupancy[frozendict({'x': 0, 'y': 1})] == 1
-
-    def test_quick_tabular_mdp(self):
-        from msdm.core.distributions import DictDistribution as DD
-        from msdm.core.problemclasses.mdp.quicktabularmdp import QuickTabularMDP
-        TERMINAL = -float('inf')
-        for mdp in [
-            QuickTabularMDP(
-                next_state_dist    = lambda s, a : DD({s + a: .8, s - a: .1, s: .1 if a else 1}) if (0 < s < 10) else DD({TERMINAL: 1}),
-                reward             = lambda s, a, ns : {0: -100, 10: 0, TERMINAL: 0}.get(ns, 0) - abs(a) - 1,
-                actions            = lambda s: (-1, 0, 1),
-                initial_state_dist = lambda : DD({5: .5, 6: .5}),
-                is_terminal        = lambda s: s == TERMINAL,
-                discount_rate      = .99
-            ),
-            QuickTabularMDP(
-                next_state         = lambda s, a : (s + a) if (0 < s < 10) else s,
-                reward             = -1,
-                actions            = (-1, 0, 1),
-                initial_state      = 1,
-                is_terminal        = lambda s: s == 10,
-                discount_rate      = .99
-            ),
-        ]:
-            res = ValueIteration().plan_on(mdp)
-            pi = [res.policy.action_dist(s).sample() for s in range(1, 10)]
-            assert all([a == 1 for a in pi])
-
-    def test_tabular_mdp(self):
-        from itertools import product
-        from msdm.algorithms import PolicyIteration, ValueIteration
-        from msdm.tests.domains import make_russell_norvig_grid
-
-        for dr, sp in product([.99, .9, .5, .1], [.1, .2, .5, .8, 1.0]):
-            # Create MDPs and copy them
-            g1 = make_russell_norvig_grid(
-                discount_rate=dr,
-                slip_prob=sp
-            )
-            g2 = TabularMarkovDecisionProcess.from_matrices(
-                state_list = g1.state_list,
-                action_list = g1.action_list,
-                initial_state_vec = g1.initial_state_vec,
-                transition_matrix = g1.transition_matrix,
-                reward_matrix = g1.reward_matrix,
-                nonterminal_state_vec = g1.nonterminal_state_vec,
-                discount_rate = g1.discount_rate
-            )
-            pi1 = PolicyIteration().plan_on(g1)
-            pi2 = PolicyIteration().plan_on(g2)
-
-            assert g2.state_list == g1.state_list
-            assert id(g2.state_list) != id(g1.state_list)
-            assert g2.action_list == g1.action_list
-            assert id(g2.action_list) != id(g1.action_list)
-            assert (g2.initial_state_vec == g1.initial_state_vec).all()
-            assert id(g2.initial_state_vec) != id(g1.initial_state_vec)
-            assert (g2.transition_matrix == g1.transition_matrix).all()
-            assert id(g2.transition_matrix) != id(g1.transition_matrix)
-            assert (g2.reward_matrix == g1.reward_matrix).all()
-            assert id(g2.reward_matrix) != id(g1.reward_matrix)
-            assert (g2.nonterminal_state_vec == g1.nonterminal_state_vec).all()
-            assert id(g2.nonterminal_state_vec) != id(g1.nonterminal_state_vec)
-            assert g2.discount_rate == g1.discount_rate
-
-            assert pi1.initial_value == pi2.initial_value
-            assert pi1.iterations == pi2.iterations
-            assert pi1.converged == pi2.converged
-
-def test_tabularpolicy_softmax():
-    mdp = QuickTabularMDP(
-        next_state_dist=lambda s, a: DictDistribution({s + a: .9, s: .1}) if 0 <= s+a < 6 else DictDistribution({s: 1}),
-        reward=lambda s, a, ns: -1,
-        actions=(-1, 1),
-        initial_state_dist=DictDistribution({0: 1}),
-        is_terminal=lambda s: s == 5
-    )
-    res = PolicyIteration().plan_on(mdp)
-    softhard_pi = TabularPolicy.from_q_matrix(mdp.state_list, mdp.action_list, res._qvaluemat, inverse_temperature=1e10)
-    hard_v0 = res.policy.evaluate_on(mdp).initial_value
-    softhard_v0 = softhard_pi.evaluate_on(mdp).initial_value
-    assert np.isclose(hard_v0, softhard_v0)
-
-def test_tabularmdp_reachable_states():
-    line_world = QuickTabularMDP(
-        next_state_dist=lambda s, a: {
-            (0, 1): DictDistribution({1: 1, 10: 0}),
-            (0, -1): DictDistribution({-1: 1}),
-            (1, -1): DictDistribution({0: 1}),
-            (1, 1): DictDistribution({1: 1}),
-            (10, 1): DictDistribution({10: 1}),
-            (10, -1): DictDistribution({10: 1}),
-            (-1, 1): DictDistribution({0: 1}),
-            (-1, -1): DictDistribution({-1: 1}),
-        }[(s, a)],
-        reward=lambda s, a, ns: -1,
+def test_MarkovDecisionProcess_reachable_states():
+    line_world = QuickMDP(
+        next_state_dist=lambda s, a: 
+            DictDistribution({s + a: .1, s: .9}) if 0 <= (s + a) <= 5 else \
+            DictDistribution({s: 1.0}),
+        reward=lambda s, a, ns: 0,
         actions=(-1, 1),
         initial_state_dist=DictDistribution({0: 1, 10: 0}),
-        is_terminal=lambda s: s == -1
+        is_absorbing=lambda s: s == -1
     )
-    assert 10 not in line_world.reachable_states()
+    assert set(line_world.reachable_states()) == {0, 1, 2, 3, 4, 5}
+    assert set(line_world.reachable_states(max_states=2)) == {0, 1}
 
+def test_TabularMarkovDecisionProcess_implicit_absorbing_state_detection():
+    # action space and reward function leads to last being an absorbing state
+    mdp = AbsorbingStateTester(discount_rate=1.0, last_reward=0, last_actions=(0, ))
+    assert (mdp.absorbing_state_vec == np.array([False, False, True])).all()
 
-if __name__ == '__main__':
-    unittest.main()
+    # reward function leads to last not being an absorbing state
+    mdp = AbsorbingStateTester(discount_rate=1.0, last_reward=1, last_actions=(0, ))
+    assert (mdp.absorbing_state_vec == np.array([False, False, False])).all()
+    # set absorbing state explicitly
+    mdp = AbsorbingStateTester(
+        discount_rate=1.0, last_reward=1, last_actions=(0, ),
+        explicit_absorbing_flag=True
+    )
+    assert (mdp.absorbing_state_vec == np.array([False, False, True])).all()
+
+    # action space leads to last not being an absorbing state
+    mdp = AbsorbingStateTester(discount_rate=1.0, last_reward=0, last_actions=(-1, 0))
+    assert (mdp.absorbing_state_vec == np.array([False, False, False])).all()
+    # set absorbing state explicitly
+    mdp = AbsorbingStateTester(
+        discount_rate=1.0, last_reward=1, last_actions=(0, -1),
+        explicit_absorbing_flag=True
+    )
+    assert (mdp.absorbing_state_vec == np.array([False, False, True])).all()
+
+def test_TabularMarkovDecisionProcess_dead_end_detection():
+    mdp = DeadEndBandit()
+    assert mdp.dead_end_state_vec.any()
+
+def test_TabularMarkovDecisionProcess_from_matrices():
+    for mdp1 in test_mdps:
+        mdp1 : TabularMarkovDecisionProcess
+        print(mdp1)
+        mdp2 = TabularMarkovDecisionProcess.from_matrices(
+            state_list = mdp1.state_list,
+            action_list = mdp1.action_list,
+            initial_state_vec = mdp1.initial_state_vec,
+            transition_matrix = mdp1.transition_matrix,
+            action_matrix = mdp1.action_matrix,
+            reward_matrix = mdp1.reward_matrix,
+            absorbing_state_vec = mdp1.absorbing_state_vec,
+            discount_rate = mdp1.discount_rate
+        )
+        pi1 = PolicyIteration().plan_on(mdp1)
+        pi2 = PolicyIteration().plan_on(mdp2)
+
+        assert mdp2.state_list == mdp1.state_list
+        assert mdp2.action_list == mdp1.action_list
+        assert (mdp2.initial_state_vec == mdp1.initial_state_vec).all()
+        assert (mdp2.transition_matrix == mdp1.transition_matrix).all()
+        assert (mdp2.action_matrix == mdp1.action_matrix).all()
+        assert (mdp2.reward_matrix == mdp1.reward_matrix).all()
+        assert mdp2.discount_rate == mdp1.discount_rate
+
+        assert np.isclose(pi1.initial_value, pi2.initial_value)
+        assert pi1.iterations == pi2.iterations
+        assert pi1.converged == pi2.converged
+
+def test_QuickMDP_equivalence():
+    from msdm.core.problemclasses.mdp.quickmdp import QuickMDP, QuickTabularMDP
+
+    for mdp in test_mdps:
+        mdp : TabularMarkovDecisionProcess
+        quick_mdp = QuickMDP(
+            discount_rate      = mdp.discount_rate,
+            initial_state_dist = mdp.initial_state_dist,
+            actions            = mdp.actions,
+            next_state_dist    = mdp.next_state_dist,
+            is_absorbing        = mdp.is_absorbing,
+            reward             = mdp.reward,
+        )
+        assert mdp.initial_state_dist().isclose(quick_mdp.initial_state_dist())
+        for s in mdp.state_list:
+            assert set(mdp.actions(s)) == set(quick_mdp.actions(s))
+            assert mdp.is_absorbing(s) == quick_mdp.is_absorbing(s)
+            for a in mdp.actions(s):
+                assert mdp.next_state_dist(s, a).isclose(quick_mdp.next_state_dist(s, a))

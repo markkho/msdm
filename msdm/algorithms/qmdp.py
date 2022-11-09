@@ -1,15 +1,13 @@
 """QMDP
 
 """
-import numpy as np
-from scipy.spatial.distance import cdist
 
 from msdm.core.problemclasses.pomdp import TabularPOMDP
 from msdm.core.problemclasses.pomdp.policy import ValueBasedTabularPOMDPPolicy
 from msdm.core.problemclasses.pomdp.tabularpomdp import Belief
 from msdm.core.problemclasses.pomdp.pomdp import Action
 from msdm.core.algorithmclasses import Plans, Result
-from msdm.algorithms import PolicyIteration
+from msdm.algorithms.policyiteration import PolicyIteration
 
 class QMDPPolicy(ValueBasedTabularPOMDPPolicy):
     def __init__(self, pomdp, stateaction_values):
@@ -63,7 +61,7 @@ class QMDP(Plans):
         # mdp solver ignores the observation function
         # TODO: somehow assert that its an mdp solver?
         mdp_res = self.mdp_solver.plan_on(pomdp)
-        sa_values = mdp_res.actionvaluefunc
+        sa_values = mdp_res.action_value
         return Result(
             policy=QMDPPolicy(pomdp, sa_values),
             mdp_res=mdp_res

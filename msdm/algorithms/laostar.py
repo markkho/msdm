@@ -1,11 +1,13 @@
 from abc import ABC, abstractmethod
+from functools import lru_cache
 from typing import Callable
 import warnings
 import random
 import numpy as np
 
 from msdm.core.algorithmclasses import Plans, PlanningResult
-from msdm.core.problemclasses.mdp import MarkovDecisionProcess, TabularPolicy, HashableState
+from msdm.core.problemclasses.mdp import MarkovDecisionProcess, HashableState
+from msdm.core.problemclasses.mdp.policy import FunctionalPolicy
 from msdm.core.distributions.dictdistribution import DeterministicDistribution, DictDistribution
 from msdm.core.exceptions import SpecificationException, AlgorithmException
 
@@ -113,25 +115,29 @@ class LAOStar(Plans):
         return explicit_graph, i
 
     def _create_policy(self, solution_graph, mdp):
-        pi = dict()
+        solution_policy = dict()
         for s, n in solution_graph.states_to_nodes.items():
-            pi[s] = DeterministicDistribution(n.optimal_action)
-        default_generator = lambda s: DictDistribution.uniform(mdp.actions(s))
-        pi = DefaultTabularPolicy.with_default(pi, default_generator)
-        return pi
-
-class DefaultTabularPolicy(TabularPolicy):
-    @classmethod
-    def with_default(cls, policy_dict, default_generator):
-        instance = DefaultTabularPolicy(policy_dict)
-        instance.default_generator = default_generator
-        return instance
-
-    def action_dist(self, s):
-        try:
-            return self[s]
-        except KeyError:
-            return self.default_generator(s)
+            solution_policy[s] = DeterministicDistribution(n.optimal_action)
+        @FunctionalPolicy
+        @lru_cache(maxsize=None)
+        def policy(s):
+            try:
+                return solution_policy[s]
+            except KeyError:
+                pass
+            max_actions = []
+            max_val = float('-inf')
+            for a in mdp.actions(s):
+                val = mdp.next_state_dist(s, a).expectation(
+                    lambda ns : mdp.reward(s, a, ns) + mdp.discount_rate*self.heuristic(ns)
+                ) 
+                if val > max_val:
+                    max_actions = [a]
+                elif val == max_val:
+                    max_actions.append(a)
+                max_val = max(val, max_val)
+            return DictDistribution.uniform(max_actions)
+        return policy
 
 class LAOStarEventListener(ABC):
     @abstractmethod
@@ -141,7 +147,7 @@ class LAOStarEventListener(ABC):
 class ExplicitStateGraph:
     def __init__(
         self,
-        mdp,
+        mdp : MarkovDecisionProcess,
         heuristic,
         randomize_action_order,
         randomize_nextstate_order,
@@ -193,7 +199,7 @@ class ExplicitStateGraph:
     def expand_while(self, condition):
         while True:
             unexpanded = [s for s, n in self.states_to_nodes.items() if not n.expanded]
-            unexpanded = [s for s in unexpanded if not self.mdp.is_terminal(s)]
+            unexpanded = [s for s in unexpanded if not self.mdp.is_absorbing(s)]
             unexpanded = [s for s in unexpanded if condition(s)]
             if len(unexpanded) == 0:
                 break
@@ -318,7 +324,7 @@ class ExplicitStateGraph:
         for node in state_nodes:
             s = node.state
             si = state_index[s]
-            if self.mdp.is_terminal(s):
+            if self.mdp.is_absorbing(s):
                 tf[si, :, -1] = 1
                 am[si, :] = 1
                 continue
@@ -339,7 +345,7 @@ class ExplicitStateGraph:
                         # Also, the pseudo-terminal reward is a probability weighted sum
                         # of the rewards and needs to be renormalized by the total
                         # probability of entering the pseudo-terminal state (see below).
-                        if self.mdp.is_terminal(ns):
+                        if self.mdp.is_absorbing(ns):
                             rf[si, ai, -1] += prob*reward
                         else:
                             rf[si, ai, -1] += prob*(reward + self.mdp.discount_rate*self.states_to_nodes[ns].value)

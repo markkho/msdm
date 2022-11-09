@@ -1,4 +1,4 @@
-from msdm.algorithms.valueiteration import ValueIteration, VectorizedValueIteration
+from msdm.algorithms.valueiteration import ValueIteration
 from msdm.algorithms.laostar import LAOStar
 from msdm.algorithms.lrtdp import LRTDP
 from msdm.algorithms.policyiteration import PolicyIteration

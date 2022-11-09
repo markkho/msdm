@@ -1,14 +1,16 @@
 import numpy as np
+import pytest
 import random
 
 from msdm.algorithms.laostar import LAOStar, ExplicitStateGraph
-from msdm.algorithms import PolicyIteration
-from msdm.core.problemclasses.mdp import QuickTabularMDP
+from msdm.algorithms.policyiteration import PolicyIteration
+from msdm.core.problemclasses.mdp.quickmdp import QuickTabularMDP
 from msdm.core.distributions import DictDistribution
-from msdm.algorithms import PolicyIteration, ValueIteration
-from msdm.tests.domains import Counter, make_russell_norvig_grid
+from msdm.algorithms.policyiteration import PolicyIteration
+from msdm.algorithms.valueiteration import ValueIteration
+from msdm.tests.domains import DeterministicCounter, make_russell_norvig_grid
 from msdm.domains import GridWorld
-from msdm.core.exceptions import SpecificationException, AlgorithmException
+from msdm.core.exceptions import SpecificationException
 
 def test_laostar_random_action_ordering_flag():
     from frozendict import frozendict
@@ -38,7 +40,11 @@ def test_laostar_random_action_ordering_flag():
     gw = DefaultRightUpActionGridWorld(**gw_params)
     pi_res = PolicyIteration().plan_on(GridWorld(**gw_params, wall_features=""))
 
-    nonrandomized_action_order_lao = LAOStar(heuristic=lambda s: pi_res.V[s], randomize_action_order=False, seed=1239123)
+    nonrandomized_action_order_lao = LAOStar(
+        heuristic=lambda s: pi_res.state_value[s],
+        randomize_action_order=False,
+        seed=1239123
+    )
     nonrand_res = nonrandomized_action_order_lao.plan_on(gw)
     nonrand_action_traj = nonrand_res.policy.run_on(gw).action_traj
     nonrand_expected_traj = [RIGHT]*3 + [UP]*3
@@ -49,7 +55,11 @@ def test_laostar_random_action_ordering_flag():
         [tuple(n.action_order) for n in nonrand_res.explicit_graph.states_to_nodes.values()]
     assert len(set(nonrand_action_order)) == 1
 
-    randomized_action_order_lao = LAOStar(heuristic=lambda s: pi_res.V[s], randomize_action_order=True, seed=123123)
+    randomized_action_order_lao = LAOStar(
+        heuristic=lambda s: pi_res.state_value[s],
+        randomize_action_order=True,
+        seed=123123
+    )
     rand_res = randomized_action_order_lao.plan_on(gw)
     rand_action_traj = rand_res.policy.run_on(gw).action_traj
     rand_match = [taken == expected for taken, expected in zip(rand_action_traj, nonrand_expected_traj)]
@@ -88,7 +98,7 @@ def test_best_breadth_first_state_evaluation_order():
             "X": 1,
             "Y": 1
         }.get(ns, 0)
-    def is_terminal(s):
+    def is_absorbing(s):
         return s in "XY"
 
     # these two MDPs are value-equivalent - only difference is the next state order
@@ -98,7 +108,7 @@ def test_best_breadth_first_state_evaluation_order():
         reward=reward,
         actions=actions_CD_order,
         initial_state="A",
-        is_terminal=is_terminal,
+        is_absorbing=is_absorbing,
         discount_rate=.99
     )
     mdp_DC = QuickTabularMDP(
@@ -106,7 +116,7 @@ def test_best_breadth_first_state_evaluation_order():
         reward=reward,
         actions=actions_DC_order,
         initial_state="A",
-        is_terminal=is_terminal,
+        is_absorbing=is_absorbing,
         discount_rate=.99
     )
     pi_res_CD = PolicyIteration().plan_on(mdp_CD)
@@ -160,21 +170,18 @@ def test_laostar_duplicate_actions():
         return DictDistribution.uniform(list(a))
     def reward(s, a, ns):
         return -1
-    def is_terminal(s):
+    def is_absorbing(s):
         return s == "X"
     mdp = QuickTabularMDP(
         next_state_dist=next_state_dist,
         reward=reward,
         actions=actions,
         initial_state="A",
-        is_terminal=is_terminal,
+        is_absorbing=is_absorbing,
         discount_rate=.99
     )
-    try:
+    with pytest.raises(SpecificationException):
         LAOStar(heuristic=0).plan_on(mdp)
-        assert False
-    except SpecificationException:
-        pass
 
 def test_laostar_correctness():
     VALUE_TOLERANCE = 1e-8
@@ -286,7 +293,7 @@ def test_explicit_state_graph_with_heuristic():
     initial_value = explicit_graph.states_to_nodes[gw.initial_state_dist().support[0]].value
     assert np.isclose(initial_value, vi_res.initial_value, atol=1e-10)
 
-    # the solution graph should NOT be solved since there are non-terminal tips
+    # the solution graph should NOT be solved since there are non-absorbing tips
     solution_graph = explicit_graph.solution_graph()
     assert not solution_graph.is_solved()
 
@@ -296,13 +303,13 @@ def test_trivial_solution():
         seed=42
     )
     # Normal
-    mdp = Counter(3, initial_state=0)
+    mdp = DeterministicCounter(3, initial_state=0)
     res = lao.plan_on(mdp)
     assert res.solution_graph.states_to_nodes[mdp.initial_state()]['value'] == -3
     assert res.policy.run_on(mdp).action_traj == (+1, +1, +1)
 
     # No-op task. Now we start at 3, so value should be 0 there
-    mdp = Counter(3, initial_state=3)
+    mdp = DeterministicCounter(3, initial_state=3)
     res = lao.plan_on(mdp)
     print(res.solution_graph.states_to_nodes)
     assert res.solution_graph.states_to_nodes[mdp.initial_state()]['value'] == 0

@@ -119,11 +119,11 @@ class GridWorld(TabularMarkovDecisionProcess):
             fl[f].append(l)
         return dict(fl)
 
-    def is_terminal(self, s):
+    def is_absorbing(self, s):
         return s == TERMINALSTATE
 
     def next_state_dist(self, s, a) -> FiniteDistribution:
-        if self.is_terminal(s):
+        if self.is_absorbing(s):
             return TERMINALDIST
         if s in self.absorbing_states:
             return TERMINALDIST
@@ -151,7 +151,7 @@ class GridWorld(TabularMarkovDecisionProcess):
         return bdist
 
     def reward(self, s, a, ns) -> float:
-        if self.is_terminal(s) or self.is_terminal(ns):
+        if self.is_absorbing(s) or self.is_absorbing(ns):
             return 0.0
         f = self._locFeatures.get(ns, "")
         return self._featureRewards.get(f, 0.0) + self.step_cost
@@ -216,7 +216,7 @@ class GridWorld(TabularMarkovDecisionProcess):
                 tiles[-1].append(colored('  ', on_color='on_white'))
 
         for s in self.state_list:
-            if self.is_terminal(s):
+            if self.is_absorbing(s):
                 continue
             x, y = s['x'], s['y']
             y_ = self.height - y - 1

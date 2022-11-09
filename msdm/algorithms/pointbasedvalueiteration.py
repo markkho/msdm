@@ -11,8 +11,9 @@ from scipy.spatial.distance import cdist
 from msdm.core.problemclasses.pomdp import TabularPOMDP
 from msdm.core.algorithmclasses import Plans, Result
 from msdm.core.problemclasses.pomdp.alphavectorpolicy import AlphaVectorPolicy
+from msdm.core.problemclasses.pomdp.pomdp import PartiallyObservableMDP
 
-def next_beliefs(pomdp, b):
+def next_beliefs(pomdp : PartiallyObservableMDP, b):
     assert np.isclose(sum(b), 1), sum(b)
     tf = pomdp.transition_matrix
     of = pomdp.observation_matrix
@@ -23,7 +24,7 @@ def next_beliefs(pomdp, b):
     nbs = nbs.reshape((-1, nbs.shape[-1]))
     return np.unique(nbs, axis=0)
 
-def expand_beliefs(pomdp, belief_set):
+def expand_beliefs(pomdp : PartiallyObservableMDP, belief_set):
     new_bs = []
     for b in belief_set:
         # First generate all beliefs following from this one
@@ -45,7 +46,7 @@ def expand_beliefs(pomdp, belief_set):
     return belief_set
 
 def point_based_value_iteration(
-    pomdp,
+    pomdp : PartiallyObservableMDP,
     belief_set,
     value_convergence_epsilon,
     horizon=None
@@ -60,7 +61,7 @@ def point_based_value_iteration(
 
     tf = pomdp.transition_matrix
     sa_rf = pomdp.state_action_reward_matrix
-    nt = pomdp.nonterminal_state_vec
+    nt = ~pomdp.absorbing_state_vec.astype(bool)
     of = pomdp.observation_matrix
     aa = pomdp.action_list
     ss = pomdp.state_list
