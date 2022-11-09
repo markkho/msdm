@@ -2,9 +2,9 @@ from dataclasses import dataclass
 import numpy as np
 from scipy.sparse.csgraph import floyd_warshall
 
-from msdm.core.mdp import TabularMarkovDecisionProcess, TabularPolicy
+from msdm.core.mdp import TabularMarkovDecisionProcess, TabularPolicy, \
+    StateActionTable, StateTable
 from msdm.core.algorithmclasses import Plans, PlanningResult
-from msdm.core.mdp_tables import StateActionTable, StateTable
 
 class MultichainPolicyIteration(Plans):
     """

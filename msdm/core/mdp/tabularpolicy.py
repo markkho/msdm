@@ -3,11 +3,11 @@ from scipy.sparse.csgraph import floyd_warshall
 import warnings
 
 from msdm.core.distributions import DictDistribution
-from msdm.core.mdp.mdp import State, Action
+from msdm.core.mdp.mdp import State
 from msdm.core.mdp.policy import Policy, PolicyEvaluationResult
 from msdm.core.mdp.tabularmdp import TabularMarkovDecisionProcess
-from msdm.core.table import Table, ProbabilityTable, TableIndex
-from msdm.core.mdp_tables import StateActionTable, StateTable
+from msdm.core.mdp.tables import StateActionTable, StateTable
+from msdm.core.table import ProbabilityTable
 
 class TabularPolicy(StateActionTable,ProbabilityTable,Policy):
     def action_dist(self, s : State) -> DictDistribution:

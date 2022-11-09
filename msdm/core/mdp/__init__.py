@@ -4,3 +4,4 @@ from msdm.core.mdp.tabularmdp import TabularMarkovDecisionProcess, HashableState
 from msdm.core.mdp.quickmdp import QuickMDP, QuickTabularMDP
 from msdm.core.mdp.policy import Policy, FunctionalPolicy
 from msdm.core.mdp.tabularpolicy import TabularPolicy
+from msdm.core.mdp.tables import StateTable, StateActionTable

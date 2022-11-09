@@ -7,8 +7,9 @@ from typing import Callable, Collection, Mapping, Sequence
 
 import numpy as np
 
-from msdm.core.mdp.mdp import MarkovDecisionProcess, State, Action
-from msdm.core.mdp_tables import StateTable, StateActionTable
+from msdm.core.mdp.mdp import \
+    MarkovDecisionProcess, State, Action
+from msdm.core.mdp.tables import StateTable, StateActionTable
 from msdm.core.distributions import Distribution
 
 class Policy(ABC):
