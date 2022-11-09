@@ -1,7 +1,7 @@
 from msdm.core.distributions import Distribution, DeterministicDistribution
-from msdm.core.problemclasses.mdp.mdp import MarkovDecisionProcess, \
+from msdm.core.mdp.mdp import MarkovDecisionProcess, \
     State, Action
-from msdm.core.problemclasses.mdp.tabularmdp import TabularMarkovDecisionProcess
+from msdm.core.mdp.tabularmdp import TabularMarkovDecisionProcess
 from typing import Callable, Sequence, Union
 
 class QuickMDP(MarkovDecisionProcess):

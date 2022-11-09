@@ -4,7 +4,7 @@ from itertools import product
 from collections import defaultdict
 from msdm.domains.gridworld.mdp import GridWorld
 
-from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess, DeterministicShortestPathProblem
+from msdm.core.mdp import TabularMarkovDecisionProcess, DeterministicShortestPathProblem
 from msdm.core.utils.funcutils import cached_property
 from msdm.core.distributions import \
     Distribution, DictDistribution,\

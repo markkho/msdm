@@ -1,5 +1,5 @@
 from msdm.algorithms import BreadthFirstSearch, AStarSearch
-from msdm.core.problemclasses.mdp.mdp import MarkovDecisionProcess
+from msdm.core.mdp import MarkovDecisionProcess
 from msdm.domains import GridWorld
 from msdm.tests.domains import DeterministicCounter
 

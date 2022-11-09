@@ -11,7 +11,7 @@ import matplotlib.cm as cmx
 import matplotlib.patheffects as path_effects
 
 from msdm.domains.gridmdp import GridMDP, Location, GridAction
-from msdm.core.problemclasses.mdp.policy import Policy
+from msdm.core.mdp.policy import Policy
 from msdm.core.distributions import FiniteDistribution
 
 DISTINCT_COLORS = [

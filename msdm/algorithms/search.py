@@ -7,9 +7,9 @@ from typing import Dict
 
 from msdm.core.algorithmclasses import Plans, Result
 from msdm.core.distributions import DeterministicDistribution, DictDistribution, dictdistribution
-from msdm.core.problemclasses.mdp import DeterministicShortestPathProblem
-from msdm.core.problemclasses.mdp.mdp import MarkovDecisionProcess
-from msdm.core.problemclasses.mdp.policy import FunctionalPolicy
+from msdm.core.mdp.deterministic_shortest_path import DeterministicShortestPathProblem
+from msdm.core.mdp.mdp import MarkovDecisionProcess
+from msdm.core.mdp.policy import FunctionalPolicy
 
 def reconstruct_path(camefrom, start, terminal_state):
     '''

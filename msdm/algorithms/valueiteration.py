@@ -3,8 +3,8 @@ import numpy as np
 import warnings
 
 from msdm.core.distributions import DictDistribution
-from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess
-from msdm.core.problemclasses.mdp.tabularpolicy import TabularPolicy
+from msdm.core.mdp import TabularMarkovDecisionProcess 
+from msdm.core.mdp.tabularpolicy import TabularPolicy
 from msdm.core.mdp_tables import StateTable, StateActionTable
 from msdm.core.algorithmclasses import Plans, PlanningResult
 

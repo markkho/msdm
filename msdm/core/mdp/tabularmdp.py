@@ -3,7 +3,7 @@ import numpy as np
 from scipy.sparse.csgraph import floyd_warshall
 from abc import abstractmethod
 from typing import Set, Sequence, Hashable, Mapping, TypeVar
-from msdm.core.problemclasses.mdp import MarkovDecisionProcess
+from msdm.core.mdp.mdp import MarkovDecisionProcess
 from msdm.core.utils.funcutils import method_cache, cached_property
 from msdm.core.distributions import FiniteDistribution, DictDistribution
 from msdm.core.tableindex import domaintuple
@@ -48,7 +48,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
             == reward_matrix.shape[1]
 
         #avoids circular dependency
-        from msdm.core.problemclasses.mdp.quickmdp import QuickTabularMDP
+        from msdm.core.mdp.quickmdp import QuickTabularMDP
 
         ss_i = {s: i for i, s in enumerate(state_list)} #state indices
         aa_i = {a: i for i, a in enumerate(action_list)}

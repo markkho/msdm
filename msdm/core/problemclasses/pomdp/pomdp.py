@@ -3,8 +3,7 @@ from typing import TypeVar
 from collections import defaultdict
 import numpy as np
 
-from msdm.core.problemclasses.mdp.mdp import \
-    MarkovDecisionProcess, State, Action
+from msdm.core.mdp.mdp import MarkovDecisionProcess, State, Action
 from msdm.core.distributions import DictDistribution, Distribution
 
 Observation = TypeVar('Observation')

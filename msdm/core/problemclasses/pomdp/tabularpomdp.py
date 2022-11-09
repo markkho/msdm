@@ -6,7 +6,7 @@ import numpy as np
 
 from msdm.core.utils.funcutils import method_cache, cached_property
 from msdm.core.problemclasses.pomdp.pomdp import PartiallyObservableMDP
-from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess
+from msdm.core.mdp import TabularMarkovDecisionProcess
 from msdm.core.distributions import FiniteDistribution, DictDistribution
 
 logger = logging.getLogger(__name__)

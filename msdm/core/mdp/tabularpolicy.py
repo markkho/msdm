@@ -2,9 +2,10 @@ import numpy as np
 from scipy.sparse.csgraph import floyd_warshall
 import warnings
 
-from msdm.core.problemclasses.mdp.policy import Policy, PolicyEvaluationResult
 from msdm.core.distributions import DictDistribution
-from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess, State, Action
+from msdm.core.mdp.mdp import State, Action
+from msdm.core.mdp.policy import Policy, PolicyEvaluationResult
+from msdm.core.mdp.tabularmdp import TabularMarkovDecisionProcess
 from msdm.core.table import Table, ProbabilityTable, TableIndex
 from msdm.core.mdp_tables import StateActionTable, StateTable
 

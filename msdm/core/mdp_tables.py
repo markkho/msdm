@@ -1,6 +1,6 @@
 import numpy as np
 from typing import Mapping, Sequence
-from msdm.core.problemclasses.mdp.mdp import Action, State
+from msdm.core.mdp.mdp import Action, State
 from msdm.core.table import Table, TableIndex
 from msdm.core.tableindex import domaintuple
 

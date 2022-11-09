@@ -5,11 +5,10 @@ import warnings
 from collections import defaultdict
 from abc import ABC, abstractmethod
 from typing import Callable
-from msdm.core.problemclasses.mdp.tabularmdp import TabularMarkovDecisionProcess
+from msdm.core.mdp import TabularMarkovDecisionProcess, FunctionalPolicy, \
+        MarkovDecisionProcess, HashableState
 from msdm.core.utils.dictutils import defaultdict2
 from msdm.core.distributions import DictDistribution
-from msdm.core.problemclasses.mdp import MarkovDecisionProcess, HashableState
-from msdm.core.problemclasses.mdp.policy import FunctionalPolicy
 from msdm.core.algorithmclasses import Plans, PlanningResult
 
 class LRTDP(Plans):

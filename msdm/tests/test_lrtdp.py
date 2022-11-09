@@ -3,7 +3,7 @@ import pytest
 
 from msdm.algorithms.lrtdp import LRTDP
 from msdm.algorithms.valueiteration import ValueIteration
-from msdm.core.problemclasses.mdp.mdp import MarkovDecisionProcess
+from msdm.core.mdp import MarkovDecisionProcess
 from msdm.tests.domains import GNTFig6_6, DeterministicCounter
 from msdm.domains import GridWorld
 from msdm.domains.gridmdp.windygridworld import WindyGridWorld

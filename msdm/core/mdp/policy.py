@@ -7,7 +7,7 @@ from typing import Callable, Collection, Mapping, Sequence
 
 import numpy as np
 
-from msdm.core.problemclasses.mdp.mdp import MarkovDecisionProcess, State, Action
+from msdm.core.mdp.mdp import MarkovDecisionProcess, State, Action
 from msdm.core.mdp_tables import StateTable, StateActionTable
 from msdm.core.distributions import Distribution
 
@@ -25,7 +25,7 @@ class Policy(ABC):
         action_list : Sequence[Action]
     ):
         # import here to avoid circular dependency
-        from msdm.core.problemclasses.mdp.tabularpolicy import TabularPolicy
+        from msdm.core.mdp.tabularpolicy import TabularPolicy
         policy_matrix = np.zeros((len(state_list), len(action_list)))
         action_index = {a: ai for ai, a in enumerate(action_list)}
         for si, s in enumerate(state_list):
