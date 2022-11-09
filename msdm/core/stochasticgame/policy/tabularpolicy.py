@@ -5,8 +5,8 @@ from copy import copy
 import sparse
 from tqdm import tqdm
 
-from msdm.core.problemclasses.stochasticgame.policy.policy import Policy, MultiAgentPolicy
-from msdm.core.problemclasses.stochasticgame import TabularStochasticGame
+from msdm.core.stochasticgame.policy.policy import Policy, MultiAgentPolicy
+from msdm.core.stochasticgame import TabularStochasticGame
 
 from msdm.core.assignment.assignmentmap import AssignmentMap
 from msdm.core.distributions import DiscreteFactorTable, Distribution

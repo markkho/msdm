@@ -5,7 +5,7 @@ import numpy as np
 from itertools import product
 from functools import reduce
 from tqdm import tqdm
-from msdm.core.problemclasses.stochasticgame import StochasticGame
+from msdm.core.stochasticgame import StochasticGame
 from msdm.core.assignment.assignmentset import AssignmentSet as Set
 from msdm.core.distributions import DiscreteFactorTable as Pr
 logger = logging.getLogger(__name__)

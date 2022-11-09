@@ -1,6 +1,6 @@
 from msdm.core.algorithmclasses import Result
 from msdm.algorithms.multiagentqlearning import TabularMultiAgentQLearner
-from msdm.core.problemclasses.stochasticgame import TabularStochasticGame
+from msdm.core.stochasticgame import TabularStochasticGame
 from msdm.core.assignment.assignmentmap import AssignmentMap
 from msdm.core.problemclasses.stochasticgame.policy.tabularpolicy import TabularMultiAgentPolicy, SingleAgentPolicy
 from tqdm import tqdm

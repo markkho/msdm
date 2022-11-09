@@ -4,7 +4,7 @@ import json, copy
 import numpy as np
 import matplotlib.pyplot as plt 
 from msdm.core.utils.gridstringutils import string_to_element_array
-from msdm.core.problemclasses.stochasticgame import TabularStochasticGame
+from msdm.core.stochasticgame import TabularStochasticGame
 from msdm.core.distributions import DiscreteFactorTable as Pr
 
 TERMINALSTATE = {"isTerminal": True}

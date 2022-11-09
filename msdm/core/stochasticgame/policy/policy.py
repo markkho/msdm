@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from msdm.core.problemclasses.stochasticgame import StochasticGame
+from msdm.core.stochasticgame import StochasticGame
 from msdm.core.distributions import Distribution
 
 class MultiAgentPolicy(ABC):
