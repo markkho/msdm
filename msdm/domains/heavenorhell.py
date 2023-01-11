@@ -1,6 +1,6 @@
 import copy
 from collections import namedtuple, defaultdict
-from msdm.core.problemclasses.pomdp import TabularPOMDP
+from msdm.core.pomdp import TabularPOMDP
 from msdm.core.distributions import DictDistribution
 
 State = namedtuple("State", "x y heaven hell")

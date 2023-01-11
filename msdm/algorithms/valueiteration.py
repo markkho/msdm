@@ -3,9 +3,8 @@ import numpy as np
 import warnings
 
 from msdm.core.distributions import DictDistribution
-from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess
-from msdm.core.problemclasses.mdp.tabularpolicy import TabularPolicy
-from msdm.core.mdp_tables import StateTable, StateActionTable
+from msdm.core.mdp import TabularMarkovDecisionProcess, TabularPolicy, \
+    StateTable, StateActionTable
 from msdm.core.algorithmclasses import Plans, PlanningResult
 
 class ValueIteration(Plans):
@@ -120,7 +119,7 @@ class ValueIteration(Plans):
             policy=policy
         )
 
-from msdm.core.tablemisc import dataclass_repr_html_MixIn
+from msdm.core.table.tablemisc import dataclass_repr_html_MixIn
 @dataclass
 class ValueIterationResult(PlanningResult,dataclass_repr_html_MixIn):
     iterations : int

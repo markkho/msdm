@@ -1,7 +1,7 @@
 from msdm.algorithms import LAOStar, PointBasedValueIteration, QMDP
 from msdm.domains.tiger import Tiger
 from msdm.domains.heavenorhell import HeavenOrHell
-from msdm.core.problemclasses.pomdp import BeliefMDP
+from msdm.core.pomdp import BeliefMDP
 
 def compare_lao_and_pbvi(pomdp):
     # LAO* can be run on the belief-state MDP directly

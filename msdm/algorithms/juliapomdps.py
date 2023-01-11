@@ -1,4 +1,4 @@
-from msdm.core.problemclasses.pomdp import TabularPOMDP
+from msdm.core.pomdp import TabularPOMDP
 from msdm.core.algorithmclasses import Learns, Result
 import importlib
 import numpy as np

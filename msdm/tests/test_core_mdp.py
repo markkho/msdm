@@ -1,7 +1,6 @@
 import numpy as np
-from msdm.core.problemclasses.mdp.quickmdp import QuickMDP
 from msdm.algorithms.policyiteration import PolicyIteration
-from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess
+from msdm.core.mdp import TabularMarkovDecisionProcess, QuickMDP
 from msdm.core.distributions import DictDistribution
 
 from msdm.tests.domains import AbsorbingStateTester, DeterministicCounter, DeterministicUnreachableCounter, GNTFig6_6, \
@@ -108,8 +107,6 @@ def test_TabularMarkovDecisionProcess_from_matrices():
         assert pi1.converged == pi2.converged
 
 def test_QuickMDP_equivalence():
-    from msdm.core.problemclasses.mdp.quickmdp import QuickMDP, QuickTabularMDP
-
     for mdp in test_mdps:
         mdp : TabularMarkovDecisionProcess
         quick_mdp = QuickMDP(

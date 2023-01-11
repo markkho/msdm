@@ -3,10 +3,9 @@ from typing import Sequence
 import warnings
 import numpy as np
 
-from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess
-from msdm.core.problemclasses.mdp.tabularpolicy import TabularPolicy
+from msdm.core.mdp import TabularMarkovDecisionProcess, TabularPolicy, \
+    StateActionTable, StateTable
 from msdm.core.algorithmclasses import Plans, PlanningResult
-from msdm.core.mdp_tables import StateActionTable, StateTable
 
 class PolicyIteration(Plans):
     def __init__(
@@ -93,7 +92,7 @@ class PolicyIteration(Plans):
             ))
         return results
 
-from msdm.core.tablemisc import dataclass_repr_html_MixIn
+from msdm.core.table.tablemisc import dataclass_repr_html_MixIn
 @dataclass
 class PolicyIterationResult(PlanningResult,dataclass_repr_html_MixIn):
     iterations : int

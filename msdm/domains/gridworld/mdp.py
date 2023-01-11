@@ -6,7 +6,7 @@ from frozendict import frozendict
 from termcolor import colored
 from collections import defaultdict
 
-from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess, State
+from msdm.core.mdp import TabularMarkovDecisionProcess, State
 
 from msdm.core.distributions.dictdistribution import \
     FiniteDistribution, DeterministicDistribution, \

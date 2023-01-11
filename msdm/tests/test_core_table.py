@@ -2,7 +2,7 @@ import numpy as np
 import contextlib
 import pytest
 from msdm.core.table import Table, ProbabilityTable
-from msdm.core.tableindex import TableIndex, Field, domaintuple, DomainError, SliceError, \
+from msdm.core.table.tableindex import TableIndex, Field, domaintuple, DomainError, SliceError, \
     MultipleIndexError, IndexSizeError
 from msdm.core.distributions import Distribution 
 

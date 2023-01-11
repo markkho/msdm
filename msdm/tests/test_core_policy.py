@@ -4,7 +4,7 @@ from msdm.tests.domains import GeometricCounter, DeterministicCounter, \
     DeterministicUnreachableCounter, PositiveRewardCycle, VaryingActionNumber, TiedPaths, \
     LineWorld
 from msdm.core.distributions import DictDistribution
-from msdm.core.problemclasses.mdp.policy import Policy, FunctionalPolicy
+from msdm.core.mdp import Policy, FunctionalPolicy
 
 test_mdps = [
     DeterministicCounter(3, discount_rate=1.0),

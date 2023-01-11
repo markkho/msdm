@@ -1,5 +1,5 @@
 from collections import defaultdict, namedtuple
-from msdm.core.problemclasses.mdp import TabularMarkovDecisionProcess
+from msdm.core.mdp import TabularMarkovDecisionProcess
 from msdm.core.utils.funcutils import cached_property
 
 Location = namedtuple("Location", "x y")

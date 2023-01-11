@@ -1,4 +1,4 @@
-from msdm.core.problemclasses.mdp.quickmdp import QuickTabularMDP
+from msdm.core.mdp import QuickTabularMDP
 from msdm.core.distributions import DictDistribution, UniformDistribution, DeterministicDistribution
 from collections import defaultdict
 import copy

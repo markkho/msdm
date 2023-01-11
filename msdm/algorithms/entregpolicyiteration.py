@@ -4,9 +4,7 @@ from typing import Union
 import torch
 import numpy as np
 import warnings
-from msdm.core.problemclasses.mdp import \
-    TabularMarkovDecisionProcess
-from msdm.core.problemclasses.mdp.tabularpolicy import TabularPolicy
+from msdm.core.mdp import TabularMarkovDecisionProcess, TabularPolicy
 from msdm.core.algorithmclasses import Plans, PlanningResult
 
 def clamp_zero(tensor):

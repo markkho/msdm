@@ -8,10 +8,10 @@ Also see Shani, Pineau & Kaplow (2012) A survey of point-based POMDP solvers
 import numpy as np
 from scipy.spatial.distance import cdist
 
-from msdm.core.problemclasses.pomdp import TabularPOMDP
 from msdm.core.algorithmclasses import Plans, Result
-from msdm.core.problemclasses.pomdp.alphavectorpolicy import AlphaVectorPolicy
-from msdm.core.problemclasses.pomdp.pomdp import PartiallyObservableMDP
+from msdm.core.pomdp import TabularPOMDP
+from msdm.core.pomdp.alphavectorpolicy import AlphaVectorPolicy
+from msdm.core.pomdp.pomdp import PartiallyObservableMDP
 
 def next_beliefs(pomdp : PartiallyObservableMDP, b):
     assert np.isclose(sum(b), 1), sum(b)

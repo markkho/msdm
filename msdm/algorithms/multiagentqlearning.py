@@ -1,7 +1,7 @@
 from msdm.core.algorithmclasses import Result
 from msdm.core.algorithmclasses import Learns
-from msdm.core.problemclasses.stochasticgame.tabularstochasticgame import TabularStochasticGame
-from msdm.core.problemclasses.stochasticgame.policy.tabularpolicy import TabularMultiAgentPolicy, SingleAgentPolicy
+from msdm.core.stochasticgame.tabularstochasticgame import TabularStochasticGame
+from msdm.core.stochasticgame.policy.tabularpolicy import TabularMultiAgentPolicy, SingleAgentPolicy
 from msdm.core.assignment.assignmentmap import AssignmentMap
 from tqdm import tqdm
 from typing import Iterable

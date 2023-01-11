@@ -1,4 +1,4 @@
-from msdm.core.problemclasses.pomdp import TabularPOMDP
+from msdm.core.pomdp import TabularPOMDP
 from msdm.core.distributions import DictDistribution
 class Tiger(TabularPOMDP):
     def __init__(self, coherence, discount_rate):

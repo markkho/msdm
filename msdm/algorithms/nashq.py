@@ -1,8 +1,8 @@
 from msdm.core.algorithmclasses import Result
 from msdm.algorithms.multiagentqlearning import TabularMultiAgentQLearner
-from msdm.core.problemclasses.stochasticgame import TabularStochasticGame
+from msdm.core.stochasticgame import TabularStochasticGame
 from msdm.core.assignment.assignmentmap import AssignmentMap
-from msdm.core.problemclasses.stochasticgame.policy.tabularpolicy import TabularMultiAgentPolicy, SingleAgentPolicy
+from msdm.core.stochasticgame.policy.tabularpolicy import TabularMultiAgentPolicy, SingleAgentPolicy
 from typing import Iterable
 from tqdm import tqdm
 import nashpy as nash

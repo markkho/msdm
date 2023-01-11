@@ -1,5 +1,5 @@
-from msdm.core.problemclasses.pomdp import TabularPOMDP
-from msdm.core.problemclasses.pomdp.finitestatecontroller import StochasticFiniteStateController
+from msdm.core.pomdp import TabularPOMDP
+from msdm.core.pomdp.finitestatecontroller import StochasticFiniteStateController
 from msdm.core.algorithmclasses import Learns, Result
 import torch
 import numpy as np
