@@ -6,28 +6,6 @@ from msdm.domains.gridmdp.plotting import GridMDPPlotter
 from msdm.core.distributions import DictDistribution
 from msdm.core.utils.funcutils import method_cache
 
-# extension of DictDistribution
-class DictDistribution(DictDistribution):
-    @classmethod
-    def from_tuples(cls, element_probs):
-        dist = defaultdict(float)
-        for e, p in element_probs:
-            dist[e] += p
-        return DictDistribution(dist)
-
-    def normalize(self):
-        total = sum(self.values())
-        return DictDistribution({e: p/total for e, p in self.items()})
-
-    def then(self, function):
-        marg_then_dist = defaultdict(float)
-        for e, p in self.items():
-            then_dist = function(e)
-            assert sum(then_dist.values()) == 1
-            for then_e, then_p in then_dist.items():
-                marg_then_dist[then_e] += p*then_p
-        return DictDistribution(marg_then_dist)
-
 class WindyGridWorld(GridMDP):
     def __init__(
         self,
@@ -78,10 +56,10 @@ class WindyGridWorld(GridMDP):
     @method_cache
     def next_state_reward_dist(self, s, a):
         nsr_dist = DictDistribution({(s, 0): 1})
-        nsr_dist = nsr_dist.then(lambda nsr: self._effect_of_wind(*nsr))
-        nsr_dist = nsr_dist.then(lambda nsr: self._effect_of_action(*nsr, a))
-        nsr_dist = nsr_dist.then(lambda nsr: self._effect_of_walls(s, *nsr))
-        nsr_dist = nsr_dist.then(lambda nsr: self._effect_of_features(*nsr))
+        nsr_dist = nsr_dist.chain(lambda nsr: self._effect_of_wind(*nsr))
+        nsr_dist = nsr_dist.chain(lambda nsr: self._effect_of_action(*nsr, a))
+        nsr_dist = nsr_dist.chain(lambda nsr: self._effect_of_walls(s, *nsr))
+        nsr_dist = nsr_dist.chain(lambda nsr: self._effect_of_features(*nsr))
         return nsr_dist
 
     def _effect_of_features(self, s : Location, r : float):
