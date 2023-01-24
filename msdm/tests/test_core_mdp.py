@@ -1,3 +1,4 @@
+import pytest
 import numpy as np
 from msdm.algorithms.policyiteration import PolicyIteration
 from msdm.core.mdp import TabularMarkovDecisionProcess, QuickMDP
@@ -6,6 +7,8 @@ from msdm.core.distributions import DictDistribution
 from msdm.tests.domains import AbsorbingStateTester, DeterministicCounter, DeterministicUnreachableCounter, GNTFig6_6, \
     GeometricCounter, VaryingActionNumber, DeadEndBandit, TiedPaths, LineWorld, \
     RussellNorvigGrid_Fig17_3, PositiveRewardCycle, RussellNorvigGrid, SlipperyMaze
+
+from msdm.core.mdp.tables import StateTable, StateActionTable, StateActionIndexError
 
 test_mdps = [
     DeterministicCounter(3, discount_rate=1.0),
@@ -123,3 +126,21 @@ def test_QuickMDP_equivalence():
             assert mdp.is_absorbing(s) == quick_mdp.is_absorbing(s)
             for a in mdp.actions(s):
                 assert mdp.next_state_dist(s, a).isclose(quick_mdp.next_state_dist(s, a))
+
+def test_MDP_table_object_errors():
+    stable = StateTable.from_state_list(
+        state_list=[(0, 1), (1, 0)],
+        data=np.array([.0314, 1.33])
+    )
+    with pytest.raises(StateActionIndexError):
+        stable[2]
+
+    satable = StateActionTable.from_state_action_lists(
+        state_list=[(0, 1), (1, 0)],
+        action_list=[(0, 0), (1, 0)],
+        data=np.random.rand(2, 2)
+    )
+    with pytest.raises(StateActionIndexError):
+        satable[(3, 4)]
+    with pytest.raises(StateActionIndexError):
+        satable[((3, 4), (1, 1))]

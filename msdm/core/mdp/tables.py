@@ -2,6 +2,7 @@ import numpy as np
 from typing import Mapping, Sequence
 from msdm.core.mdp.mdp import Action, State
 from msdm.core.table import Table, TableIndex, domaintuple
+from msdm.core.table.tableindex import DomainError
 
 Vector = Sequence[float]
 Matrix = Sequence[Vector]
@@ -18,13 +19,23 @@ class StateTable(Table):
                 field_domains=(state_list, )
             )
         )
+
     @classmethod
     def from_dict(cls, state_values : Mapping[State, float]) -> "StateTable":
         state_list, data = zip(*state_values.items())
         return cls.from_state_list(state_list, data)
+
     @property
     def state_list(self):
         return self.table_index.field_domains[0]
+
+    def __getitem__(self, selector):
+        try:
+            return super().__getitem__(selector)
+        except (KeyError, IndexError, DomainError) as e:
+            raise StateActionIndexError(
+                f"{self.__class__.__name__} does not have an entry for {selector}."
+            )
 
 class StateActionTable(StateTable):
     @classmethod
@@ -80,3 +91,5 @@ class StateNextStateTable(StateTable):
                 field_domains=(tuple(state_list), tuple(state_list))
             )
         )
+
+class StateActionIndexError(IndexError): pass
