@@ -7,6 +7,8 @@ from msdm.core.mdp.mdp import MarkovDecisionProcess
 from msdm.core.utils.funcutils import method_cache, cached_property
 from msdm.core.distributions import FiniteDistribution, DictDistribution
 from msdm.core.table import domaintuple
+from msdm.core.mdp.tables import \
+    StateActionNextStateTable, StateTable, StateActionTable
 
 logger = logging.getLogger(__name__)
 
@@ -161,6 +163,14 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
                     tf[si, ai, nsi] = nsp
         tf.setflags(write=False)
         return tf
+    
+    @cached_property
+    def transition_table(self) -> StateActionNextStateTable:
+        return StateActionNextStateTable.from_state_action_lists(
+            state_list=self.state_list,
+            action_list=self.action_list,
+            data=self.transition_matrix,
+        )
 
     @cached_property
     def action_matrix(self):
@@ -194,12 +204,28 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         return rf
 
     @cached_property
+    def reward_table(self) -> StateActionNextStateTable:
+        return StateActionNextStateTable.from_state_action_lists(
+            state_list=self.state_list,
+            action_list=self.action_list,
+            data=self.reward_matrix,
+        )
+
+    @cached_property
     def state_action_reward_matrix(self):
         rf = self.reward_matrix
         tf = self.transition_matrix
         sa_rf = np.einsum("san,san->sa", rf, tf)
         sa_rf.setflags(write=False)
         return sa_rf
+
+    @cached_property
+    def state_action_reward_table(self) -> StateActionNextStateTable:
+        return StateActionTable.from_state_action_lists(
+            state_list=self.state_list,
+            action_list=self.action_list,
+            data=self.state_action_reward_matrix,
+        )
 
     @cached_property
     def initial_state_vec(self):
