@@ -1,4 +1,5 @@
 import logging
+from abc import abstractproperty
 import numpy as np
 from scipy.sparse.csgraph import floyd_warshall
 from abc import abstractmethod
@@ -9,6 +10,7 @@ from msdm.core.distributions import FiniteDistribution, DictDistribution
 from msdm.core.table import domaintuple
 from msdm.core.mdp.tables import \
     StateActionNextStateTable, StateTable, StateActionTable
+
 
 logger = logging.getLogger(__name__)
 
@@ -290,3 +292,55 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
             's0': self.initial_state_vec,
             'rs': self.reachable_state_vec,
         }
+
+class FromVectorizedMixIn(TabularMarkovDecisionProcess):
+    def actions(self, s: HashableState) -> Sequence[HashableAction]:
+        return super().actions(s)
+
+    def next_state_dist(self, s: HashableState, a: HashableAction) -> FiniteDistribution:
+        vec : np.ndarray = self.transition_matrix[
+            self.state_list.index(s),
+            self.action_list.index(a)
+        ]
+        ns_dist = {self.state_list[i]: vec[i] for i in vec.nonzero()[0]}
+        return DictDistribution(ns_dist)
+    
+    def reward(self, s: HashableState, a: HashableAction, ns: HashableState) -> float:
+        return self.reward_matrix[
+            self.state_list.index(s),
+            self.action_list.index(a),
+            self.state_list.index(ns)
+        ]
+    
+    def is_absorbing(self, s: HashableState) -> bool:
+        return self.absorbing_state_vec[self.state_list.index(s)]
+    
+    def initial_state_dist(self) -> FiniteDistribution:
+        n_initial_states = self.initial_state_vec.sum()
+        dist = {
+            self.state_list[i]: float(self.initial_state_vec[i]) / n_initial_states
+            for i in self.initial_state_vec.nonzero()[0]
+        }
+        return DictDistribution(dist)
+
+    @abstractproperty
+    def state_list(self) -> domaintuple:
+        pass
+    @abstractproperty
+    def action_list(self) -> domaintuple:
+        pass
+    @abstractproperty
+    def initial_state_vec(self) -> np.ndarray:
+        pass
+    @abstractproperty
+    def action_matrix(self) -> np.ndarray:
+        pass
+    @abstractproperty
+    def transition_matrix(self) -> np.ndarray:
+        pass
+    @abstractproperty
+    def reward_matrix(self) -> np.ndarray:
+        pass
+    @abstractproperty
+    def absorbing_state_vec(self) -> np.ndarray:
+        pass
