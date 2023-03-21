@@ -15,9 +15,9 @@ from itertools import product
 class GridWorld(GridMDP,FromVectorizedMixIn):
     feature_map : list
     feature_rewards : dict = None
-    absorbing_features : list = ("g",)
+    absorbing_features : list = ("$",)
     wall_features : list = ("#",)
-    initial_features : list = ("s",)
+    initial_features : list = ("@",)
     step_cost : float = -1
     wall_bump_cost : float = -10
     stay_prob : float = 0.0
@@ -154,6 +154,8 @@ class GridWorld(GridMDP,FromVectorizedMixIn):
 
     @cached_property
     def feature_map_array(self):
+        assert isinstance(self.feature_map, (tuple, list))
+        assert len(set([len(r) for r in self.feature_map])) == 1
         return make_immutable(
             np.array([list(r) for r in self.feature_map])
         )
