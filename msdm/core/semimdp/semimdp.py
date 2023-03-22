@@ -17,7 +17,7 @@ class SemiMarkovDecisionProcess:
     n_option_simulations : int
     include_mdp_actions : bool = False
 
-    def initial_state_dist(self) -> Distribution[State]:
+    def initial_state_dist(self) -> Distribution:
         return self.mdp.initial_state_dist()
 
     def actions(self, s: State) -> Sequence[Union[Action, Option]]:
@@ -42,9 +42,19 @@ class SemiMarkovDecisionProcess:
         s: State,
         a: Union[Action, Option],
         seed : int = None
-    ) -> Distribution[Tuple[State, int]]:
+    ) -> Distribution:
         return self.next_state_transit_time_reward_dist(s, a, seed=seed).marginalize(
             lambda ns_t_r: (ns_t_r[0], ns_t_r[1])
+        )
+    
+    def next_state_dist(
+        self,
+        s: State,
+        a: Union[Action, Option],
+        seed : int = None
+    ) -> Distribution:
+        return self.next_state_transit_time_reward_dist(s, a, seed=seed).marginalize(
+            lambda ns_t_r: ns_t_r[0]
         )
     
     def next_state_transit_time_reward_dist(
@@ -52,7 +62,7 @@ class SemiMarkovDecisionProcess:
         s: State,
         a: Union[Action, Option],
         seed : int = None
-    ) -> DictDistribution[Tuple[State, int, float]]:
+    ) -> DictDistribution:
         if a in self.mdp.actions(s):
             ns_dist : DictDistribution = self.mdp.next_state_dist(s, a)
             return ns_dist.marginalize(lambda ns: (ns, 1, self.mdp.reward(s, a, ns)))
@@ -60,6 +70,7 @@ class SemiMarkovDecisionProcess:
             simulations = self.run_simulations(s, a, seed=seed)
             counts = defaultdict(int)
             for sim in simulations:
+                ns = sim.state[0]
                 discount = 1
                 cum_reward = 0
                 t = 0

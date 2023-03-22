@@ -7,11 +7,13 @@ from msdm.core.utils.funcutils import method_cache, cached_property
 from msdm.core.mdp import State, Action, MarkovDecisionProcess, Policy, \
     TabularMarkovDecisionProcess
 
-from msdm.core.algorithmclasses import Plans
+from msdm.core.algorithmclasses import Plans, PlanningResult
+from msdm.core.exceptions import AlgorithmException
 
 class Option(ABC):
     name : str
-    max_steps : int
+    policy : Policy
+    max_steps : int = 1000
 
     @abstractmethod
     def is_initial(self, s: State) -> bool:
@@ -21,60 +23,15 @@ class Option(ABC):
     def is_terminal(self, s: State) -> bool:
         pass
 
-    @abstractproperty
-    def policy(self) -> Policy:
-        pass
-
-    @method_cache
-    def sub_mdp(
-        self,
-        mdp : MarkovDecisionProcess,
-        max_nonterminal_pseudoreward : float
-    ) -> MarkovDecisionProcess:
-        """
-        The sub-MDP is the input MDP with an absorbing state function 
-        set to the option's terminal state function. We also include a
-        maximum pseudoreward for nonterminal states to prevent the
-        option from staying in non-terminal states when used for planning.
-        """
-        # This is an inefficient but safe way to create a sub-MDP
-        # that inherits all the noncached methods of the original MDP 
-        # and replaces is_absorbing with the option's terminal state function.
-        class SubMDP(mdp.__class__):
-            def __init__(self_) -> None:
-                self_.discount_rate = mdp.discount_rate
-            def is_absorbing(self_, s: State) -> bool:
-                return self.is_terminal(s)
-            def next_state_dist(self_, s: State, a: Action) -> Distribution[State]:
-                return mdp.next_state_dist(s, a)
-            def reward(self_, s: State, a: Action, ns: State) -> float:
-                r = mdp.reward(s, a, ns)
-                if not self.is_terminal(ns) and r >= max_nonterminal_pseudoreward:
-                    return max_nonterminal_pseudoreward
-                return r
-            def initial_state_dist(self_) -> Distribution[State]:
-                return mdp.initial_state_dist()
-            def actions(self_, s: State) -> Sequence[Action]:
-                return mdp.actions(s)
-            @property
-            def state_list(self_) -> Sequence[State]:
-                assert isinstance(mdp, TabularMarkovDecisionProcess)
-                return mdp.state_list
-            @property
-            def action_list(self_) -> Sequence[Action]:
-                assert isinstance(mdp, TabularMarkovDecisionProcess)
-                return mdp.action_list
-        return SubMDP()
-    
     def run_on(
             self,
             mdp: MarkovDecisionProcess,
             initial_state : State,
             rng : random.Random = random
         ):
-        sub_mdp = self.sub_mdp(
+        sub_mdp = augment(
             mdp=mdp,
-            max_nonterminal_pseudoreward=float('inf')
+            is_absorbing=lambda s : self.is_terminal(s),
         )
         result = self.policy.run_on(
             mdp=sub_mdp,
@@ -83,24 +40,33 @@ class Option(ABC):
             rng=rng
         )
         if len(result) >= self.max_steps:
-            raise Exception(f"Option reached max steps ({self.max_steps})")
+            raise AlgorithmException(
+                f"{self} reached max steps ({self.max_steps}). " + \
+                "It may be stuck in a loop or max_steps needs to be increased"
+            )
         return result
 
 class PlanToSubgoalOption(Option):
+    _n_instances = 0
     def __init__(
         self,
         *,
-        name : str,
         mdp : MarkovDecisionProcess,
         subgoals : Sequence[State],
         planner : Plans,
-        max_nonterminal_pseudoreward : float,
-        max_steps : int
+        include_mdp_absorbing_states : bool = False,
+        name : str = None,
+        max_steps : int = 1000,
+        max_nonterminal_pseudoreward : float = float('inf'),
     ):
+        if name is None:
+            self.name = f"{self.__class__}_{self.__class__._n_instances}"
+            self.__class__._n_instances += 1
         self.subgoals = subgoals
         self.mdp = mdp
         self.name = name
         self.max_nonterminal_pseudoreward = max_nonterminal_pseudoreward
+        self.include_mdp_absorbing_states = include_mdp_absorbing_states
         self.max_steps = max_steps
         self.planner = planner
     
@@ -110,14 +76,90 @@ class PlanToSubgoalOption(Option):
     def is_terminal(self, s: State) -> bool:
         return s in self.subgoals
     
+    @property
+    def sub_task(self) -> MarkovDecisionProcess:
+        def clipped_reward(s, a, ns):
+            real_reward = self.mdp.reward(s, a, ns)
+            if self.is_terminal(ns):
+                return real_reward
+            if real_reward > self.max_nonterminal_pseudoreward:
+                return self.max_nonterminal_pseudoreward
+            return real_reward
+        def is_absorbing(s):
+            if self.include_mdp_absorbing_states:
+                is_absorbing = self.is_terminal(s) or self.mdp.is_absorbing(s)
+            else:
+                is_absorbing = self.is_terminal(s)
+            return is_absorbing
+        sub_mdp = augment(
+            mdp = self.mdp,
+            is_absorbing = is_absorbing,
+            reward = clipped_reward
+        )
+        return sub_mdp
+    
+    @property
+    def planning_result(self) -> PlanningResult:
+        return self.planner.plan_on(self.sub_task)
+    
     @cached_property
     def policy(self) -> Policy:
-        sub_mdp = self.sub_mdp(
-            self.mdp,
-            max_nonterminal_pseudoreward=self.max_nonterminal_pseudoreward
-        )
-        pi_res = self.planner.plan_on(sub_mdp)
-        return pi_res.policy
+        return self.planning_result.policy
     
     def __hash__(self) -> int:
         return hash(self.name)
+
+def augment(
+        mdp : MarkovDecisionProcess,
+        initial_state_dist : Callable[[], Distribution] = None,
+        actions : Callable[[State], Sequence[Action]] = None,
+        next_state_dist : Callable[[State, Action], Distribution] = None,
+        reward : Callable[[State, Action, State], float] = None,
+        is_absorbing : Callable[[State], bool] = None,
+        state_list : Sequence[State] = None,
+        action_list : Sequence[Action] = None,
+    ):
+    """
+    Returns an augmented `MarkovDecisionProcess` instance that safely overwrites core 
+    methods/attributes of the given `MarkovDecisionProcess`, where the core methods are:
+    `initial_state_dist`, `actions`, `next_state_dist`, `reward`, `is_absorbing`,
+    `state_list`, and `action_list`
+    """
+    if state_list is not None or action_list is not None:
+        assert isinstance(mdp, TabularMarkovDecisionProcess), \
+            "state_list and action_list can only be set for TabularMarkovDecisionProcess"
+    class AugmentedMDP(mdp.__class__):
+        def __init__(self): pass
+    if initial_state_dist is not None:
+        AugmentedMDP.initial_state_dist = staticmethod(initial_state_dist)
+    else:
+        AugmentedMDP.initial_state_dist = mdp.initial_state_dist
+    if actions is not None:
+        AugmentedMDP.actions = staticmethod(actions)
+    else:
+        AugmentedMDP.actions = mdp.actions
+    if next_state_dist is not None:
+        AugmentedMDP.next_state_dist = staticmethod(next_state_dist)
+    else:
+        AugmentedMDP.next_state_dist = mdp.next_state_dist
+    if reward is not None:
+        AugmentedMDP.reward = staticmethod(reward)
+    else:
+        AugmentedMDP.reward = mdp.reward
+    if is_absorbing is not None:
+        AugmentedMDP.is_absorbing = staticmethod(is_absorbing)
+    else:
+        AugmentedMDP.is_absorbing = mdp.is_absorbing
+    if (
+        issubclass(AugmentedMDP, TabularMarkovDecisionProcess) and \
+        isinstance(mdp, TabularMarkovDecisionProcess)
+    ):
+        if state_list is not None:
+            AugmentedMDP.state_list = state_list
+        else:
+            AugmentedMDP.state_list = mdp.state_list
+        if action_list is not None:
+            AugmentedMDP.action_list = action_list
+        else:
+            AugmentedMDP.action_list = mdp.action_list
+    return AugmentedMDP()
