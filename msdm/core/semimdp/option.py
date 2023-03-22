@@ -7,7 +7,7 @@ from msdm.core.utils.funcutils import method_cache, cached_property
 from msdm.core.mdp import State, Action, MarkovDecisionProcess, Policy, \
     TabularMarkovDecisionProcess
 
-from msdm.algorithms import PolicyIteration
+from msdm.core.algorithmclasses import Plans
 
 class Option(ABC):
     name : str
@@ -90,13 +90,15 @@ class SubgoalOption(Option):
         self,
         mdp : MarkovDecisionProcess,
         subgoals : Sequence[State],
+        planner : Plans,
         name : str,
-        max_nonterminal_pseudoreward : float
+        max_nonterminal_pseudoreward : float,
     ):
         self.subgoals = subgoals
         self.mdp = mdp
         self.name = name
         self.max_nonterminal_pseudoreward = max_nonterminal_pseudoreward
+        self.planner = planner
     
     def is_initial(self, s: State) -> bool:
         return True
@@ -110,7 +112,7 @@ class SubgoalOption(Option):
             self.mdp,
             max_nonterminal_pseudoreward=self.max_nonterminal_pseudoreward
         )
-        pi_res = PolicyIteration().plan_on(sub_mdp)
+        pi_res = self.planner.plan_on(sub_mdp)
         return pi_res.policy
     
     def __hash__(self) -> int:
