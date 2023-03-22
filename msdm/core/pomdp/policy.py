@@ -7,7 +7,6 @@ from msdm.core.pomdp.pomdp import \
     State, Action, Observation, PartiallyObservableMDP
 from msdm.core.pomdp.tabularpomdp import TabularPOMDP, Belief
 from msdm.core.distributions import Distribution, DictDistribution
-from msdm.core.algorithmclasses import Result
 
 AgentState = TypeVar('AgentState')
 Step = namedtuple("Step", "state agentstate action nextstate reward observation nextagentstate")
@@ -59,6 +58,15 @@ class POMDPPolicy(ABC):
             rewards = ()
             agentstates = ()
         return traj
+    
+    def evaluate_on(
+        self,
+        pomdp : PartiallyObservableMDP,
+        n_simulations : int = 100,
+        max_steps : int = int(2 **30),
+        rng : random.Random = random
+    ):
+        raise NotImplementedError("POMDP policy evaluation not implemented yet.")
 
 class ValueBasedTabularPOMDPPolicy(POMDPPolicy):
     """
