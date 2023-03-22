@@ -5,6 +5,7 @@ import random
 from typing import TypeVar, Generic, Sequence, Set, Tuple, Union, Callable, Any
 
 from msdm.core.distributions import Distribution, DictDistribution
+from msdm.core.distributions.utils import obj_seed
 from msdm.core.mdp import State, Action, MarkovDecisionProcess
 from msdm.core.mdp.policy import SimulationResult
 
@@ -16,6 +17,7 @@ class SemiMarkovDecisionProcess:
     options : Sequence[Option]
     n_option_simulations : int
     include_mdp_actions : bool = False
+    seed : int = None
 
     def initial_state_dist(self) -> Distribution:
         return self.mdp.initial_state_dist()
@@ -31,9 +33,8 @@ class SemiMarkovDecisionProcess:
         self,
         s: State,
         a: Union[Action, Option],
-        seed : int = None
     ) -> float:
-        return self.next_state_transit_time_reward_dist(s, a, seed=seed).expectation(
+        return self.next_state_transit_time_reward_dist(s, a).expectation(
             lambda ns_t_r: ns_t_r[2]
         )
 
@@ -41,9 +42,8 @@ class SemiMarkovDecisionProcess:
         self,
         s: State,
         a: Union[Action, Option],
-        seed : int = None
     ) -> Distribution:
-        return self.next_state_transit_time_reward_dist(s, a, seed=seed).marginalize(
+        return self.next_state_transit_time_reward_dist(s, a).marginalize(
             lambda ns_t_r: (ns_t_r[0], ns_t_r[1])
         )
     
@@ -51,9 +51,8 @@ class SemiMarkovDecisionProcess:
         self,
         s: State,
         a: Union[Action, Option],
-        seed : int = None
     ) -> Distribution:
-        return self.next_state_transit_time_reward_dist(s, a, seed=seed).marginalize(
+        return self.next_state_transit_time_reward_dist(s, a).marginalize(
             lambda ns_t_r: ns_t_r[0]
         )
     
@@ -61,13 +60,12 @@ class SemiMarkovDecisionProcess:
         self,
         s: State,
         a: Union[Action, Option],
-        seed : int = None
     ) -> DictDistribution:
         if a in self.mdp.actions(s):
             ns_dist : DictDistribution = self.mdp.next_state_dist(s, a)
             return ns_dist.marginalize(lambda ns: (ns, 1, self.mdp.reward(s, a, ns)))
         elif isinstance(a, Option):
-            simulations = self.run_simulations(s, a, seed=seed)
+            simulations = self.run_simulations(s, a)
             counts = defaultdict(int)
             for sim in simulations:
                 ns = sim.state[0]
@@ -93,8 +91,10 @@ class SemiMarkovDecisionProcess:
         self,
         s: State,
         a: Option,
-        seed : int = None
     ) -> Sequence[SimulationResult]:
+        if self.seed is None:
+            self.seed = random.randint(0, 2**32)
+        seed = obj_seed((s, a, self.seed))
         rng = random.Random(seed)
         simulations = []
         for _ in range(self.n_option_simulations):

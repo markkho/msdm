@@ -134,11 +134,12 @@ def test_PlanToSubgoalOption_policy_on_stochastic_domain():
     smdp = SemiMarkovDecisionProcess(
         mdp=mdp,
         options=[go_to_upper_left, go_to_upper_right],
-        n_option_simulations=50
+        n_option_simulations=50,
+        seed=1288
     )
     s0 = smdp.initial_state_dist().sample()
-    s1, t1 = smdp.next_state_transit_time_dist(s0, go_to_upper_left, seed=1499).sample()
-    s2, t2 = smdp.next_state_transit_time_dist(s1, go_to_upper_right, seed=599).sample()
+    s1, t1 = smdp.next_state_transit_time_dist(s0, go_to_upper_left).sample()
+    s2, t2 = smdp.next_state_transit_time_dist(s1, go_to_upper_right).sample()
     assert (s1, s2) == (upper_left, upper_right)
 
 def test_Option_termination_at_multiple_subgoals():
@@ -152,8 +153,23 @@ def test_Option_termination_at_multiple_subgoals():
     smdp = SemiMarkovDecisionProcess(
         mdp=mdp,
         options=[act_randomly],
-        n_option_simulations=1000
+        n_option_simulations=1000,
+        seed=19488
     )
     s0 = smdp.initial_state_dist().sample()
-    ns_dist : DictDistribution = smdp.next_state_dist(s0, act_randomly, seed=1999)
+    ns_dist : DictDistribution = smdp.next_state_dist(s0, act_randomly)
     assert set(ns_dist.support) == set(act_randomly.terminal_states)
+
+    # check that seed works at level of SemiMDP
+    ns_dist_2 : DictDistribution = smdp.next_state_dist(s0, act_randomly)
+    assert ns_dist_2[(0, 2)] == ns_dist[(0, 2)]
+    assert id(ns_dist_2) != id(ns_dist)
+
+    smdp_new_seed = SemiMarkovDecisionProcess(
+        mdp=mdp,
+        options=[act_randomly],
+        n_option_simulations=1000,
+        seed=1299
+    )
+    ns_dist_new_seed = smdp_new_seed.next_state_dist(s0, act_randomly)
+    assert ns_dist_new_seed[(0, 2)] != ns_dist[(0, 2)]
