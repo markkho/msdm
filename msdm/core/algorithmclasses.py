@@ -1,3 +1,7 @@
+from msdm.core.mdp.policy import Policy as MDPPolicy
+from msdm.core.pomdp.policy import POMDPPolicy
+from typing import Union
+
 from abc import ABC, abstractmethod
 
 class Algorithm(ABC):
@@ -18,13 +22,14 @@ class Result(ABC):
 
 class PlanningResult(Result):
     converged : bool
+    policy : Union[MDPPolicy, POMDPPolicy]
 
 class Plans(Algorithm):
-    def __call__(self, problem):
+    def __call__(self, problem) -> PlanningResult:
         return self.plan_on(problem)
 
     @abstractmethod
-    def plan_on(self, problem) -> Result:
+    def plan_on(self, problem) -> PlanningResult:
         pass
 
 class Learns(Algorithm):

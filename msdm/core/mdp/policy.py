@@ -127,7 +127,7 @@ class Step(dict):
         return f"{self.__class__.__name__}({', '.join([f'{k}={v}' for k, v in self.items()])})"
     
 class SimulationResult:
-    def __init__(self, steps):
+    def __init__(self, steps : Sequence[Step]):
         self.steps = steps
     def __len__(self):
         return len(self.steps)
