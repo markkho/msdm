@@ -11,6 +11,7 @@ from msdm.core.algorithmclasses import Plans
 
 class Option(ABC):
     name : str
+    max_steps : int
 
     @abstractmethod
     def is_initial(self, s: State) -> bool:
@@ -45,8 +46,6 @@ class Option(ABC):
             def is_absorbing(self_, s: State) -> bool:
                 return self.is_terminal(s)
             def next_state_dist(self_, s: State, a: Action) -> Distribution[State]:
-                if self.is_terminal(s):
-                    return DictDistribution({s: 1})
                 return mdp.next_state_dist(s, a)
             def reward(self_, s: State, a: Action, ns: State) -> float:
                 r = mdp.reward(s, a, ns)
@@ -71,33 +70,38 @@ class Option(ABC):
             self,
             mdp: MarkovDecisionProcess,
             initial_state : State,
-            max_steps : int = int(2**31),
             rng : random.Random = random
         ):
         sub_mdp = self.sub_mdp(
             mdp=mdp,
             max_nonterminal_pseudoreward=float('inf')
         )
-        return self.policy.run_on(
+        result = self.policy.run_on(
             mdp=sub_mdp,
             initial_state=initial_state,
-            max_steps=max_steps,
+            max_steps=self.max_steps,
             rng=rng
         )
+        if len(result) >= self.max_steps:
+            raise Exception(f"Option reached max steps ({self.max_steps})")
+        return result
 
-class SubgoalOption(Option):
+class PlanToSubgoalOption(Option):
     def __init__(
         self,
+        *,
+        name : str,
         mdp : MarkovDecisionProcess,
         subgoals : Sequence[State],
         planner : Plans,
-        name : str,
         max_nonterminal_pseudoreward : float,
+        max_steps : int
     ):
         self.subgoals = subgoals
         self.mdp = mdp
         self.name = name
         self.max_nonterminal_pseudoreward = max_nonterminal_pseudoreward
+        self.max_steps = max_steps
         self.planner = planner
     
     def is_initial(self, s: State) -> bool:
