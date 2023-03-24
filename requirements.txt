@@ -8,3 +8,4 @@ termcolor
 julia
 frozendict
 cvxpy
+cython
