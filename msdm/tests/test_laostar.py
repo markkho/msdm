@@ -3,7 +3,6 @@ import pytest
 import random
 
 from msdm.algorithms.laostar import LAOStar, ExplicitStateGraph
-from msdm.algorithms.policyiteration import PolicyIteration
 from msdm.core.mdp import QuickTabularMDP
 from msdm.core.distributions import DictDistribution
 from msdm.algorithms.policyiteration import PolicyIteration
@@ -38,8 +37,7 @@ def test_laostar_random_action_ordering_flag():
         ]
     )
     gw = DefaultRightUpActionGridWorld(**gw_params)
-    pi_res = PolicyIteration(allow_no_discounting=True).\
-        plan_on(GridWorld(**gw_params, wall_features=""))
+    pi_res = PolicyIteration(allow_no_discounting=True).plan_on(GridWorld(**gw_params, wall_features=""))
 
     nonrandomized_action_order_lao = LAOStar(
         heuristic=lambda s: pi_res.state_value[s],
