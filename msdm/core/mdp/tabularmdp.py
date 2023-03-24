@@ -156,7 +156,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
             len(self.state_list),
             len(self.action_list), 
             len(self.state_list)
-        ))
+        ), np.float64)
         for si, s in enumerate(self.state_list):
             for a in self._cached_actions(s):
                 ai = self.action_list.index(a)
@@ -179,13 +179,21 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
         am = np.zeros((
             len(self.state_list),
             len(self.action_list), 
-        ))
+        ), dtype=np.intc)
         for si, s in enumerate(self.state_list):
             for a in self._cached_actions(s):
                 ai = self.action_list.index(a)
                 am[si, ai] = 1
         am.setflags(write=False)
         return am
+    
+    @cached_property
+    def action_table(self) -> StateActionTable:
+        return StateActionTable.from_state_action_lists(
+            state_list=self.state_list,
+            action_list=self.action_list,
+            data=self.action_matrix,
+        )
 
     @cached_property
     def reward_matrix(self):
@@ -193,7 +201,7 @@ class TabularMarkovDecisionProcess(MarkovDecisionProcess):
             len(self.state_list),
             len(self.action_list), 
             len(self.state_list)
-        ))
+        ), dtype=np.float64)
         for si, s in enumerate(self.state_list):
             for a in self._cached_actions(s):
                 ai = self.action_list.index(a)
