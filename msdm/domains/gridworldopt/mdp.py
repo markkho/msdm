@@ -67,15 +67,17 @@ class GridWorld(GridMDP,FromVectorizedMixIn):
     def transition_reward_matrices(self):
         xy_walls = map_to_xy_array(self.wall_map)
         xy_rewards = map_to_xy_array(self.reward_map)
-        state_list = np.array(self.state_list)
-        action_list = np.array(self.action_list)
+        state_list = np.array(self.state_list, dtype=np.intc)
+        action_list = np.array(self.action_list, dtype=np.intc)
         n_actions = len(action_list)
         transition_matrix = np.zeros(
-            (self.width, self.height , n_actions, self.width, self.height)
-        ).astype(np.double)
+            (self.width, self.height , n_actions, self.width, self.height),
+            dtype=np.double
+        )
         reward_matrix = np.zeros(
-            (self.width, self.height, n_actions)
-        ).astype(np.double)
+            (self.width, self.height, n_actions),
+            dtype=np.double
+        )
 
         transition_reward_matrices(
             step_cost=-1,  
@@ -84,8 +86,8 @@ class GridWorld(GridMDP,FromVectorizedMixIn):
             left_slip_prob=0.1,
             right_slip_prob=0.1,
             back_slip_prob=0.04,
-            state_list=state_list.astype(np.intc), # x, y
-            action_list=action_list.astype(np.intc), # dx, dy
+            state_list=state_list, # x, y
+            action_list=action_list, # dx, dy
             xy_walls=xy_walls.astype(np.intc), # x, y
             xy_rewards=xy_rewards.astype(np.double), # x, y
             transition_matrix=transition_matrix, # x, y, ai, nx, ny
