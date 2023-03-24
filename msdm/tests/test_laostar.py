@@ -38,7 +38,8 @@ def test_laostar_random_action_ordering_flag():
         ]
     )
     gw = DefaultRightUpActionGridWorld(**gw_params)
-    pi_res = PolicyIteration().plan_on(GridWorld(**gw_params, wall_features=""))
+    pi_res = PolicyIteration(allow_no_discounting=True).\
+        plan_on(GridWorld(**gw_params, wall_features=""))
 
     nonrandomized_action_order_lao = LAOStar(
         heuristic=lambda s: pi_res.state_value[s],

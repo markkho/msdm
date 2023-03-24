@@ -94,8 +94,8 @@ def test_TabularMarkovDecisionProcess_from_matrices():
             absorbing_state_vec = mdp1.absorbing_state_vec,
             discount_rate = mdp1.discount_rate
         )
-        pi1 = PolicyIteration().plan_on(mdp1)
-        pi2 = PolicyIteration().plan_on(mdp2)
+        pi1 = PolicyIteration(allow_no_discounting=True).plan_on(mdp1)
+        pi2 = PolicyIteration(allow_no_discounting=True).plan_on(mdp2)
 
         assert mdp2.state_list == mdp1.state_list
         assert mdp2.action_list == mdp1.action_list
