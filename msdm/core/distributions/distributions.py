@@ -1,8 +1,10 @@
 from abc import ABC, abstractmethod
-from typing import Sequence, Any, TypeVar, Generic, Tuple, Callable, Union
+from typing import Sequence, Any, TypeVar, Generic, Tuple, Callable, Union, Dict
 import random
 import math
 from collections import defaultdict
+
+from msdm.core.utils.funcutils import cached_property
 
 Event = TypeVar('Event')
 
@@ -10,6 +12,85 @@ class Distribution(ABC, Generic[Event]):
     @abstractmethod
     def sample(self, *, rng=random) -> Event:
         pass
+
+    def marginalize(self, projection: Callable[[Event], Event]) -> "Distribution":
+        raise NotImplementedError
+    
+    def condition(self, predicate: Callable[[Event], Union[bool, float]]) -> "Distribution":
+        raise NotImplementedError
+    
+    def expectation(self, real_function: Callable[[Event], float] = lambda e: e) -> float:
+        raise NotImplementedError
+    
+    def chain(self, function: Callable[[Event], "Distribution"]) -> "Distribution":
+        raise NotImplementedError
+    
+    def score(self, e: Event) -> float:
+        raise NotImplementedError
+    
+    def support(self) -> Sequence[Event]:
+        raise NotImplementedError
+
+class ImplicitDistribution(Distribution):
+    def __init__(
+        self,
+        stochastic_function : Callable[[random.Random], Event],
+        n_samples : int,
+        _seed : int = None
+    ):
+        self.stochastic_function = stochastic_function
+        self.n_samples = n_samples
+        self._seed = _seed
+    
+    @cached_property
+    def _rng(self):
+        return random.Random(self._seed)
+
+    def sample(self, *, rng=None) -> Event:
+        if rng is None:
+            rng = self._rng
+        return self.stochastic_function(rng)
+    
+    @property
+    def _monte_carlo_simulation(self) -> Dict[Event, float]:
+        counts = defaultdict(int)
+        rng = self._rng
+        for _ in range(self.n_samples):
+            counts[self.sample(rng=rng)] += 1
+        counts = {e: c / self.n_samples for e, c in counts.items()}
+        return counts
+    
+    def items(self):
+        yield from self._monte_carlo_simulation.items()
+
+    def marginalize(self, projection : Callable[[Any], Any]) -> "ImplicitDistribution":
+        def projected_function(rng : random.Random):
+            return projection(self.stochastic_function(rng))
+        return ImplicitDistribution(
+            projected_function,
+            n_samples=self.n_samples,
+            _seed=self._seed
+        )
+
+    def condition(self, predicate : Callable[[Any], bool]) -> "ImplicitDistribution":
+        def rejection_sampler(rng : random.Random):
+            for _ in range(self.n_samples):
+                sample = self.stochastic_function(rng)
+                if predicate(sample):
+                    return sample
+            raise ValueError(f"No sample (n = {self.n_samples}) satisfies the predicate")
+        return ImplicitDistribution(
+            rejection_sampler,
+            n_samples=self.n_samples,
+            _seed=self._seed
+        )
+
+    def expectation(self, real_function : Callable[[Any], float] = lambda e: e) -> float:
+        rng = self._rng
+        val = 0
+        for _ in range(self.n_samples):
+            val += real_function(self.stochastic_function(rng))
+        return val / self.n_samples
 
 class FiniteDistribution(Distribution[Event]):
     @abstractmethod
