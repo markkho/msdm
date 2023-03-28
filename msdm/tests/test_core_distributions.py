@@ -4,8 +4,10 @@ import numpy as np
 import pandas as pd
 from scipy.special import softmax
 from msdm.core.distributions import DiscreteFactorTable, DictDistribution,\
-    UniformDistribution, DeterministicDistribution, SoftmaxDistribution
+    UniformDistribution, DeterministicDistribution, SoftmaxDistribution, \
+    ImplicitDistribution
 import pytest
+from collections import Counter
 
 def toDF(p):
     df = pd.DataFrame(p.support)
@@ -170,6 +172,72 @@ def test_DictDistribution_joint():
         ('a', 1): 9/40,
         ('b', 1): 27/40,
     }))
+
+def test_ImplicitDistribution_seed_items_and_samples():
+    def func(rng : random.Random):
+        v = rng.random()
+        if v < .5:
+            return "A"
+        elif v < .75:
+            return "B"
+        return "C"
+
+    # test that the same seed gives the same distribution
+    n_samples = 100
+    dist_1a = ImplicitDistribution(func, n_samples=n_samples, _seed=0)
+    count_1a = Counter(dist_1a.sample() for _ in range(n_samples))
+    dist_1b = ImplicitDistribution(func, n_samples=n_samples, _seed=0)
+    count_1b = Counter(dist_1b.sample() for _ in range(n_samples))
+    assert count_1a == count_1b
+    assert len(count_1a) == 3
+
+    # test that different seeds give different distributions
+    dist_2 = ImplicitDistribution(func, n_samples=n_samples, _seed=1)
+    count_2 = Counter(dist_2.sample() for _ in range(n_samples))
+    assert count_1a != count_2
+    assert len(count_2) == 3
+
+    # test that monte carlo simulation result sums to 1
+    items = tuple(ImplicitDistribution(func, n_samples=n_samples, _seed=0).items())
+    assert np.isclose(sum(v for _, v in items), 1)
+
+    # more samples should be closer to the expected distribution
+    exp_dist = DictDistribution({"A": .5, "B": .25, "C": .25})
+    dist_100 = DictDistribution(ImplicitDistribution(func, n_samples=100, _seed=0).items())
+    dist_10000 = DictDistribution(ImplicitDistribution(func, n_samples=100000, _seed=0).items())
+    assert not exp_dist.isclose(dist_100, rtol=0, atol=0.01)
+    assert exp_dist.isclose(dist_10000, rtol=0, atol=0.01)
+
+def test_ImplicitDistribution_probability_methods():
+    def func(rng : random.Random):
+        return "AABC"[rng.randint(0, 3)]
+
+    dist = ImplicitDistribution(func, n_samples=10000, _seed=0).marginalize(
+        lambda e: {"A": "A", "B": "BC", "C": "BC"}[e]
+    )
+    dist = DictDistribution(dist.items())
+    assert dist.isclose(DictDistribution({"A": .5, "BC": .5}), rtol=0, atol=0.01)
+
+    dist = ImplicitDistribution(func, n_samples=10000, _seed=0).condition(
+        lambda e: e != "A"
+    )
+    dist = DictDistribution(dist.items())
+    assert dist.isclose(DictDistribution({"B": .5, "C": .5}), rtol=0, atol=0.01)
+
+    # test when rejection sampling fails
+    dist = ImplicitDistribution(func, n_samples=10000, _seed=0).condition(
+        lambda e: e == "D"
+    )
+    with pytest.raises(ValueError) as e:
+        dist.sample()
+    assert "No sample" in str(e.value)
+
+    dist = ImplicitDistribution(func, n_samples=10000, _seed=0)
+    expected = (1 * .5 + 2 * .25 + 3 * .25)
+    empirical = dist.expectation(lambda e: {"A": 1, "B": 2, "C": 3}[e])
+    assert np.isclose(empirical, expected, rtol=0, atol=0.01)
+    expected, empirical
+
 
 def test_DiscreteFactorTable_sample():
     warnings.filterwarnings("ignore", category=PendingDeprecationWarning)
