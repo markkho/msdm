@@ -52,6 +52,7 @@ class PlanToSubgoalOption(Option):
         self,
         *,
         mdp : MarkovDecisionProcess,
+        initial_states : Sequence[State],
         subgoals : Sequence[State],
         planner : Plans,
         include_mdp_absorbing_states : bool = False,
@@ -63,6 +64,7 @@ class PlanToSubgoalOption(Option):
             self.name = f"{self.__class__}_{self.__class__._n_instances}"
             self.__class__._n_instances += 1
         self.subgoals = subgoals
+        self.initial_states = initial_states
         self.mdp = mdp
         self.name = name
         self.max_nonterminal_pseudoreward = max_nonterminal_pseudoreward
@@ -71,7 +73,7 @@ class PlanToSubgoalOption(Option):
         self.planner = planner
     
     def is_initial(self, s: State) -> bool:
-        return True
+        return s in self.initial_states
     
     def is_terminal(self, s: State) -> bool:
         return s in self.subgoals
@@ -91,10 +93,13 @@ class PlanToSubgoalOption(Option):
             else:
                 is_absorbing = self.is_terminal(s)
             return is_absorbing
+        def initial_state_dist():
+            return DictDistribution.uniform(self.initial_states)
         sub_mdp = augment(
             mdp = self.mdp,
             is_absorbing = is_absorbing,
-            reward = clipped_reward
+            reward = clipped_reward,
+            initial_state_dist = initial_state_dist,
         )
         return sub_mdp
     

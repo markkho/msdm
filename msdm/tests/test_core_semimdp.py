@@ -1,4 +1,5 @@
 import pytest 
+from itertools import product
 
 from msdm.core.semimdp.semimdp import SemiMarkovDecisionProcess
 from msdm.core.mdp.policy import FunctionalPolicy
@@ -6,7 +7,7 @@ from msdm.core.mdp.mdp import MarkovDecisionProcess
 from msdm.core.distributions import DictDistribution
 from msdm.core.semimdp.option import Option, PlanToSubgoalOption, augment
 from msdm.core.exceptions import AlgorithmException
-from msdm.algorithms import ValueIteration
+from msdm.algorithms import ValueIteration, LAOStar
 from msdm.tests.domains import AbsorbingStateTester, DeterministicCounter, DeterministicUnreachableCounter, GNTFig6_6, \
     GeometricCounter, VaryingActionNumber, DeadEndBandit, TiedPaths, LineWorld, \
     RussellNorvigGrid_Fig17_3, PositiveRewardCycle, RussellNorvigGrid, SlipperyMaze
@@ -119,6 +120,7 @@ def test_PlanToSubgoalOption_policy_on_stochastic_domain():
     upper_left, upper_right = (0, 2), (3, 2)
     go_to_upper_left = PlanToSubgoalOption(
         mdp=mdp,
+        initial_states=mdp.state_list,
         subgoals=[upper_left],
         planner=ValueIteration(max_iterations=100),
         max_nonterminal_pseudoreward=mdp.step_reward,
@@ -126,6 +128,7 @@ def test_PlanToSubgoalOption_policy_on_stochastic_domain():
     )
     go_to_upper_right = PlanToSubgoalOption(
         mdp=mdp,
+        initial_states=mdp.state_list,
         subgoals=[upper_right],
         planner=ValueIteration(max_iterations=100),
         max_nonterminal_pseudoreward=mdp.step_reward,
@@ -141,6 +144,38 @@ def test_PlanToSubgoalOption_policy_on_stochastic_domain():
     s1, t1 = smdp.next_state_transit_time_dist(s0, go_to_upper_left).sample()
     s2, t2 = smdp.next_state_transit_time_dist(s1, go_to_upper_right).sample()
     assert (s1, s2) == (upper_left, upper_right)
+
+def test_PlanToSubgoalOption_initial_state_to_goal():
+    mdp = LineWorld(line="a.s..b....g", discount_rate=1.0)
+    options = []
+    for initial_state, subgoal in product(['a', 'b', 's'], ['a', 'b', 'g']):
+        if initial_state == subgoal:
+            continue
+        options.append(PlanToSubgoalOption(
+            mdp=mdp,
+            initial_states=[mdp.line.index(initial_state)],
+            subgoals=[mdp.line.index(subgoal)],
+            name=f"{initial_state}->{subgoal}",
+            planner=LAOStar(heuristic=0),
+            max_nonterminal_pseudoreward=-10,
+            max_steps=100,
+        ))
+    smdp = SemiMarkovDecisionProcess(
+        mdp=mdp,
+        options=options,
+        n_option_simulations=1,
+    )
+    option_dict = {o.name: o for o in smdp.options}
+    option_traj = ['s->a', 'a->b', 'b->g']
+    option_traj = [option_dict[ai] for ai in option_traj]
+
+    traj = []
+    s = smdp.initial_state_dist().sample()
+    for opt in option_traj:
+        ns, t, r = smdp.next_state_transit_time_reward_dist(s, opt).sample()
+        traj.append((s, opt.name, t, ns, r))
+        s = ns
+    assert sum(r for _, _, _, _, r in traj) == -12
 
 def test_Option_termination_at_multiple_subgoals():
     mdp = RussellNorvigGrid_Fig17_3(discount_rate=1.0)
