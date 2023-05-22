@@ -51,16 +51,16 @@ class BreadthFirstSearch(Plans):
         self.seed = seed
         self.randomize_action_order = randomize_action_order
 
-    def plan_on(self, dss: DeterministicShortestPathProblem):
+    def plan_on(self, dsp: DeterministicShortestPathProblem):
         rnd = random.Random(self.seed)
         if self.randomize_action_order:
             shuffled = make_shuffled(rnd)
         else:
             shuffled = lambda list: list
         
-        dss = DeterministicShortestPathProblem.from_mdp(dss)
+        dsp = DeterministicShortestPathProblem.from_mdp(dsp)
 
-        start = dss.initial_state()
+        start = dsp.initial_state()
 
         queue = collections.deque([start])
 
@@ -70,18 +70,18 @@ class BreadthFirstSearch(Plans):
         while queue:
             s = queue.popleft()
 
-            if dss.is_absorbing(s):
+            if dsp.is_absorbing(s):
                 path = reconstruct_path(camefrom, start, s)
                 return Result(
                     path=path,
-                    policy=camefrom_to_policy(path, camefrom, dss),
+                    policy=camefrom_to_policy(path, camefrom, dsp),
                     visited=visited,
                 )
 
             visited.add(s)
 
-            for a in shuffled(dss.actions(s)):
-                ns = dss.next_state(s, a)
+            for a in shuffled(dsp.actions(s)):
+                ns = dsp.next_state(s, a)
                 if ns not in visited and ns not in queue:
                     queue.append(ns)
                     camefrom[ns] = (s, a)
@@ -99,27 +99,25 @@ class AStarSearch(Plans):
         heuristic_value=lambda s: 0,
         seed=None,
         randomize_action_order=False,
-        # tie_breaking_strategy="random",
     ):
         self.heuristic_value = heuristic_value
         self.seed = seed
-        # self.tie_breaking_strategy = tie_breaking_strategy
         self.randomize_action_order = randomize_action_order
 
-    def plan_on(self, dss: DeterministicShortestPathProblem):
+    def plan_on(self, dsp: DeterministicShortestPathProblem):
         rnd = random.Random(self.seed)
         if self.randomize_action_order:
             shuffled = make_shuffled(rnd)
         else:
             shuffled = lambda list: list
         
-        dss = DeterministicShortestPathProblem.from_mdp(dss)
+        dsp = DeterministicShortestPathProblem.from_mdp(dsp)
 
         # Every queue entry is a pair of
         # - a tuple of priorities/costs (the cost-to-go, cost-so-far, and a random tie-breaker)
         # - the state
         queue = []
-        start = dss.initial_state()
+        start = dsp.initial_state()
         heapq.heappush(queue, ((-self.heuristic_value(start), 0, rnd.random()), start))
 
         visited = set([])
@@ -128,20 +126,20 @@ class AStarSearch(Plans):
         while queue:
             (heuristic_cost, cost_from_start, _), s = heapq.heappop(queue)
 
-            if dss.is_absorbing(s):
+            if dsp.is_absorbing(s):
                 path = reconstruct_path(camefrom, start, s)
                 return Result(
                     path=path,
-                    policy=camefrom_to_policy(path, camefrom, dss),
+                    policy=camefrom_to_policy(path, camefrom, dsp),
                     visited=visited,
                 )
 
             visited.add(s)
 
-            for a in shuffled(dss.actions(s)):
-                ns = dss.next_state(s, a)
+            for a in shuffled(dsp.actions(s)):
+                ns = dsp.next_state(s, a)
                 if ns not in visited and ns not in [el[-1] for el in queue]:
-                    next_cost_from_start = cost_from_start - dss.reward(s, a, ns)
+                    next_cost_from_start = cost_from_start - dsp.reward(s, a, ns)
                     next_heuristic_cost = next_cost_from_start - self.heuristic_value(ns)
                     heapq.heappush(queue, ((next_heuristic_cost, next_cost_from_start, rnd.random()), ns))
                     camefrom[ns] = (s, a)
