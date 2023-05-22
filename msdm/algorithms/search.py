@@ -21,11 +21,15 @@ def reconstruct_path(camefrom, start, terminal_state):
         path.append(camefrom[path[-1]][0])
     return path[::-1]
 
-def camefrom_to_policy(camefrom : Dict, mdp: MarkovDecisionProcess):
+def camefrom_to_policy(path, camefrom : Dict, mdp: MarkovDecisionProcess):
     '''
     Converts a path (a sequence of states from a start to a goal) into a policy.
     '''
-    policy_dict = {s: a for ns, (s, a) in camefrom.items()}
+    policy_dict = {}
+    for ns in path:
+        if ns in camefrom:
+            s, a = camefrom[ns]
+            policy_dict[s] = a
     @FunctionalPolicy
     @lru_cache(maxsize=None)
     def policy(s):
@@ -70,7 +74,7 @@ class BreadthFirstSearch(Plans):
                 path = reconstruct_path(camefrom, start, s)
                 return Result(
                     path=path,
-                    policy=camefrom_to_policy(camefrom, dss),
+                    policy=camefrom_to_policy(path, camefrom, dss),
                     visited=visited,
                 )
 
@@ -128,7 +132,7 @@ class AStarSearch(Plans):
                 path = reconstruct_path(camefrom, start, s)
                 return Result(
                     path=path,
-                    policy=camefrom_to_policy(camefrom, dss),
+                    policy=camefrom_to_policy(path, camefrom, dss),
                     visited=visited,
                 )
 
