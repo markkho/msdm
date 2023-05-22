@@ -18,14 +18,14 @@ def reconstruct_path(camefrom, start, terminal_state):
     '''
     path = [terminal_state]
     while path[-1] != start:
-        path.append(camefrom[path[-1]])
+        path.append(camefrom[path[-1]][0])
     return path[::-1]
 
-def path_to_policy(path, mdp: MarkovDecisionProcess):
+def camefrom_to_policy(camefrom : Dict, mdp: MarkovDecisionProcess):
     '''
     Converts a path (a sequence of states from a start to a goal) into a policy.
     '''
-    policy_dict = dict(zip(path[:-1], path[1:]))
+    policy_dict = {s: a for ns, (s, a) in camefrom.items()}
     @FunctionalPolicy
     @lru_cache(maxsize=None)
     def policy(s):
@@ -70,7 +70,7 @@ class BreadthFirstSearch(Plans):
                 path = reconstruct_path(camefrom, start, s)
                 return Result(
                     path=path,
-                    policy=path_to_policy(path, dss),
+                    policy=camefrom_to_policy(camefrom, dss),
                     visited=visited,
                 )
 
@@ -80,7 +80,7 @@ class BreadthFirstSearch(Plans):
                 ns = dss.next_state(s, a)
                 if ns not in visited and ns not in queue:
                     queue.append(ns)
-                    camefrom[ns] = s
+                    camefrom[ns] = (s, a)
 
 class AStarSearch(Plans):
     """
@@ -122,13 +122,13 @@ class AStarSearch(Plans):
         camefrom = dict()
 
         while queue:
-            (f, g, r), s = heapq.heappop(queue)
+            (heuristic_cost, cost_from_start, _), s = heapq.heappop(queue)
 
             if dss.is_absorbing(s):
                 path = reconstruct_path(camefrom, start, s)
                 return Result(
                     path=path,
-                    policy=path_to_policy(path, dss),
+                    policy=camefrom_to_policy(camefrom, dss),
                     visited=visited,
                 )
 
@@ -137,7 +137,7 @@ class AStarSearch(Plans):
             for a in shuffled(dss.actions(s)):
                 ns = dss.next_state(s, a)
                 if ns not in visited and ns not in [el[-1] for el in queue]:
-                    ng = g - dss.reward(s, a, ns)
-                    nf = ng - self.heuristic_value(ns)
-                    heapq.heappush(queue, ((nf, ng, rnd.random()), ns))
-                    camefrom[ns] = s
+                    next_cost_from_start = cost_from_start - dss.reward(s, a, ns)
+                    next_heuristic_cost = next_cost_from_start - self.heuristic_value(ns)
+                    heapq.heappush(queue, ((next_heuristic_cost, next_cost_from_start, rnd.random()), ns))
+                    camefrom[ns] = (s, a)
