@@ -3,7 +3,7 @@ from functools import lru_cache
 import heapq
 import random
 from re import M
-from typing import Dict
+from typing import Dict, Union
 
 from msdm.core.algorithmclasses import Plans, Result
 from msdm.core.distributions import DeterministicDistribution, DictDistribution, dictdistribution
@@ -47,14 +47,16 @@ class BreadthFirstSearch(Plans):
         self.seed = seed
         self.randomize_action_order = randomize_action_order
 
-    def plan_on(self, mdp: DeterministicShortestPathProblem):
+    def plan_on(self, dss: DeterministicShortestPathProblem):
         rnd = random.Random(self.seed)
         if self.randomize_action_order:
             shuffled = make_shuffled(rnd)
         else:
             shuffled = lambda list: list
+        
+        dss = DeterministicShortestPathProblem.from_mdp(dss)
 
-        start = mdp.initial_state()
+        start = dss.initial_state()
 
         queue = collections.deque([start])
 
@@ -64,18 +66,18 @@ class BreadthFirstSearch(Plans):
         while queue:
             s = queue.popleft()
 
-            if mdp.is_absorbing(s):
+            if dss.is_absorbing(s):
                 path = reconstruct_path(camefrom, start, s)
                 return Result(
                     path=path,
-                    policy=path_to_policy(path, mdp),
+                    policy=path_to_policy(path, dss),
                     visited=visited,
                 )
 
             visited.add(s)
 
-            for a in shuffled(mdp.actions(s)):
-                ns = mdp.next_state(s, a)
+            for a in shuffled(dss.actions(s)):
+                ns = dss.next_state(s, a)
                 if ns not in visited and ns not in queue:
                     queue.append(ns)
                     camefrom[ns] = s
@@ -88,23 +90,32 @@ class AStarSearch(Plans):
     Here, the heuristic cost is specified by a heuristic _value_ function, so a typical
     search heuristic for the cost should be negated.
     """
-    def __init__(self, *, heuristic_value=lambda s: 0, seed=None, randomize_action_order=False):
+    def __init__(
+        self, *,
+        heuristic_value=lambda s: 0,
+        seed=None,
+        randomize_action_order=False,
+        # tie_breaking_strategy="random",
+    ):
         self.heuristic_value = heuristic_value
         self.seed = seed
+        # self.tie_breaking_strategy = tie_breaking_strategy
         self.randomize_action_order = randomize_action_order
 
-    def plan_on(self, mdp: DeterministicShortestPathProblem):
+    def plan_on(self, dss: DeterministicShortestPathProblem):
         rnd = random.Random(self.seed)
         if self.randomize_action_order:
             shuffled = make_shuffled(rnd)
         else:
             shuffled = lambda list: list
+        
+        dss = DeterministicShortestPathProblem.from_mdp(dss)
 
         # Every queue entry is a pair of
         # - a tuple of priorities/costs (the cost-to-go, cost-so-far, and a random tie-breaker)
         # - the state
         queue = []
-        start = mdp.initial_state()
+        start = dss.initial_state()
         heapq.heappush(queue, ((-self.heuristic_value(start), 0, rnd.random()), start))
 
         visited = set([])
@@ -113,20 +124,20 @@ class AStarSearch(Plans):
         while queue:
             (f, g, r), s = heapq.heappop(queue)
 
-            if mdp.is_absorbing(s):
+            if dss.is_absorbing(s):
                 path = reconstruct_path(camefrom, start, s)
                 return Result(
                     path=path,
-                    policy=path_to_policy(path, mdp),
+                    policy=path_to_policy(path, dss),
                     visited=visited,
                 )
 
             visited.add(s)
 
-            for a in shuffled(mdp.actions(s)):
-                ns = mdp.next_state(s, a)
+            for a in shuffled(dss.actions(s)):
+                ns = dss.next_state(s, a)
                 if ns not in visited and ns not in [el[-1] for el in queue]:
-                    ng = g - mdp.reward(s, a, ns)
+                    ng = g - dss.reward(s, a, ns)
                     nf = ng - self.heuristic_value(ns)
                     heapq.heappush(queue, ((nf, ng, rnd.random()), ns))
                     camefrom[ns] = s
