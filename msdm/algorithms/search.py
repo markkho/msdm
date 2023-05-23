@@ -99,10 +99,13 @@ class AStarSearch(Plans):
         heuristic_value=lambda s: 0,
         seed=None,
         randomize_action_order=False,
+        tie_breaking_strategy='random'
     ):
         self.heuristic_value = heuristic_value
         self.seed = seed
         self.randomize_action_order = randomize_action_order
+        assert tie_breaking_strategy in ['random', 'lifo', 'fifo']
+        self.tie_breaking_strategy = tie_breaking_strategy
 
     def plan_on(self, dsp: MarkovDecisionProcess):
         rnd = random.Random(self.seed)
@@ -117,14 +120,19 @@ class AStarSearch(Plans):
         # - a tuple of priorities/costs (the cost-to-go, cost-so-far, and a random tie-breaker)
         # - the state
         queue = []
+        queue_count = 0
         start = dsp.initial_state()
-        heapq.heappush(queue, ((-self.heuristic_value(start), 0, rnd.random()), start))
+        if self.tie_breaking_strategy in ['lifo', 'fifo']:
+            tie_break = 0
+        else:
+            tie_break = rnd.random()
+        heapq.heappush(queue, ((-self.heuristic_value(start), tie_break, 0), start))
 
         visited = set([])
         camefrom = dict()
 
         while queue:
-            (heuristic_cost, cost_from_start, _), s = heapq.heappop(queue)
+            (heuristic_cost, _, cost_from_start), s = heapq.heappop(queue)
 
             if dsp.is_absorbing(s):
                 path = reconstruct_path(camefrom, start, s)
@@ -141,5 +149,13 @@ class AStarSearch(Plans):
                 if ns not in visited and ns not in [el[-1] for el in queue]:
                     next_cost_from_start = cost_from_start - dsp.reward(s, a, ns)
                     next_heuristic_cost = next_cost_from_start - self.heuristic_value(ns)
-                    heapq.heappush(queue, ((next_heuristic_cost, next_cost_from_start, rnd.random()), ns))
+                    if self.tie_breaking_strategy == 'lifo':
+                        queue_count += 1
+                        tie_break = queue_count
+                    elif self.tie_breaking_strategy == 'fifo':
+                        queue_count -= 1
+                        tie_break = queue_count
+                    else:
+                        tie_break = rnd.random()
+                    heapq.heappush(queue, ((next_heuristic_cost, tie_break, next_cost_from_start), ns))
                     camefrom[ns] = (s, a)
