@@ -57,7 +57,7 @@ class BreadthFirstSearch(Plans):
             shuffled = make_shuffled(rnd)
         else:
             shuffled = lambda list: list
-        
+
         dsp = DeterministicShortestPathProblem.from_mdp(dsp)
 
         start = dsp.initial_state()
@@ -113,17 +113,24 @@ class AStarSearch(Plans):
             shuffled = make_shuffled(rnd)
         else:
             shuffled = lambda list: list
-        
+
         dsp = DeterministicShortestPathProblem.from_mdp(dsp)
 
         # Every queue entry is a pair of
-        # - a tuple of priorities/costs (the cost-to-go, cost-so-far, and a random tie-breaker)
+        # - a tuple of priorities/costs (the cost-to-go, a tie-breaker, and cost-so-far)
         # - the state
         queue = []
-        queue_count = 0
         start = dsp.initial_state()
         if self.tie_breaking_strategy in ['lifo', 'fifo']:
             tie_break = 0
+            if self.tie_breaking_strategy in 'lifo':
+                # The heap is a min-heap, so to ensure last-in first-out
+                # the tie-breaker must decrease. Since it's always
+                # decreasing, later elements of equivalent value have greater priority.
+                tie_break_delta = -1
+            else:
+                # See above comment. First-in first-out requires that our tie-breaker increases.
+                tie_break_delta = +1
         else:
             tie_break = rnd.random()
         heapq.heappush(queue, ((-self.heuristic_value(start), tie_break, 0), start))
@@ -149,12 +156,8 @@ class AStarSearch(Plans):
                 if ns not in visited and ns not in [el[-1] for el in queue]:
                     next_cost_from_start = cost_from_start - dsp.reward(s, a, ns)
                     next_heuristic_cost = next_cost_from_start - self.heuristic_value(ns)
-                    if self.tie_breaking_strategy == 'lifo':
-                        queue_count += 1
-                        tie_break = queue_count
-                    elif self.tie_breaking_strategy == 'fifo':
-                        queue_count -= 1
-                        tie_break = queue_count
+                    if self.tie_breaking_strategy in ['lifo', 'fifo']:
+                        tie_break += tie_break_delta
                     else:
                         tie_break = rnd.random()
                     heapq.heappush(queue, ((next_heuristic_cost, tie_break, next_cost_from_start), ns))
