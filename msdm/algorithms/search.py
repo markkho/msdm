@@ -51,7 +51,7 @@ class BreadthFirstSearch(Plans):
         self.seed = seed
         self.randomize_action_order = randomize_action_order
 
-    def plan_on(self, dsp: DeterministicShortestPathProblem):
+    def plan_on(self, dsp: MarkovDecisionProcess):
         rnd = random.Random(self.seed)
         if self.randomize_action_order:
             shuffled = make_shuffled(rnd)
@@ -104,7 +104,7 @@ class AStarSearch(Plans):
         self.seed = seed
         self.randomize_action_order = randomize_action_order
 
-    def plan_on(self, dsp: DeterministicShortestPathProblem):
+    def plan_on(self, dsp: MarkovDecisionProcess):
         rnd = random.Random(self.seed)
         if self.randomize_action_order:
             shuffled = make_shuffled(rnd)
