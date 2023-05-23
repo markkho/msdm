@@ -59,8 +59,9 @@ def test_astarsearch():
         )
         res = planner.plan_on(gw)
         found.add(tuple([(s['x'], s['y']) for s in res.path]))
-    # Depends on random seed, but likely.
-    assert found == {path_above, path_below}
+    # We deterministically select one of the two paths, because we tie-break with LIFO.
+    # Depends on random seed.
+    assert found == {path_below}
 
     found = set()
     for seed in range(10):
@@ -71,6 +72,7 @@ def test_astarsearch():
         )
         res = planner.plan_on(gw)
         found.add(tuple([(s['x'], s['y']) for s in res.path]))
+    # When action order is randomized, each of the optimal solutions are possible.
     # Depends on random seed, but likely.
     assert found == {path_above, path_below}
 
