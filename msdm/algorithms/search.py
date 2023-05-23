@@ -99,7 +99,7 @@ class AStarSearch(Plans):
         heuristic_value=lambda s: 0,
         seed=None,
         randomize_action_order=False,
-        tie_breaking_strategy='random'
+        tie_breaking_strategy='lifo'
     ):
         self.heuristic_value = heuristic_value
         self.seed = seed
