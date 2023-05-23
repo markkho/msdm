@@ -123,7 +123,7 @@ class AStarSearch(Plans):
         start = dsp.initial_state()
         if self.tie_breaking_strategy in ['lifo', 'fifo']:
             tie_break = 0
-            if self.tie_breaking_strategy in 'lifo':
+            if self.tie_breaking_strategy == 'lifo':
                 # The heap is a min-heap, so to ensure last-in first-out
                 # the tie-breaker must decrease. Since it's always
                 # decreasing, later elements of equivalent value have greater priority.
