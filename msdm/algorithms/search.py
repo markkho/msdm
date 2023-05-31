@@ -281,21 +281,3 @@ class BidirectionalSearch(Plans):
 
     def is_intersecting(self):
         return self.src_visited & self.dest_visited
-
-
-from msdm.domains.gridworld.mdp import GridWorld
-
-gw = GridWorld(
-    tile_array=[
-        '...',
-        '.h.',
-        'sxg',
-        '.h.',
-        '...',
-    ],
-    feature_rewards={'g': 0, 'x': -100, 'h': -5},
-    step_cost=-1,
-    discount_rate=1.0
-)
-
-BidirectionalSearch().plan_on(gw)
