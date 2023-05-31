@@ -33,10 +33,18 @@ class DeterministicShortestPathProblem(MarkovDecisionProcess):
             return mdp
         class DeterministicShortestPathProblemFromMDP(DeterministicShortestPathProblem):
             def __init__(self): pass
+
+
             def initial_state(self):
                 initial_state = mdp.initial_state_dist().support
                 assert len(initial_state) == 1, "MDP has non-deterministic initial state"
                 return initial_state[0]
+
+            def absorbing_state(self):
+                absorbing_state = mdp.absorbing_states
+                assert len(absorbing_state) == 1, "MDP has more than one absorbing state"
+                return absorbing_state[0]
+
             def next_state(self, s, a):
                 next_state = mdp.next_state_dist(s, a).support
                 assert len(next_state) == 1, "MDP has non-deterministic transition function"

@@ -1,4 +1,4 @@
-from msdm.algorithms import BreadthFirstSearch, AStarSearch
+from msdm.algorithms import BreadthFirstSearch, AStarSearch, BidirectionalSearch
 from msdm.core.mdp import MarkovDecisionProcess
 from msdm.domains.gridworld.mdp import GridWorld, TERMINALSTATE
 from msdm.tests.domains import DeterministicCounter
@@ -119,3 +119,8 @@ def test_astarsearch_tie_breaking():
         # This stricter bound will depend on the random seed, but is likely.
         assert path_len < len(res.visited) < state_count
         _check_path(res)
+
+def test_bidirection_search():
+    res = BidirectionalSearch().plan_on(gw)
+    assert [(s['x'], s['y']) for s in res.path] == [(0, 2), (1, 2), (2, 2)]
+    assert res.visited == 7
