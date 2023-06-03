@@ -123,4 +123,4 @@ def test_astarsearch_tie_breaking():
 def test_bidirection_search():
     res = BidirectionalSearch().plan_on(gw)
     assert [(s['x'], s['y']) for s in res.path] == [(0, 2), (1, 2), (2, 2)]
-    assert res.visited == 7
+    assert len(res.visited) == 7
