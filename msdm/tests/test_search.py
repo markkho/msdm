@@ -253,9 +253,11 @@ def test_astarsearch_large_grid():
     )
     hv = make_manhattan_distance_heuristic(gw)
     paths = set()
+    visiteds = set()
     for seed in range(100):
         res = AStarSearch(heuristic_value=hv, randomize_action_order=True, seed=823749285 + seed).plan_on(gw)
         paths.add(tuple(res.path))
+        visiteds.add(frozenset(res.visited))
 
     assert paths == {
         _path_from_tile_array([
@@ -276,4 +278,24 @@ def test_astarsearch_large_grid():
             '.#....#m#.#.',
             '...#..#nopqr'
         ], ('a', 'r')) + (TERMINALSTATE,),
+    }
+
+    tile_array = [
+            'A#......#...',
+            'AB#########.',
+            'CAAA#.....#.',
+            '#D#AAA##..#.',
+            '.DDE#AAA#.#.',
+            '.#DEEF#A#.#.',
+            '..D#EF#AAAAA'
+    ]
+    assert visiteds == {
+        _matching_states_from_tile_array(tile_array, 'AB'),
+        _matching_states_from_tile_array(tile_array, 'AC'),
+        _matching_states_from_tile_array(tile_array, 'ABF'),
+        _matching_states_from_tile_array(tile_array, 'ACF'),
+        _matching_states_from_tile_array(tile_array, 'ABEF'),
+        _matching_states_from_tile_array(tile_array, 'ACEF'),
+        _matching_states_from_tile_array(tile_array, 'ABDEF'),
+        _matching_states_from_tile_array(tile_array, 'ACDEF'),
     }
