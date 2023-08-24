@@ -670,3 +670,42 @@ class RussellNorvigGrid_Fig17_3(RussellNorvigGrid, TestDomain):
             (3, 1): 0.,
             (3, 2): 0.,
         }
+
+class RomaniaSubsetAIMA(DeterministicShortestPathProblem, TabularMarkovDecisionProcess, TestDomain):
+    '''
+    This small weighted graph is from Figure 3.15 in Artificial Intelligence: A Modern Approach, 3rd edition.
+    It's used to illustrate an important case for Uniform Cost Search (and A* with no heuristic), where
+    a state can be subsequently encountered through a more efficient path.
+    '''
+    state_list = ('Sibiu', 'Fagaras', 'Rimnicu Vilcea', 'Pitesti', 'Bucharest')
+    costs = {
+        frozenset({'Sibiu', 'Fagaras'}): 99,
+        frozenset({'Sibiu', 'Rimnicu Vilcea'}): 80,
+        frozenset({'Rimnicu Vilcea', 'Pitesti'}): 97,
+        frozenset({'Pitesti', 'Bucharest'}): 101,
+        frozenset({'Fagaras', 'Bucharest'}): 211,
+    }
+
+    def initial_state(self):
+        return 'Sibiu'
+
+    def is_absorbing(self, s):
+        return s == 'Bucharest'
+
+    def actions(self, s):
+        return [
+            ns
+            for ns in self.state_list
+            if frozenset({s, ns}) in self.costs
+        ]
+
+    def next_state(self, s, a):
+        assert frozenset({s, a}) in self.costs
+        return a
+
+    def reward(self, s, a, ns):
+        assert a == ns, (a, ns)
+        return -self.costs[frozenset({s, ns})]
+
+    def optimal_path(self):
+        return ['Sibiu', 'Rimnicu Vilcea', 'Pitesti', 'Bucharest']
