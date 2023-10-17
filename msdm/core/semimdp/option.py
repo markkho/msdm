@@ -11,6 +11,12 @@ from msdm.core.algorithmclasses import Plans, PlanningResult
 from msdm.core.exceptions import AlgorithmException
 
 class Option(ABC):
+    """
+    This implementation of an option is based on the definition in
+    Sutton, R. S., Precup, D., & Singh, S. (1999). Between MDPs and semi-MDPs: 
+    A framework for temporal abstraction in reinforcement learning.
+    Artificial intelligence, 112(1-2), 181-211.
+    """
     name : str
     policy : Policy
     max_steps : int = 1000
