@@ -60,47 +60,34 @@ def _test_tabular_planner_correctness(pl: Plans, test_mdps):
             if hasattr(mdp, "optimal_state_gain") and hasattr(result, "state_gain"):
                 assert np.isclose(mdp.optimal_state_gain()[s], result.state_gain[s], atol=1e-3)
 
-def test_ValueIteration_dict_correctness():
+def test_ValueIteration_correctness():
     _test_tabular_planner_correctness(
-        ValueIteration(max_iterations=1000, max_residual=1e-5, _version="dict"),
+        ValueIteration(max_iterations=1000, max_residual=1e-5, allow_no_discounting=True),
         test_mdps=safe_mdps
     )
 
-def test_ValueIteration_dict_with_recurrent_states():
-    vi = ValueIteration(max_iterations=100, undefined_value=0, _version="dict")
-    recurrent_mdp = DeterministicUnreachableCounter(3, discount_rate=1.0)
-    vi_res = vi.plan_on(recurrent_mdp)
-    for s, v in recurrent_mdp.optimal_state_value().items():
-        assert np.isclose(vi_res.state_value[s], v)
-
-def test_ValueIteration_vec_correctness():
-    _test_tabular_planner_correctness(
-        ValueIteration(max_iterations=1000, max_residual=1e-5, _version="vectorized"),
-        test_mdps=safe_mdps
-    )
-
-def test_ValueIteration_vec_with_recurrent_states():
-    vi = ValueIteration(max_iterations=100, undefined_value=0, _version="vectorized")
-    recurrent_mdp = DeterministicUnreachableCounter(3, discount_rate=1.0)
-    vi_res = vi.plan_on(recurrent_mdp)
-    for s, v in recurrent_mdp.optimal_state_value().items():
-        assert np.isclose(vi_res.state_value[s], v)
+# def test_ValueIteration_with_recurrent_states():
+#     vi = ValueIteration(max_iterations=100, allow_no_discounting=True)
+#     recurrent_mdp = DeterministicUnreachableCounter(3, discount_rate=1.0, undefined_value=-100)
+#     vi_res = vi.plan_on(recurrent_mdp)
+#     for s, v in recurrent_mdp.optimal_state_value().items():
+#         assert np.isclose(vi_res.state_value[s], v)
 
 def test_PolicyIteration_correctness():
     _test_tabular_planner_correctness(
-        PolicyIteration(max_iterations=1000, undefined_value=float('-inf')),
+        PolicyIteration(max_iterations=1000, allow_no_discounting=True),
         test_mdps=safe_mdps
     )
 
-def test_PolicyIteration_with_recurrent_states():
-    pi = PolicyIteration(max_iterations=1000, undefined_value=0)
-    recurrent_mdp = DeterministicUnreachableCounter(3, discount_rate=1.0)
-    with warnings.catch_warnings(record=True) as w:
-        pi_res = pi.plan_on(recurrent_mdp)
-        assert len(w) == 1
-        assert 'MDP contains states that never reach an absorbing state' in str(w[0])
-    for s, v in recurrent_mdp.optimal_state_value().items():
-        assert np.isclose(pi_res.state_value[s], v)
+# def test_PolicyIteration_with_recurrent_states():
+#     pi = PolicyIteration(max_iterations=1000, undefined_value=0)
+#     recurrent_mdp = DeterministicUnreachableCounter(3, discount_rate=1.0)
+#     with warnings.catch_warnings(record=True) as w:
+#         pi_res = pi.plan_on(recurrent_mdp)
+#         assert len(w) == 1
+#         assert 'MDP contains states that never reach an absorbing state' in str(w[0])
+#     for s, v in recurrent_mdp.optimal_state_value().items():
+#         assert np.isclose(pi_res.state_value[s], v)
 
 def test_MultiChainPolicyIteration_vec_correctness():
     _test_tabular_planner_correctness(

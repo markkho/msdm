@@ -87,7 +87,7 @@ def _test_lrtdp_heuristics_on_stochastic_domain(discount_rate):
         wind_probability=.5,
         feature_rewards={'x': -50, '$': 50}
     )
-    vi_res = ValueIteration().plan_on(wg) #the ground truth
+    vi_res = ValueIteration(allow_no_discounting=True).plan_on(wg) #the ground truth
     lrtdp_res_admissible_shifted = LRTDP(
         heuristic=lambda s: vi_res.state_value[s] + 10,
         bellman_error_margin=bellman_error_margin,
@@ -161,7 +161,7 @@ def test_GNTFig6_6():
 def _assert_equal_value_iteration(planner, mdp: MarkovDecisionProcess):
     lrtdp_res = planner.plan_on(mdp)
 
-    vi = ValueIteration()
+    vi = ValueIteration(allow_no_discounting=True)
     vi_res = vi.plan_on(mdp)
 
     # Ensure our VI Q values are a lower bound to the LRTDP ones.
