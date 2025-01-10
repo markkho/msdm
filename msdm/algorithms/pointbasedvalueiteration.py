@@ -40,6 +40,8 @@ def expand_beliefs(pomdp : PartiallyObservableMDP, belief_set):
             continue
         max_L1_nbs = nbs[L1_nb_dist == max_L1_nb_dist]
         new_bs.append(max_L1_nbs)
+    if len(new_bs) == 0:
+        return belief_set
     new_bs = np.concatenate(new_bs)
     belief_set = np.concatenate((belief_set, new_bs))
     belief_set = np.unique(belief_set, axis=0)
